@@ -14,6 +14,105 @@
 struct conioxlib_smousestatus conioxlib_mousestatus = {0};
 
 
+/* ----------------------- Escribe un texto centrado ---------------------- */
+void conioxlib_cputsc(unsigned int x1, unsigned int x2, unsigned int y, char* str)
+{
+	unsigned int x;
+
+	x = (((x2 - x1 + 1) >> 1) - (strlen(str) >> 1) + x1);
+	gotoxy(x, y);
+	cputs(str);
+}
+
+
+
+/* -------------------------- Dibuja una ventana --------------------------- */
+void conioxlib_box(unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2, unsigned int atr, char* tipo, char* titulo, unsigned int sombra)
+{
+	unsigned int x, y;
+	unsigned int c1, c2;
+	char l1[82], l2[82], l3[82], tmp[330];
+
+	/* Shadow */
+	if (sombra & 1)
+	{
+		gettext(x1 + 2, y2 + 1, x2 + 2, y2 + 1, tmp);
+		c2 = (((x2 + 2) - (x1 + 2) + 1) * ((y2 + 1) - (y2 + 1) + 1)) << 1;
+		for (c1 = 1; c1 <= c2; c1 += 2)
+		{
+			tmp[c1] = 8;
+		}
+		puttext(x1 + 2, y2 + 1, x2 + 2, y2 + 1, tmp);
+		gettext(x2 + 1, y1 + 1, x2 + 2, y2 + 1, tmp);
+		c2 = (((x2 + 2) - (x2 + 1) + 1) * ((y2 + 1) - (y1 + 1) + 1)) << 1;
+		for (c1 = 1; c1 <= c2; c1 += 2)
+		{
+			tmp[c1] = 8;
+		}
+		puttext(x2 + 1, y1 + 1, x2 + 2, y2 + 1, tmp);
+	}
+	/* No window */
+	if ((sombra & 4) == 0)
+	{
+		x = (x2 - x1);
+		memset(&l1, 0, x + 2);
+		memset(&l2, 0, x + 2);
+		memset(&l3, 0, x + 2);
+		l1[0] = tipo[0];
+		memset(&l1[1], tipo[2], x - 1);
+		l1[x] = tipo[1];
+		l2[0] = tipo[4];
+		memset(&l2[1], 32, x - 1);
+		l2[x] = tipo[4];
+		l3[0] = tipo[5];
+		memset(&l3[1], tipo[3], x - 1);
+		l3[x] = tipo[6];
+		textattr(atr);
+		gotoxy(x1, y1);
+		cputs(l1);
+		if (titulo[0] != 0)
+		{
+			sprintf(tmp, " %s ", titulo);
+			conioxlib_cputsc(x1, x2, y1, tmp);
+		}
+		/* Close */
+		if (sombra & 2)
+		{
+			gotoxy(x1 + 2, y1);
+			cputs("[þ]");
+		}
+		for (y = y1 + 1; y != y2; y++)
+		{
+			gotoxy(x1, y);
+			cputs(l2);
+		}
+		gotoxy(x1, y2);
+		cputs(l3);
+	}
+}
+
+
+/* ------------ Escribe en pantalla el estado de los bloqueos ------------- */
+void conioxlib_watch(void)
+{
+	unsigned int oldx, oldy;
+	time_t t;
+	struct tm* ti;
+
+	oldx = wherex();
+	oldy = wherey();
+
+	time(&t);
+	ti = localtime(&t);
+
+	gotoxy(62, 25);
+	textattr(7 * 16 + 0);
+	cprintf("%2u:%02u", ti->tm_hour, ti->tm_min);
+	gotoxy(oldx, oldy);
+}
+
+
+
 
 #if ((__WIN32__) || (__WINDOWS__) || (__NT__) || (_WIN32))
 
@@ -81,6 +180,47 @@ void conioxlib_pollmouse(void)
 		}
 	}
 }
+
+
+/* ------------ Escribe en pantalla el estado de los bloqueos ------------- */
+void conioxlib_blocks(void)
+{
+	SHORT fun;
+	unsigned int oldx, oldy;
+	char status[17];
+
+	oldx = wherex();
+	oldy = wherey();
+
+	memset(status, 32, sizeof(status));
+	status[sizeof(status) - 1] = 0;
+
+	if (GetKeyState(VK_INSERT))
+	{
+		memcpy(&status[0], "INS", 3);
+	}
+	if (GetKeyState(VK_CAPITAL))
+	{
+		memcpy(&status[4], "CAP", 3);
+	}
+	if (GetKeyState(VK_NUMLOCK))
+
+	{
+		memcpy(&status[8], "NUM", 3);
+	}
+	if (GetKeyState(VK_SCROLL))
+	{
+		memcpy(&status[12], "SCR", 3);
+	}
+
+	textattr(7 * 16 + 0);
+	gotoxy(64, 25);
+	_wscroll = 0;
+	cputs(status);
+	gotoxy(oldx, oldy);
+}
+
+
 #endif
 
 
@@ -98,7 +238,7 @@ int conioxlib_ismouse = -1;
 
 
 /* ----------------------------------------------------------------------------------------------------------------- */
-void conioxlib_mouseinit(void)
+void _conioxlib_mouseinit(void)
 {
 	union REGS r;
 
@@ -139,7 +279,7 @@ void conioxlib_pollmouse(void)
 	union REGS r;
 
 
-	conioxlib_mouseinit();
+	_conioxlib_mouseinit();
 	if (conioxlib_ismouse > 0)
 	{
 		#if defined(__WATCOMC__)
@@ -191,6 +331,47 @@ void conioxlib_pollmouse(void)
 			}
 		}
 	}
+}
+
+
+
+/* ------------ Escribe en pantalla el estado de los bloqueos ------------- */
+void conioxlib_blocks(void)
+{
+	unsigned char fun;
+	unsigned int oldx, oldy;
+	char status[17];
+
+	oldx = wherex();
+	oldy = wherey();
+
+	memset(status, 32, sizeof(status));
+	status[sizeof(status) - 1] = 0;
+
+	fun = peekb(0x0040, 0x0017);
+
+	if (fun & 128)
+	{
+		memcpy(&status[0], "INS", 3);
+	}
+	if (fun & 64)
+	{
+		memcpy(&status[4], "CAP", 3);
+	}
+	if (fun & 32)
+	{
+		memcpy(&status[8], "NUM", 3);
+	}
+	if (fun & 16)
+	{
+		memcpy(&status[12], "SCR", 3);
+	}
+
+	textattr(7 * 16 + 0);
+	gotoxy(64, 25);
+	_wscroll = 0;
+	cputs(status);
+	gotoxy(oldx, oldy);
 }
 
 

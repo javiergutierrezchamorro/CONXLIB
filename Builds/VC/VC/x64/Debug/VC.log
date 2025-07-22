@@ -1,5 +1,5 @@
 ﻿  conxdemo.c
-D:\PROYECTOS\CONXLIB\conxdemo.c(20,13): warning C4057: 'función': 'unsigned char *' tiene un direccionamiento indirecto distinto de 'char [81]' para tipos base parecidos
-D:\PROYECTOS\CONXLIB\conxdemo.c(66,9): warning C4057: 'función': 'const char *' tiene un direccionamiento indirecto distinto de 'unsigned char *' para tipos base parecidos
+D:\PROYECTOS\CONXLIB\conxdemo.c(25,13): warning C4057: 'función': 'unsigned char *' tiene un direccionamiento indirecto distinto de 'char [81]' para tipos base parecidos
+D:\PROYECTOS\CONXLIB\conxdemo.c(75,9): warning C4057: 'función': 'const char *' tiene un direccionamiento indirecto distinto de 'unsigned char *' para tipos base parecidos
      Creando biblioteca D:\PROYECTOS\CONXLIB\Builds\VC\x64\Debug\VC.lib y objeto D:\PROYECTOS\CONXLIB\Builds\VC\x64\Debug\VC.exp
   VC.vcxproj -> D:\PROYECTOS\CONXLIB\Builds\VC\x64\Debug\VC.exe

@@ -2,6 +2,8 @@
 #ifndef _CONIOXLIB_H_ 
 #define _CONIOXLIB_H_
 
+#include "coniox.h"
+
 #define conioxlib_version (190)
 #define conioxlib_build (__DATE__)
 
@@ -20,17 +22,17 @@ extern "C" {
 #include "conxlib.h"
 
 
-#define A_NONE    "       "
-#define A_BLOCK   "ÛÛßÜÛÛÛ"
-#define A_SINGLE  "Ú¿ÄÄ³ÀÙ"
-#define A_DOUBLE  "É»ÍÍºÈ¼"
-#define U_SINGLE  "Ö·ÄÄºÓ½"
-#define S_DOUBLE  U_SIMPLE
-#define U_DOUBLE  "Õ¸ÍÍ³Ô¾"
-#define S_SINGLE  U_DOUBLE
-#define SHADOW    1
-#define CLOSE     2
-#define NOWINDOW	4
+#define CONIOXLIB_BOX_A_NONE    "       "
+#define CONIOXLIB_BOX_A_BLOCK   "ÛÛßÜÛÛÛ"
+#define CONIOXLIB_BOX_A_SINGLE  "Ú¿ÄÄ³ÀÙ"
+#define CONIOXLIB_BOX_A_DOUBLE  "É»ÍÍºÈ¼"
+#define CONIOXLIB_BOX_U_SINGLE  "Ö·ÄÄºÓ½"
+#define CONIOXLIB_BOX_S_DOUBLE  U_SIMPLE
+#define CONIOXLIB_BOX_U_DOUBLE  "Õ¸ÍÍ³Ô¾"
+#define CONIOXLIB_BOX_S_SINGLE  U_DOUBLE
+#define CONIOXLIB_BOX_SHADOW    1
+#define CONIOXLIB_BOX_CLOSE     2
+#define CONIOXLIB_BOX_NOWINDOW	4
 
 #define KBD_UP    0x4800
 #define KBD_DOWN  0x5000
@@ -99,14 +101,17 @@ extern struct conioxlib_smousestatus conioxlib_mousestatus;
 
 
 void conioxlib_pollmouse(void);
-
+void conioxlib_box(unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2, unsigned int atr, char* tipo, char* titulo, unsigned int sombra);
+void conioxlib_cputsc(unsigned int x1, unsigned int x2, unsigned int y, char* str);
+void conioxlib_blocks(void);
+void conioxlib_watch(void);
 
 void getcountry(struct conioxlib_scountry *);
 void setpal (unsigned char);
 void empuja (void);
 unsigned int ckey (void);
-void watch (void);
-void blocks (void);
+
+
 void cputsc (unsigned char, unsigned char, unsigned char, char *);
 void getstr (unsigned char, unsigned char, unsigned char, char *, char);
 void getpw (unsigned char, unsigned char, unsigned char, char *, char);

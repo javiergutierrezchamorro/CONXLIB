@@ -20,7 +20,11 @@ void main(void)
 
 
 	coniox_init(NULL);
+	_setcursortype(_NOCURSOR);
+
 	background("CONXLIB DEMO 2.0               (c) Copyright 1997-2025 Javier Gutierrez Chamorro");
+	conioxlib_box(3, 3, 74, 19, 1 * 16 + 1, CONIOXLIB_BOX_A_DOUBLE, "Window", CONIOXLIB_BOX_SHADOW | CONIOXLIB_BOX_CLOSE);
+
 
 	for (i = 0; i < 10000; i++)
 	{
@@ -32,6 +36,8 @@ void main(void)
 		cprintf("rclick: %01u\r\n", conioxlib_mousestatus.rclick);
 		cprintf("wheelx: %03u\r\n", conioxlib_mousestatus.wheelx);
 		cprintf("wheely: %03u\r\n", conioxlib_mousestatus.wheely);
+		conioxlib_blocks();
+		conioxlib_watch();
 	}
 }
 
@@ -77,3 +83,5 @@ void background (unsigned char msg[])
 	}
 	free(oldb);
 }
+
+
