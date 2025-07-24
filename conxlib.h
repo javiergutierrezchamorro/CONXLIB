@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #ifndef _CONIOXLIB_H_ 
 #define _CONIOXLIB_H_
 
@@ -15,21 +15,29 @@ extern "C" {
 #if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32)
 	#include <windows.h>
 	#include <WinUser.h>
+	#define CONIOXLIB_BOX_A_NONE    "       "
+	#define CONIOXLIB_BOX_A_BLOCK   "██▀▄███"
+	#define CONIOXLIB_BOX_A_SINGLE  "┌┐──│└┘"
+	#define CONIOXLIB_BOX_A_DOUBLE  "╔╗══║╚╝"
+	#define CONIOXLIB_BOX_U_SINGLE  "╓╖──║╙╜"
+	#define CONIOXLIB_BOX_S_DOUBLE  U_SIMPLE
+	#define CONIOXLIB_BOX_U_DOUBLE  "╒╕══│╘╛"
+	#define CONIOXLIB_BOX_S_SINGLE  U_DOUBLE
 #else
 	//#include <bios.h>
 	//#include <dir.h>
+	#define CONIOXLIB_BOX_A_NONE    "       "
+	#define CONIOXLIB_BOX_A_BLOCK   "ÛÛßÜÛÛÛ"
+	#define CONIOXLIB_BOX_A_SINGLE  "Ú¿ÄÄ³ÀÙ"
+	#define CONIOXLIB_BOX_A_DOUBLE  "É»ÍÍºÈ¼"
+	#define CONIOXLIB_BOX_U_SINGLE  "Ö·ÄÄºÓ½"
+	#define CONIOXLIB_BOX_S_DOUBLE  U_SIMPLE
+	#define CONIOXLIB_BOX_U_DOUBLE  "Õ¸ÍÍ³Ô¾"
+	#define CONIOXLIB_BOX_S_SINGLE  U_DOUBLE
 #endif
 #include "conxlib.h"
 
 
-#define CONIOXLIB_BOX_A_NONE    "       "
-#define CONIOXLIB_BOX_A_BLOCK   "�������"
-#define CONIOXLIB_BOX_A_SINGLE  "ڿ�ĳ��"
-#define CONIOXLIB_BOX_A_DOUBLE  "ɻ�ͺȼ"
-#define CONIOXLIB_BOX_U_SINGLE  "ַ�ĺӽ"
-#define CONIOXLIB_BOX_S_DOUBLE  U_SIMPLE
-#define CONIOXLIB_BOX_U_DOUBLE  "ո�ͳԾ"
-#define CONIOXLIB_BOX_S_SINGLE  U_DOUBLE
 #define CONIOXLIB_BOX_SHADOW    1
 #define CONIOXLIB_BOX_CLOSE     2
 #define CONIOXLIB_BOX_NOWINDOW	4
@@ -82,18 +90,18 @@ struct conioxlib_sfiles
 struct conioxlib_scountry
 {
 	unsigned int date;					/* Formato de fecha */
-	char curr[5];               /* S�mbolo de moneda */
+	char curr[5];               /* S¡mbolo de moneda */
 	char thsep[2];              /* Separador de miles */
 	char dsep[2];               /* Separador decimal */
 	char dtsep[2];              /* Separador de fecha */
 	char tmsep[2];              /* Separador de hora */
 	unsigned char currstyle[2]; /* Estilo de moneda */
-	unsigned char digits;       /* D�gitos significativos de la moneda */
+	unsigned char digits;       /* D¡gitos significativos de la moneda */
 	unsigned char time;         /* Formato de hora */
-	unsigned long int convcase; /* Conversi�n a may�sculas */
+	unsigned long int convcase; /* Conversi¢n a may£sculas */
 	unsigned char dasep;        /* Separador de datos */
 	char reserved[10];          /* Reservado */
-	unsigned int code;          /* C�digo de p�gina */
+	unsigned int code;          /* C¢digo de p gina */
 };
 
 

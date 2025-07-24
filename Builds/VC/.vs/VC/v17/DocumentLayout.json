@@ -6,16 +6,16 @@
       "AbsoluteMoniker": "D:0:0:{5F6B7E2A-8917-4402-86A8-01CB07AC14CC}|VC.vcxproj|D:\\PROYECTOS\\CONXLIB\\conxdemo.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{5F6B7E2A-8917-4402-86A8-01CB07AC14CC}|VC.vcxproj|D:\\PROYECTOS\\CONXLIB\\conxlib.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+      "AbsoluteMoniker": "D:0:0:{5F6B7E2A-8917-4402-86A8-01CB07AC14CC}|VC.vcxproj|D:\\PROYECTOS\\CONXLIB\\coniox.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{5F6B7E2A-8917-4402-86A8-01CB07AC14CC}|VC.vcxproj|D:\\PROYECTOS\\CONXLIB\\coniox.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+      "AbsoluteMoniker": "D:0:0:{5F6B7E2A-8917-4402-86A8-01CB07AC14CC}|VC.vcxproj|D:\\PROYECTOS\\CONXLIB\\conxlib.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\PROYECTOS\\CONXLIB\\conxlib.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{5F6B7E2A-8917-4402-86A8-01CB07AC14CC}|VC.vcxproj|D:\\PROYECTOS\\CONXLIB\\CONIOX.H||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\PROYECTOS\\CONXLIB\\CONIOX.H||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     }
   ],
   "DocumentGroupContainers": [
@@ -31,37 +31,36 @@
               "$type": "Document",
               "DocumentIndex": 4,
               "Title": "coniox.h",
-              "DocumentMoniker": "D:\\PROYECTOS\\CONXLIB\\coniox.h",
-              "RelativeDocumentMoniker": "..\\..\\coniox.h",
-              "ToolTip": "D:\\PROYECTOS\\CONXLIB\\coniox.h",
-              "RelativeToolTip": "..\\..\\coniox.h",
+              "DocumentMoniker": "D:\\PROYECTOS\\CONXLIB\\Builds\\coniox.h",
+              "RelativeDocumentMoniker": "..\\coniox.h",
+              "ToolTip": "D:\\PROYECTOS\\CONXLIB\\Builds\\coniox.h",
+              "RelativeToolTip": "..\\coniox.h",
               "ViewState": "AgIAAPUAAAAAAAAAAAAUwAcBAAARAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-07-22T10:44:34.219Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-07-22T10:44:34.219Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 1,
               "Title": "coniox.c",
               "DocumentMoniker": "D:\\PROYECTOS\\CONXLIB\\coniox.c",
               "RelativeDocumentMoniker": "..\\..\\coniox.c",
               "ToolTip": "D:\\PROYECTOS\\CONXLIB\\coniox.c",
               "RelativeToolTip": "..\\..\\coniox.c",
-              "ViewState": "AgIAAHMAAAAAAAAAAAAUwGAAAAAIAAAAAAAAAA==",
+              "ViewState": "AgIAAHwAAAAAAAAAAAAUwGAAAAAIAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000423|",
               "WhenOpened": "2025-07-22T10:43:32.859Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 2,
               "Title": "conxlib.c",
               "DocumentMoniker": "D:\\PROYECTOS\\CONXLIB\\conxlib.c",
               "RelativeDocumentMoniker": "..\\..\\conxlib.c",
               "ToolTip": "D:\\PROYECTOS\\CONXLIB\\conxlib.c",
               "RelativeToolTip": "..\\..\\conxlib.c",
-              "ViewState": "AgIAAGcBAAAAAAAAAAAUwHMBAAAOAAAAAAAAAA==",
+              "ViewState": "AgIAALcAAAAAAAAAAAAUwLkAAAAVAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000423|",
               "WhenOpened": "2025-07-22T07:10:36.416Z",
               "EditorCaption": ""
@@ -74,7 +73,7 @@
               "RelativeDocumentMoniker": "..\\..\\conxlib.h",
               "ToolTip": "D:\\PROYECTOS\\CONXLIB\\conxlib.h",
               "RelativeToolTip": "..\\..\\conxlib.h",
-              "ViewState": "AgIAAFoAAAAAAAAAAAAAAGgAAAAVAAAAAAAAAA==",
+              "ViewState": "AgIAAAMAAAAAAAAAAAAAABEAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
               "WhenOpened": "2025-07-22T07:10:00.571Z",
               "EditorCaption": ""
@@ -87,7 +86,7 @@
               "RelativeDocumentMoniker": "..\\..\\conxdemo.c",
               "ToolTip": "D:\\PROYECTOS\\CONXLIB\\conxdemo.c",
               "RelativeToolTip": "..\\..\\conxdemo.c",
-              "ViewState": "AgIAAC8AAAAAAAAAAAAUwEAAAAAQAAAAAAAAAA==",
+              "ViewState": "AgIAAA8AAAAAAAAAAAAAACYAAAAXAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000423|",
               "WhenOpened": "2025-07-22T07:09:14.4Z",
               "EditorCaption": ""

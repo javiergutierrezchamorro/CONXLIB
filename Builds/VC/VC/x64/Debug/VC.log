@@ -1,5 +1,15 @@
 ﻿  conxdemo.c
 D:\PROYECTOS\CONXLIB\conxdemo.c(25,13): warning C4057: 'función': 'unsigned char *' tiene un direccionamiento indirecto distinto de 'char [81]' para tipos base parecidos
-D:\PROYECTOS\CONXLIB\conxdemo.c(75,9): warning C4057: 'función': 'const char *' tiene un direccionamiento indirecto distinto de 'unsigned char *' para tipos base parecidos
+D:\PROYECTOS\CONXLIB\conxdemo.c(26,42): warning C4566: el carácter representado por el nombre de carácter universal '\u2554' no se puede representar en la página de códigos actual (1252)
+D:\PROYECTOS\CONXLIB\conxdemo.c(26,42): warning C4566: el carácter representado por el nombre de carácter universal '\u2557' no se puede representar en la página de códigos actual (1252)
+D:\PROYECTOS\CONXLIB\conxdemo.c(26,42): warning C4566: el carácter representado por el nombre de carácter universal '\u2550' no se puede representar en la página de códigos actual (1252)
+D:\PROYECTOS\CONXLIB\conxdemo.c(26,42): warning C4566: el carácter representado por el nombre de carácter universal '\u2551' no se puede representar en la página de códigos actual (1252)
+D:\PROYECTOS\CONXLIB\conxdemo.c(26,42): warning C4566: el carácter representado por el nombre de carácter universal '\u255A' no se puede representar en la página de códigos actual (1252)
+D:\PROYECTOS\CONXLIB\conxdemo.c(26,42): warning C4566: el carácter representado por el nombre de carácter universal '\u255D' no se puede representar en la página de códigos actual (1252)
+D:\PROYECTOS\CONXLIB\conxdemo.c(76,9): warning C4057: 'función': 'const char *' tiene un direccionamiento indirecto distinto de 'unsigned char *' para tipos base parecidos
+  conxlib.c
+D:\PROYECTOS\CONXLIB\conxlib.c(22,49): warning C4267: '=': conversión de 'size_t' a 'unsigned int'; posible pérdida de datos
+D:\PROYECTOS\CONXLIB\conxlib.c(188,8): warning C4101: 'fun': variable local sin referencia
+  Generando código...
      Creando biblioteca D:\PROYECTOS\CONXLIB\Builds\VC\x64\Debug\VC.lib y objeto D:\PROYECTOS\CONXLIB\Builds\VC\x64\Debug\VC.exp
   VC.vcxproj -> D:\PROYECTOS\CONXLIB\Builds\VC\x64\Debug\VC.exe
