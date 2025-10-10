@@ -11,6 +11,7 @@
 
 /* ----------------------------------------------------------------------------------------------------------------- */
 #if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32)
+	#define CONIOX_MAX_CHARINFO	(132 * 60)
 	wchar_t coniox_ansi2unicode(char ch);
 	char coniox_unicode2ansi(wchar_t ch);
 	void coniox_putwchxyattr(int x, int y, wchar_t ch, int attr);
@@ -42,25 +43,53 @@ int coniox_setcursortype = _NORMALCURSOR;
 /* ----------------------------------------------------------------------------------------------------------------- */
 int coniox_vsscanf(const char *buffer, const char *format, va_list argPtr)
 {
-	void *a[20] = {NULL};
+	void *a[40] = {NULL}; // Espacio para hasta 20 argumentos + posibles tamaños
 	size_t count = 0;
 	const char *p;
 	char c;
 
 	p = format;
-	while (1)
+	if (!buffer || !format)
 	{
-		c = *(p++);
-		if ( c == 0 )
+		return 0;
+	}
+
+	while ((c = *p++) != 0)
+	{
+		if (c == '%')
 		{
-			break;
-		}
-		if (c == '%' && ( p[0] != '*' && p[0] != '%' ))
-		{
-			a[count++] = va_arg(argPtr, void *);
+			if (*p == '%')
+			{
+				p++; // Literal '%', sin argumento
+				continue;
+			}
+			if (*p == '*')
+			{
+				p++; // Ignorar argumento
+				continue;
+			}
+			// Saltar modificadores de ancho (opcional)
+			while (*p >= '0' && *p <= '9')
+			{
+				p++;
+			}
+			// Detectar especificadores que requieren tamaño adicional
+			if (*p == 's' || *p == 'c' || *p == '[')
+			{
+				a[count++] = va_arg(argPtr, void *);	 // buffer
+				a[count++] = va_arg(argPtr, size_t *);   // tamaño del buffer
+			}
+			else
+			{
+				a[count++] = va_arg(argPtr, void *);
+			}
 		}
 	}
-	return(sscanf_s(buffer, format, a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[9], a[10], a[11], a[12], a[13], a[14], a[15], a[16], a[17], a[18], a[19]));
+	#ifdef _MSC_VER
+		return(sscanf_s(buffer, format,	a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[9], a[10], a[11], a[12], a[13], a[14], a[15], a[16], a[17], a[18], a[19], 	a[20], a[21], a[22], a[23], a[24], a[25], a[26], a[27], a[28], a[29], a[30], a[31], a[32], a[33], a[34], a[35], a[36], a[37], a[38], a[39]));
+	#else
+		return(sscanf(buffer, format, a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[9], a[10], a[11], a[12], a[13], a[14], a[15], a[16], a[17], a[18], a[19]));
+	#endif
 }
 
 
@@ -69,7 +98,6 @@ coniox_inline int coniox_inwindow(int x, int y)
 {
 	return (!(x<ti.winleft || y<ti.wintop || x>ti.winright || y>ti.winbottom));
 }
-
 
 
 
@@ -87,7 +115,8 @@ void clreol(void)
 void gettextinfo(struct text_info *__r)
 {
 	coniox_init(NULL);
-	memcpy(__r, &ti, sizeof(ti));
+	*__r = ti; /* memcpy(__r, &ti, sizeof(ti)); */
+
 }
 
 
@@ -149,26 +178,31 @@ void window(int __left, int __top, int __right, int __bottom)
 /* ----------------------------------------------------------------------------------------------------------------- */
 int putch(int __c)
 {
-	int oldx, oldy;
+	int oldy;
+	int winwidth, winheight;
+
 	
 	coniox_init(NULL);
+
+	winwidth = ti.winright - ti.winleft + 1;
+	winheight = ti.winbottom - ti.wintop + 1;
+
 	switch (__c)
 	{
 		case '\r':
 			gotoxy(1, ti.cury);
 			break;
 		case '\n':
-			if (ti.cury < ti.winbottom - ti.wintop + 1)
+			if (ti.cury < winheight)
 			{
 				gotoxy(ti.curx, ti.cury + 1);
 			}
 			else
 			{
-				oldx = ti.curx;
 				oldy = ti.cury;
 				gotoxy(1, 1);
 				delline();
-				gotoxy(oldx, oldy);
+				gotoxy(1, oldy);
 			}
 			break;
 		case '\b':
@@ -179,11 +213,11 @@ int putch(int __c)
 			break;
 		default:
 			coniox_putchxyattr(ti.winleft + ti.curx - 1, ti.wintop + ti.cury - 1, __c, ti.attribute);
-			if (ti.curx + 1 > ti.winright - ti.winleft + 1)
+			if (ti.curx >= winwidth)
 			{
 				if (_wscroll)
 				{
-					if (ti.cury < ti.winbottom - ti.wintop + 1)
+					if (ti.cury < winheight)
 					{
 						gotoxy(1, ti.cury + 1);
 					}
@@ -279,6 +313,14 @@ int cprintf (const char *__format, ...)
 		r = vsprintf(buffer, __format, ap);
 	#endif
 	va_end(ap);
+	if (r < 0)
+	{
+		buffer[0] = 0;
+	}
+	else if ((size_t) r >= sizeof(buffer))
+	{
+		buffer[sizeof(buffer) - 1] = 0;
+	}
 	cputs(buffer);
 	return(r);
 }
@@ -319,7 +361,7 @@ int getche(void)
 /* ----------------------------------------------------------------------------------------------------------------- */
 char *getpass(const char *__prompt)
 {
-	static char str[PASS_MAX + 1];
+	char str[PASS_MAX + 1];
 	int length = 0;
 	int ch = 0;
 	int x, y;
@@ -393,8 +435,8 @@ int cputs(const char *__str)
 	while (*__str)
 	{
 		putch(*__str);
-		++__str;
-		++k;
+		__str++;
+		k++;
 	}
 	return(k);
 }
@@ -423,6 +465,7 @@ int coniox_vswscanf(const wchar_t* buffer, const wchar_t* format, va_list argPtr
 	}
 	return(swscanf_s(buffer, format, a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[9], a[10], a[11], a[12], a[13], a[14], a[15], a[16], a[17], a[18], a[19]));
 }
+
 
 /* ----------------------------------------------------------------------------------------------------------------- */
 wchar_t* cgetws(wchar_t* __str)
@@ -498,65 +541,69 @@ int cputws(const wchar_t* __str)
 /* ----------------------------------------------------------------------------------------------------------------- */
 wchar_t putwch(wchar_t __c)
 {
-	int oldx, oldy;
-	
+	int oldy;
+	int winwidth, winheight;
+
+
 	coniox_init(NULL);
+
+	winwidth = ti.winright - ti.winleft + 1;
+	winheight = ti.winbottom - ti.wintop + 1;
+
 	switch (__c)
 	{
-		case L'\r':
-			gotoxy(1, ti.cury);
-			break;
-		case L'\n':
-			if (ti.cury < ti.winbottom - ti.wintop + 1)
+	case L'\r':
+		gotoxy(1, ti.cury);
+		break;
+	case L'\n':
+		if (ti.cury < winheight)
+		{
+			gotoxy(ti.curx, ti.cury + 1);
+		}
+		else
+		{
+			oldy = ti.cury;
+			gotoxy(1, 1);
+			delline();
+			gotoxy(1, oldy);
+		}
+		break;
+	case L'\b':
+		if (ti.curx > 1)
+		{
+			gotoxy(ti.curx - 1, ti.cury);
+		}
+		break;
+	default:
+		coniox_putwchxyattr(ti.winleft + ti.curx - 1, ti.wintop + ti.cury - 1, __c, ti.attribute);
+		if (ti.curx >= winwidth)
+		{
+			if (_wscroll)
 			{
-				gotoxy(ti.curx, ti.cury + 1);
-			}
-			else
-			{
-				oldx = ti.curx;
-				oldy = ti.cury;
-				gotoxy(1, 1);
-				delline();
-				gotoxy(oldx, oldy);
-			}
-			break;
-		case L'\b':
-			if (ti.curx > 1)
-			{
-				gotoxy(ti.curx - 1, ti.cury);
-			}
-			break;
-		default:
-			coniox_putwchxyattr(ti.winleft + ti.curx - 1, ti.wintop + ti.cury - 1, __c, ti.attribute);
-			if (ti.curx + 1 > ti.winright - ti.winleft + 1)
-			{
-				if (_wscroll)
+				if (ti.cury < winheight)
 				{
-					if (ti.cury < ti.winbottom - ti.wintop + 1)
-					{
-						gotoxy(1, ti.cury + 1);
-					}
-					else
-					{
-						oldy = ti.cury;
-						gotoxy(1, 1);
-						delline();
-						gotoxy(1, oldy);
-					}
+					gotoxy(1, ti.cury + 1);
 				}
 				else
 				{
-					gotoxy(1, ti.cury);
+					oldy = ti.cury;
+					gotoxy(1, 1);
+					delline();
+					gotoxy(1, oldy);
 				}
 			}
 			else
 			{
-				gotoxy(ti.curx + 1, ti.cury);
+				gotoxy(1, ti.cury);
 			}
+		}
+		else
+		{
+			gotoxy(ti.curx + 1, ti.cury);
+		}
 	}
 	return(__c);
 }
-
 
 
 /* ----------------------------------------------------------------------------------------------------------------- */
@@ -648,8 +695,10 @@ void coniox_init(const void *title)
 		SetConsoleOutputCP(acp);
 		SetConsoleCP(acp);
 	}
-	GetConsoleMode(coniox_console_output, &m);
-	SetConsoleMode(coniox_console_output, m | ENABLE_WINDOW_INPUT | ENABLE_MOUSE_INPUT | ENABLE_ECHO_INPUT);
+	if (GetConsoleMode(coniox_console_input, &m))
+	{
+		SetConsoleMode(coniox_console_input, m | ENABLE_WINDOW_INPUT | ENABLE_MOUSE_INPUT | ENABLE_ECHO_INPUT);
+	}
 
 	if (title)
 	{
@@ -668,21 +717,13 @@ inline void coniox_putchxyattr(int x, int y, int ch, int attr)
 	COORD c = {0, 0}, s = {1, 1};
 
 
-	if (!coniox_inwindow(x, y))
-	{
-		return;
-	}
 	r.Left = (short) x - 1;
 	r.Top = (short) y - 1;
 	r.Right = (short) x - 1;
 	r.Bottom = (short) y - 1;
-	#if UNICODE
-			ci.Char.UnicodeChar = (wchar_t) ch;
-	#else
-			ci.Char.AsciiChar = (char) ch;
-	#endif
+	ci.Char.AsciiChar = (char) ch;
 	ci.Attributes = (short) attr;
-	WriteConsoleOutput(coniox_console_output, &ci, s, c, &r);
+	WriteConsoleOutputA(coniox_console_output, &ci, s, c, &r);
 }
 
 
@@ -696,21 +737,13 @@ void coniox_putwchxyattr(int x, int y, wchar_t ch, int attr)
 	COORD c = { 0, 0 }, s = { 1, 1 };
 
 
-	if (!coniox_inwindow(x, y))
-	{
-		return;
-	}
 	r.Left = (short) (x - 1);
 	r.Top = (short) (y - 1);
 	r.Right = (short) (x - 1);
 	r.Bottom = (short) (y - 1);
-	#if UNICODE
-		ci.Char.UnicodeChar = ch;
-	#else
-		ci.Char.AsciiChar = (char) ch;
-	#endif
+	ci.Char.UnicodeChar = ch;
 	ci.Attributes = (WORD) attr;
-	WriteConsoleOutput(coniox_console_output, &ci, s, c, &r);
+	WriteConsoleOutputW(coniox_console_output, &ci, s, c, &r);
 }
 
 
@@ -720,40 +753,52 @@ void coniox_putwchxyattr(int x, int y, wchar_t ch, int attr)
 void coniox_putchxyattrwh(int x, int y, int ch, int attr, int w, int h)
 {
 	int i;
-	COORD c;
-
-
-	if (x < ti.winleft)
-	{
-		w -= ti.winleft - x;
-	}
-	if (y < ti.wintop)
-	{
-		h -= ti.wintop - y;
-	}
-	if (x + w - 1 > ti.winright)
-	{
-		w = ti.winright - x + 1;
-	}
-	if (y + h - 1 > ti.winbottom)
-	{
-		h = ti.winbottom - y + 1;
-	}
-
+	int total;
+	CHAR_INFO ci[CONIOX_MAX_CHARINFO];
+	SMALL_RECT r;
+	COORD s, c;
+	#if UNICODE
+		wchar_t chval;
+	#else
+		char chval;
+	#endif
+	
 	if (w <= 0 || h <= 0)
 	{
 		return;
 	}
 
-	for (i = 0; i < h; ++i)
+	total = w * h;
+	#if UNICODE
+		chval = (wchar_t) ch;
+	#else
+		chval = (char) ch;
+	#endif
+
+	for (i = 0; i < total; i++)
 	{
-		DWORD written;
-		c.X = (short) (x - 1);
-		c.Y = (short) (y - 1 + i);
-		FillConsoleOutputAttribute(coniox_console_output, (WORD) attr, w, c, &written);
-		FillConsoleOutputCharacter(coniox_console_output, (char) ch, w, c, &written);
+		#if UNICODE
+			ci[i].Char.UnicodeChar = chval;
+		#else
+			ci[i].Char.AsciiChar = chval;
+		#endif
+		ci[i].Attributes = (WORD) attr;
 	}
+
+	r.Left = (short) x - 1;
+	r.Top = (short) y - 1;
+	r.Right = (short) x + w - 2;
+	r.Bottom = (short) y + h - 2;
+
+	s.X = (short) w;
+	s.Y = (short) h;
+	c.X = 0;
+	c.Y = 0;
+
+	WriteConsoleOutput(coniox_console_output, ci, s, c, &r);
 }
+
+
 
 /* ----------------------------------------------------------------------------------------------------------------- */
 wchar_t getwch(void)
@@ -813,11 +858,19 @@ int getch(void)
 	int car;
 	DWORD leidos, modo;
 
-	GetConsoleMode(coniox_console_input, &modo);
-	SetConsoleMode(coniox_console_input, modo & !ENABLE_ECHO_INPUT & !ENABLE_PROCESSED_INPUT);
-	ReadConsole(coniox_console_input, &car, 1, &leidos, NULL);
+	if (GetConsoleMode(coniox_console_input, &modo))
+	{
+		SetConsoleMode(coniox_console_input, modo & ~ENABLE_ECHO_INPUT & ~ENABLE_PROCESSED_INPUT & ~ENABLE_LINE_INPUT);
+	}
+	if (!ReadConsoleA(coniox_console_input, &car, 1, &leidos, NULL) || leidos == 0)
+	{
+		/* Restaurar modo antes de salir */
+		SetConsoleMode(coniox_console_input, modo);
+		return EOF;
+	}
 	SetConsoleMode(coniox_console_input, modo);
-	return(car & 0xFF);
+	//return(car & 0xFF);
+	return((int)((unsigned char)car));
 }
 
 
@@ -917,7 +970,7 @@ int gettext(int __left, int __top, int __right, int __bottom, void *__destin)
 {
 	int i;
 	SMALL_RECT r;
-	CHAR_INFO *ci;
+	CHAR_INFO ci[CONIOX_MAX_CHARINFO];
 	short *buf;
 	COORD s, c = { 0,0 };
 
@@ -934,26 +987,18 @@ int gettext(int __left, int __top, int __right, int __bottom, void *__destin)
 	r.Bottom = (short) __bottom - 1;
 	s.X = (short) (__right - __left + 1);
 	s.Y = (short) (__bottom - __top + 1);
-	ci = (CHAR_INFO *) malloc(s.X * s.Y * sizeof(CHAR_INFO));
-	if (!ci)
-	{
-		return(0);
-	}
 	buf = (short *) __destin;
 	if (ReadConsoleOutput(coniox_console_output, ci, s, c, &r ))
 	{
 		for (i = 0; i < s.X * s.Y; i++)
 		{
 			#if UNICODE
-				//buf[i].letter = (char) ci[i].Char.UnicodeChar;
 				buf[i] = (ci[i].Char.UnicodeChar & 0xFF) + ((ci[i].Attributes & 0xFF) << 8);
 			#else
-				//buf[i].letter = ci[i].Char.AsciiChar;
 				buf[i] = (ci[i].Char.AsciiChar & 0xFF) + ((ci[i].Attributes & 0xFF) << 8);
 			#endif
 		}
 	}
-	free(ci);
 	return(1);
 }
 
@@ -989,7 +1034,7 @@ int puttext(int __left, int __top, int __right, int __bottom, void *__source)
 {
 	int i;
 	SMALL_RECT r;
-	CHAR_INFO *buffer;
+	CHAR_INFO buffer[CONIOX_MAX_CHARINFO];
 	//char_info *ci;
 	short *ci;
 	COORD s, c = { 0,0 };
@@ -1007,11 +1052,6 @@ int puttext(int __left, int __top, int __right, int __bottom, void *__source)
 	s.X = (short) (__right - __left + 1);
 	s.Y = (short) (__bottom - __top + 1);
 
-	buffer = malloc(s.X * s.Y * sizeof(CHAR_INFO));
-	if (!buffer)
-	{
-		return(0);
-	}
 	ci = (short *) __source;
 	for (i = 0; i < s.X * s.Y; i++)
 	{
@@ -1023,7 +1063,6 @@ int puttext(int __left, int __top, int __right, int __bottom, void *__source)
 		buffer[i].Attributes = (ci[i] >> 8) & 0xFF;
 	}
 	WriteConsoleOutput(coniox_console_output, buffer, s, c, &r);
-	free(buffer);
 	return(1);
 }
 
@@ -1034,7 +1073,7 @@ int putwtext(int __left, int __top, int __right, int __bottom, const wchar_info 
 {
 	int i;
 	SMALL_RECT r;
-	CHAR_INFO* buffer;
+	CHAR_INFO buffer[CONIOX_MAX_CHARINFO];
 	//char_info *ci;
 	short* ci;
 	COORD s, c = { 0,0 };
@@ -1052,11 +1091,6 @@ int putwtext(int __left, int __top, int __right, int __bottom, const wchar_info 
 	s.X = (short)(__right - __left + 1);
 	s.Y = (short)(__bottom - __top + 1);
 
-	buffer = malloc(s.X * s.Y * sizeof(CHAR_INFO));
-	if (!buffer)
-	{
-		return(0);
-	}
 	ci = (short*)__source;
 	for (i = 0; i < s.X * s.Y; i++)
 	{
@@ -1065,10 +1099,9 @@ int putwtext(int __left, int __top, int __right, int __bottom, const wchar_info 
 		#else
 			buffer[i].Char.AsciiChar = (unsigned char)ci[i] & 0xFF;
 		#endif
-		buffer[i].Attributes = ci[i] >> 8;
+		buffer[i].Attributes = (ci[i] >> 8) & 0xFF;
 	}
 	WriteConsoleOutput(coniox_console_output, buffer, s, c, &r);
-	free(buffer);
 	return(1);
 }
 
@@ -1078,7 +1111,7 @@ int getwtext(int __left, int __top, int __right, int __bottom, wchar_info *__des
 {
 	int i;
 	SMALL_RECT r;
-	CHAR_INFO* buffer;
+	CHAR_INFO buffer[CONIOX_MAX_CHARINFO];
 	COORD s, c = { 0,0 };
 
 	coniox_init(NULL);
@@ -1092,11 +1125,7 @@ int getwtext(int __left, int __top, int __right, int __bottom, wchar_info *__des
 	r.Bottom = (short) (__bottom - 1);
 	s.X = (short) (__right - __left + 1);
 	s.Y = (short) (__bottom - __top + 1);
-	buffer = malloc(s.X * s.Y * sizeof(CHAR_INFO));
-	if (!buffer)
-	{
-		return(0);
-	}
+
 	if (ReadConsoleOutput(coniox_console_output, buffer, s, c, &r ))
 	{
 		for (i = 0; i < s.X * s.Y; i++)
@@ -1109,8 +1138,7 @@ int getwtext(int __left, int __top, int __right, int __bottom, wchar_info *__des
 			__destin[i].attr = buffer[i].Attributes;
 		}
 	}
-	free(buffer);
-	return(0);
+	return(1);
 }
 
 
@@ -1405,44 +1433,20 @@ void delay(unsigned int ms)
 /* DOS ONLY (Non portable) */
 /* ----------------------------------------------------------------------------------------------------------------- */
 #if ((__DOS__) || (__MSDOS__))
-#include <dos.h>
-#include <bios.h>
-
 int coniox_basecrt = 0x3D4;
-
-#if defined(__WATCOMC__)
-	#include <i86.h>
-	unsigned int outp( int port, int value );
-#endif
-
-#if defined(__DJGPP__)
-	#include <sys/nearptr.h>
-	#define _fmemmove	memmove
-	#define fmemcpy		memcpy
-	#define MK_FP(seg,off) ((((seg)<<4)|(off)) + __djgpp_conventional_base
-#endif
-
-
-#ifndef MK_FP
-	#define MK_FP(seg,off) (((seg)<<4)|(off))
-#endif
-
-#define coniox_far __far
-
 
 /* ----------------------------------------------------------------------------------------------------------------- */
 #if ((defined(__FLAT__)) || (defined(__DJGPP__)))
-	#define coniox_far __far
 	unsigned short *coniox_vram;
 	unsigned short *coniox_currentoffset;
 	#define coniox_int86 int386
 	#define coniox_int86x int386x
 	#if defined(__WATCOMC__)
 		unsigned short *coniox_offset(unsigned int piX, unsigned int piY); 
-		#pragma aux coniox_offset =										    \
+		#pragma aux coniox_offset =											\
 			"			 .386													   "\
 			"			 movzx eax, byte ptr ti + 16				"\
-			"			 imul eax, edi									    "\
+			"			 imul eax, edi										"\
 			"			 add eax, esi									   "\
 			"			 shl eax, 1												 "\
 			"			 add eax, coniox_vram					   "\
@@ -1453,25 +1457,24 @@ int coniox_basecrt = 0x3D4;
 		#define coniox_offset(piX, piY) (coniox_vram + ((ti.screenwidth * (piY)) + (piX)))
 	#endif
 #else
-	#define coniox_far __far
 	unsigned short coniox_far *coniox_vram;
 	unsigned short coniox_far *coniox_currentoffset;
 	#define coniox_int86 int86
 	#define coniox_int86x int86x
-	#if defined(__WATCOMKKC__)
+	#if defined(__WATCOMC__)
 		unsigned short coniox_far *coniox_offset(unsigned int piX, unsigned int piY);
-		#pragma aux coniox_offset =										    \
-				"			 .8086													    "\
-				"			 xor ah, ah												 "\
-				"			 mov al, byte ptr ti + 16					    "\
+		#pragma aux coniox_offset =											\
+				"			 .8086														"\
+				"			 xor ah, ah										"\
+				"			 mov al, byte ptr ti + 16						"\
 				"			 mul di														 "\
 				"			 add ax, si										 "\
-				"			 shl ax, 1												    "\
-			    "			 mov dx, seg coniox_vram"      /* cargar segmento de coniox_vram en dx */ \
-			    "			 add ax, word ptr coniox_vram" /* sumar offset base de coniox_vram */ \
-			    parm nomemory [SI][DI]          \
-			    modify exact nomemory [DX AX]            \
-			    value [DX AX];			
+				"			 shl ax, 1													"\
+				"			 add ax, word ptr coniox_vram					"\
+				"			 mov dx, word ptr coniox_vram+2					"\
+				parm nomemory [SI][DI]		  \
+				modify exact nomemory [DX AX]			\
+				value [DX AX];			
 	#else
 		#define coniox_offset(piX, piY) (coniox_vram + ((ti.screenwidth * (piY)) + (piX)))
 	#endif
@@ -1483,23 +1486,23 @@ int coniox_basecrt = 0x3D4;
 	void coniox_far *coniox_fmemsetw (void coniox_far *m, short val, size_t count);
 	#if (defined(__FLAT__))
 		#pragma aux coniox_fmemsetw =										\
-				"			      .386												      "\
-				"			      movzx eax, ax										  "\
-				"			      mov edx, eax										  "\
-				"			      shl eax, 16										  "\
-				"			      or eax, edx  										  "\
-				"			      shr ecx, 1										     "\
+				"				  .386													  "\
+				"				  movzx eax, ax										  "\
+				"				  mov edx, eax										  "\
+				"				  shl eax, 16										  "\
+				"				  or eax, edx  										  "\
+				"				  shr ecx, 1											 "\
 				"				  cld											"\
-				"			      rep stosd										       "\
-				"			      test ecx, 1										     "\
-				"			      jz short no_odd										"\
-				"			      stosw										       "\
+				"				  rep stosd											   "\
+				"				  test ecx, 1											 "\
+				"				  jz short no_odd										"\
+				"				  stosw											   "\
 				"no_odd:																"\
-				parm [EDI][AX][ECX]													     \
+				parm [EDI][AX][ECX]														 \
 				modify exact [EDI EDX ECX EAX];
 	#else
 		#pragma aux coniox_fmemsetw =										\
-				"			 .8086													    "\
+				"			 .8086														"\
 				"			 cld														"\
 				"			 rep stosw												   "\
 				parm [ES DI][AX][CX]													   \
@@ -1520,29 +1523,6 @@ int coniox_basecrt = 0x3D4;
 #endif
 
 
-#if !defined(__TURBOC__)
-	unsigned int inp (int port);
-	unsigned int inpw (int port);
-	unsigned long inpd (int port);
-	unsigned int outp (int port, int value);
-	unsigned long outpd (int port, unsigned long value);
-	unsigned int outpw (int port, unsigned int value);
-
-	#define outportb		outp
-	#define outport			outpw
-	#define outportd		outpd
-	#define inportb			inp
-	#define inport			inpw
-	#define inportd			inpd
-#endif
-
-
-#define peekb(s,o)			(*((unsigned char coniox_far *) MK_FP((s),(o))))
-#define peekw(s,o)			(*((unsigned short coniox_far *) MK_FP((s),(o))))
-#define peekl(s,o)			(*((unsigned long coniox_far *) MK_FP((s),(o))))
-#define pokeb(s,o,x)		(*((unsigned char coniox_far *) MK_FP((s),(o))) = (unsigned char)(x))
-#define pokew(s,o,x)		(*((unsigned short coniox_far *) MK_FP((s),(o))) = (unsigned short)(x))
-#define pokel(s,o,x)		(*((unsigned long coniox_far *) MK_FP((s),(o))) = (unsigned long)(x))
 
 
 void coniox_idle(void);
@@ -1618,7 +1598,7 @@ void coniox_init(const void* title)
 	#endif
 
 	/* Base for 6845 CRT controller */
-	coniox_basecrt = peekw(0x40, 0x63);     /* 0x3D4 */
+	coniox_basecrt = peekw(0x40, 0x63);	 /* 0x3D4 */
 
 	/* Get cursor position */
 	if (directvideo)
@@ -1670,13 +1650,14 @@ void coniox_init(const void* title)
 	ti.winbottom = ti.screenheight;
 	
 	//Debug
+	/*
 	printf("Width: %d\n", ti.screenwidth);
 	#if ((defined(__FLAT__)) || (defined(__DJGPP__)))
 		printf("Pointer: %p\n", (void *) coniox_offset(80, 25));
 	#else
 		printf("Pointer: %Fp\n", (void far *) coniox_offset(80, 25));
 	#endif
-	
+	*/
 	
 	//Get if under emulator
 	coniox_is_emulator = coniox_get_is_emulator();
@@ -1693,56 +1674,124 @@ void coniox_init(const void* title)
 int cputs(const char *__str)
 {
 	char c;
-	int k = 0;
-	int oldx, oldy;
-	unsigned int winwidth  = ti.winright  - ti.winleft  + 1;
-	unsigned int winheight = ti.winbottom - ti.wintop   + 1;
-	
-	
+	unsigned int i;
+	char *run;
+	unsigned int runlen;
+	int k;
+	int oldy;
+	unsigned int winwidth;
+	unsigned int winheight;
+	unsigned short attrword;
+	#if ((defined(__FLAT__)) || (defined(__DJGPP__)))
+		unsigned short *p;
+	#else
+		unsigned short coniox_far *p;
+	#endif
+	union REGS r;
+
 	coniox_init(NULL);
+
+	k = 0;
+	winwidth  = ti.winright  - ti.winleft  + 1;
+	winheight = ti.winbottom - ti.wintop   + 1;
+	attrword  = (unsigned short)(ti.attribute << 8);
 	coniox_currentoffset = coniox_offset(ti.winleft + ti.curx - 2, ti.wintop + ti.cury - 2);
 
-	while (c = *__str)
+	while ((c = *__str) != 0)
 	{
-		switch (c)
+		if (c == '\r')
 		{
-			case '\r':
-				coniox_currentoffset-= (ti.curx - 1);
+			coniox_currentoffset -= (ti.curx - 1);
+			ti.curx = 1;
+			++__str;
+			++k;
+			continue;
+		}
+		if (c == '\n')
+		{
+			if (ti.cury < winheight)
+			{
+				coniox_currentoffset += ti.screenwidth;
+				ti.cury++;
+			}
+			else
+			{
+				coniox_currentoffset -= (ti.curx - 1);
+				oldy = ti.cury;
 				ti.curx = 1;
-				break;
-			case '\n':
-				if (ti.cury < winheight)
+				ti.cury = 1;
+				delline();
+				ti.cury = oldy;
+			}
+			coniox_currentoffset = coniox_offset(ti.winleft + ti.curx - 2, ti.wintop + ti.cury - 2);
+			++__str;
+			++k;
+			continue;
+		}
+		if (c == '\b')
+		{
+			if (ti.curx > 1)
+			{
+				coniox_currentoffset--;
+				ti.curx--;
+			}
+			++__str;
+			++k;
+			continue;
+		}
+
+		run = (char *) __str;
+		runlen = 0;
+		while (run[runlen] &&
+			   run[runlen] != '\r' &&
+			   run[runlen] != '\n' &&
+			   run[runlen] != '\b' &&
+			   (ti.curx + runlen) <= winwidth)
+		{
+			runlen++;
+		}
+
+		if (runlen > 0)
+		{
+			if (directvideo)
+			{
+				p = coniox_currentoffset;
+				for (i = 0; i < runlen; i++)
 				{
-					coniox_currentoffset += ti.screenwidth;
-					ti.cury++;
+					*p = attrword | (unsigned char)run[i];
+					p++;
+					ti.curx++;
+
+					if (ti.curx > winwidth)
+					{
+						if (_wscroll)
+						{
+							if (ti.cury < winheight)
+							{
+								ti.curx = 1;
+								ti.cury++;
+							}
+							else
+							{
+								ti.curx = 1;
+								ti.cury = 1;
+								delline();
+								ti.cury = winheight;
+							}
+						}
+						else
+						{
+							ti.curx = 1;
+						}
+						p = coniox_offset(ti.winleft + ti.curx - 2, ti.wintop + ti.cury - 2);
+					}
 				}
-				else
+				coniox_currentoffset = p;
+			}
+			else
+			{
+				for (i = 0; i < runlen; i++)
 				{
-					oldx = ti.curx;
-					oldy = ti.cury;
-					ti.curx = 1;
-					ti.cury = 1;
-					delline();
-					ti.curx = oldx;
-					ti.cury = oldy;
-				}
-				break;
-			case '\b':
-				if (ti.curx > 1)
-				{
-					coniox_currentoffset--;
-					ti.curx--;
-				}
-				break;
-			default:
-				/* Inlined coniox_putchattrcursor(c, ti.attribute); */
-				if (directvideo)
-				{
-					*coniox_currentoffset = (ti.attribute << 8) | (c & 0xFF);
-				}
-				else
-				{
-					union REGS r;
 					r.h.ah = 2;
 					r.h.bh = 0;
 					r.h.dh = ti.cury - 1;
@@ -1750,7 +1799,7 @@ int cputs(const char *__str)
 					coniox_int86(0x10, &r, &r);
 
 					r.h.ah = 0x9;
-					r.h.al = c;
+					r.h.al = run[i];
 					r.h.bh = 0;
 					r.h.bl = ti.attribute;
 					#if defined(__WATCOMC__)
@@ -1759,42 +1808,96 @@ int cputs(const char *__str)
 						r.x.cx = 1;
 					#endif
 					coniox_int86(0x10, &r, &r);
-				}
-				if (ti.curx + 1 > winwidth)
-				{
-					if (_wscroll)
+
+					ti.curx++;
+					if (ti.curx > winwidth)
 					{
-						if (ti.cury < winheight)
+						if (_wscroll)
 						{
-							coniox_currentoffset += ti.screenwidth - (ti.curx - 1);
-							ti.curx = 1;
-							ti.cury++;
+							if (ti.cury < winheight)
+							{
+								ti.curx = 1;
+								ti.cury++;
+							}
+							else
+							{
+								ti.curx = 1;
+								ti.cury = 1;
+								delline();
+								ti.cury = winheight;
+							}
 						}
 						else
 						{
-							coniox_currentoffset -= (ti.curx - 1);
-							oldy = ti.cury;
 							ti.curx = 1;
-							ti.cury = 1;
-							delline();
-							ti.cury = oldy;
 						}
 					}
-					else
-					{
-						coniox_currentoffset -= (ti.curx - 1);
-						ti.curx = 1;
-					}
+					coniox_currentoffset = coniox_offset(ti.winleft + ti.curx - 2, ti.wintop + ti.cury - 2);
+				}
+			}
+			__str += runlen;
+			k += runlen;
+			continue;
+		}
+
+		if (directvideo)
+		{
+			*coniox_currentoffset = attrword | (c & 0xFF);
+		}
+		else
+		{
+			r.h.ah = 2;
+			r.h.bh = 0;
+			r.h.dh = ti.cury - 1;
+			r.h.dl = ti.curx - 1;
+			coniox_int86(0x10, &r, &r);
+
+			r.h.ah = 0x9;
+			r.h.al = c;
+			r.h.bh = 0;
+			r.h.bl = ti.attribute;
+			#if defined(__WATCOMC__)
+				r.w.cx = 1;
+			#else
+				r.x.cx = 1;
+			#endif
+			coniox_int86(0x10, &r, &r);
+		}
+
+		ti.curx++;
+		if (ti.curx > winwidth)
+		{
+			if (_wscroll)
+			{
+				if (ti.cury < winheight)
+				{
+					ti.curx = 1;
+					ti.cury++;
 				}
 				else
 				{
-					coniox_currentoffset++;
-					ti.curx++;
+					coniox_currentoffset -= (winwidth - 1);
+					ti.curx = 1;
+					ti.cury = 1;
+					delline();
+					ti.cury = winheight;
 				}
+			}
+			else
+			{
+				coniox_currentoffset -= (winwidth - 1);
+				ti.curx = 1;
+			}
 		}
+		else
+		{
+			coniox_currentoffset++;
+		}
+
 		++__str;
 		++k;
 	}
+
 	gotoxy(ti.curx, ti.cury);
 	return(k);
 }
@@ -1868,6 +1971,10 @@ void coniox_putchxyattrwh(int x, int y, int ch, int attr, int w, int h)
 	unsigned short v;
 	union REGS r;
 
+	if (w <= 0 || h <= 0)
+	{
+		return;
+	}
 
 	if (directvideo)
 	{
@@ -1984,14 +2091,14 @@ void coniox_idle(void)
 /* ----------------------------------------------------------------------------------------------------------------- */
 int coniox_get_is_emulator (void)
 {
-    unsigned char result;
+	unsigned char result;
 
-    outportb(0x04F4, 0x00);
-    result = inportb(0x04F4);
-    // En DOSBox, inp(0x04F4) típicamente devuelve 0xFF
-    return (result == 0xFF);
+	outportb(0x04F4, 0x00);
+	result = inportb(0x04F4);
+	// En DOSBox, inp(0x04F4) típicamente devuelve 0xFF
+	return (result == 0xFF);
 }
-    
+	
 
 /* ----------------------------------------------------------------------------------------------------------------- */
 void coniox_blink(unsigned int blink)
@@ -2048,15 +2155,15 @@ void delay (unsigned int ms)
 		unsigned long microsec = ms * 1000UL;
 		
 		#if defined(__WATCOMC__)
-			r.w.ax = 0x8600;                    // función 0x86 en AH, AL=0
-			r.w.cx = microsec & 0xFFFF;        // parte baja de microsegundos
+			r.w.ax = 0x8600;					// función 0x86 en AH, AL=0
+			r.w.cx = microsec & 0xFFFF;		// parte baja de microsegundos
 			r.w.dx = (microsec >> 16) & 0xFFFF; // parte alta de microsegundos
 		#else
-			r.x.ax = 0x8600;                    // función 0x86 en AH, AL=0
-			r.x.cx = microsec & 0xFFFF;        // parte baja de microsegundos
+			r.x.ax = 0x8600;					// función 0x86 en AH, AL=0
+			r.x.cx = microsec & 0xFFFF;		// parte baja de microsegundos
 			r.x.dx = (microsec >> 16) & 0xFFFF; // parte alta de microsegundos
 		 #endif
-		coniox_int86(0x15, &r, &r);            // llamada a BIOS
+		coniox_int86(0x15, &r, &r);			// llamada a BIOS
 	}
 }
 
@@ -2248,9 +2355,38 @@ void delline(void)
 		r.h.ch = ti.cury + ti.wintop - 2;   /* Upper row number, */
 		r.h.dl = ti.winright - 1;		   /*  Right column number */
 		r.h.dh = ti.winbottom - 1;		  /* Lower row number */
-		coniox_int86(0x10, &r, &r);
+		coniox_int86(0x10, &r, &r);			/* Scroll up */
 	}
 }
+
+
+/* ----------------------------------------------------------------------------------------------------------------- */
+void insline(void)
+{
+	coniox_init(NULL);
+	//Seems to be faster using BIOS under emulators
+	if ((directvideo) && (!coniox_is_emulator))
+	{
+		coniox_movetext_nonoverlap(ti.winleft, ti.cury + ti.wintop, ti.winright, ti.winbottom, ti.winleft, ti.cury + ti.wintop + 1);
+		coniox_putchxyattrwh(ti.winleft, ti.cury + ti.wintop - 1, ' ', ti.attribute, ti.winright - ti.winleft + 1, 1);
+	}
+	else
+	{
+		union REGS r;
+		#if defined(__WATCOMC__)
+			r.w.ax = 0x0701;
+		#else
+			r.x.ax = 0x0701;
+		#endif
+		r.h.bh = ti.attribute;
+		r.h.cl = ti.winleft - 1;			/*  Left column number */
+		r.h.ch = ti.cury + ti.wintop - 2;   /* Upper row number, */
+		r.h.dl = ti.winright - 1;		   /*  Right column number */
+		r.h.dh = ti.winbottom - 1;		  /* Lower row number */
+		coniox_int86(0x10, &r, &r);			/* Scroll down */
+	}
+}
+
 
 
 /* ----------------------------------------------------------------------------------------------------------------- */
@@ -2364,9 +2500,9 @@ void clrscr(void)
 		#endif
 		r.h.bh = ti.attribute;
 		r.h.cl = ti.winleft - 1;			/*  Left column number */
-		r.h.ch = ti.cury + ti.wintop - 2;       /* Upper row number, */
-		r.h.dl = ti.winright - 1;		      /*  Right column number */
-		r.h.dh = ti.winbottom - 1;		    /* Lower row number */
+		r.h.ch = ti.cury + ti.wintop - 2;	   /* Upper row number, */
+		r.h.dl = ti.winright - 1;			  /*  Right column number */
+		r.h.dh = ti.winbottom - 1;			/* Lower row number */
 		coniox_int86(0x10, &r, &r);
 	}
 }
@@ -2479,31 +2615,31 @@ int ungetch(int __ch)
 	if ((directvideo) && (!coniox_is_emulator))
 	{
 		unsigned short head, tail, new_tail;
-	    unsigned short far* keyboard_buffer = (unsigned short far*)MK_FP(0x40, 0x1E);
-	    unsigned short scancode;
+		unsigned short far* keyboard_buffer = (unsigned short far*)MK_FP(0x40, 0x1E);
+		unsigned short scancode;
 
-	    head = peekw(0x40, 0x1A);
-	    tail = peekw(0x40, 0x1C);
+		head = peekw(0x40, 0x1A);
+		tail = peekw(0x40, 0x1C);
 
-	    // Verificar si el buffer no está lleno
-	    new_tail = tail - 2;
-	    if ((short) new_tail < 0)
-	    {
-	    	new_tail = 30;
-    	}
-	    if (new_tail == head)
-	    {
-	        // Buffer lleno, no se puede insertar más
-	        return EOF;
-	    }
+		// Verificar si el buffer no está lleno
+		new_tail = tail - 2;
+		if ((short) new_tail < 0)
+		{
+			new_tail = 30;
+		}
+		if (new_tail == head)
+		{
+			// Buffer lleno, no se puede insertar más
+			return EOF;
+		}
 
-	    // Insertar el carácter con scancode 0 (sin scan code)
-	    scancode = (0 << 8) | (__ch & 0xFF);
-	    keyboard_buffer[new_tail >> 1] = scancode;
+		// Insertar el carácter con scancode 0 (sin scan code)
+		scancode = (0 << 8) | (__ch & 0xFF);
+		keyboard_buffer[new_tail >> 1] = scancode;
 
-	    // Actualizar tail
-	    pokew(0x40, 0x1C, new_tail);
-	    return __ch;
+		// Actualizar tail
+		pokew(0x40, 0x1C, new_tail);
+		return __ch;
 	}
 	else
 	{

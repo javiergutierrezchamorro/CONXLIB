@@ -1,6 +1,6 @@
 @ECHO OFF
-copy /y d:\proyectos\coniox\coniox.c
-copy /y d:\proyectos\coniox\coniox.h
+copy /y d:\proyectos\coniox\coniox.c ..\
+copy /y d:\proyectos\coniox\coniox.h ..\
 goto oc20
 
 :vc2017

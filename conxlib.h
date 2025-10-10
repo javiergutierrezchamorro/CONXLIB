@@ -1,5 +1,5 @@
-﻿#pragma once
-#ifndef _CONIOXLIB_H_ 
+#pragma once
+#ifndef _CONIOXLIB_H_
 #define _CONIOXLIB_H_
 
 #include "coniox.h"

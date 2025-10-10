@@ -48,7 +48,7 @@ VERSION HISTORY
 - Optimized DOS16 and DOS32 offset calculations in inline assembler if under Watcom, making this part almost twice as fast.
 - Reimplemented scroll to use direct dmovetext, instead of slower BIOS.
 - Solved a bug in dgettext, dputtext, and dmovetext that used window coordinates, and should not.
-- Implemented _setcursortype, andl _wscroll
+- Implemented _setcursortype, and _wscroll
 
 4.0 (2009/mm/dd)
 - Made dputch, dclrscr, dclreol, dgettext, dputtext and dmovetext use word movements instead of byte, being 50% faster.
@@ -75,33 +75,42 @@ VERSION HISTORY
 
 4.92a - 2023/02/03
 - More WIP and DOS bug fixing
-- Implemented directiveo=0
+- Implemented directvideo=0
 
 4.93 - 2023/02/06
 - Some additional optimizations
 - Fixes to DOS32
 - Demo successfully running on Watcom DOS16 and DOS32.
+
 4.94 - 2023/02/07
 - Cursor handling fixed and improved performance.
 - Added C4350 mode support.---
 - Optimized 6845 base calculation.
 - Added delay().
+
 4.95 - 2023/02/08
 - Specialized cputs causing 2x faster cputs/cprintf
+
 4.96 - 2023/02/11
 - Fixed gettextinfo should return a copy and not a reference.
 - Fixed characters should be casted at c8 bit (char).
 - Optimized kbhit to direct use keyboard buffer instead of BIOS.
 - Added ungetch().
+
 4.97 - 2023/02/13
 - Rewritten demo.
 - Small fixes and optimizations.
 - Lots of Windows fixes.
+
 4.98 - 
 - Fixed Windows ANSI gettext/puttext
 - Added _directvideo.
 - Fixes to DOS _setcursortype.
 - Fixes to DOS textmode C4350
+
+4.99 - 
+ - All functions are now working, including ASM pragma aux
+ - Several optimizations to Windows and DOS paths
 */
 
 #pragma once
@@ -154,6 +163,57 @@ extern "C" {
 #endif
 
 #define PRINTFBUF_SIZE	255
+
+
+#if ((__DOS__) || (__MSDOS__))
+#include <dos.h>
+#include <bios.h>
+
+#define coniox_far __far
+	
+
+#if defined(__WATCOMC__)
+	#include <i86.h>
+	unsigned int outp( int port, int value );
+#endif
+
+#if defined(__DJGPP__)
+	#include <sys/nearptr.h>
+	#define _fmemmove	memmove
+	#define fmemcpy		memcpy
+	#define MK_FP(seg,off) ((((seg)<<4)|(off)) + __djgpp_conventional_base)
+#endif
+
+
+#ifndef MK_FP
+	#define MK_FP(seg,off) (((seg)<<4)|(off))
+#endif
+
+#if !defined(__TURBOC__)
+	unsigned int inp (int port);
+	unsigned int inpw (int port);
+	unsigned long inpd (int port);
+	unsigned int outp (int port, int value);
+	unsigned long outpd (int port, unsigned long value);
+	unsigned int outpw (int port, unsigned int value);
+
+	#define outportb		outp
+	#define outport			outpw
+	#define outportd		outpd
+	#define inportb			inp
+	#define inport			inpw
+	#define inportd			inpd
+#endif
+
+
+#define peekb(s,o)			(*((unsigned char coniox_far *) MK_FP((s),(o))))
+#define peekw(s,o)			(*((unsigned short coniox_far *) MK_FP((s),(o))))
+#define peekl(s,o)			(*((unsigned long coniox_far *) MK_FP((s),(o))))
+#define pokeb(s,o,x)		(*((unsigned char coniox_far *) MK_FP((s),(o))) = (unsigned char)(x))
+#define pokew(s,o,x)		(*((unsigned short coniox_far *) MK_FP((s),(o))) = (unsigned short)(x))
+#define pokel(s,o,x)		(*((unsigned long coniox_far *) MK_FP((s),(o))) = (unsigned long)(x))
+#endif
+
 
 #pragma pack(push)
 #pragma pack(1)
@@ -283,8 +343,8 @@ typedef struct char_info
 /**
 Controls de video output.
 directvideo controls where your program's console output goes:
-0: (Default). Goes via ROM calls.
-1: Goes directly to video RAM
+0: Goes via ROM calls.
+1: (Default). Goes directly to video RAM
 */
 extern int directvideo;
 #define _directvideo directvideo

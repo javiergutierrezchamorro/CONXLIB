@@ -18,7 +18,6 @@ void main(void)
 {
 	int i;
 
-
 	coniox_init(NULL);
 	_setcursortype(_NOCURSOR);
 
