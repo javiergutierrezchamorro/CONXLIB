@@ -112,7 +112,7 @@ void conioxlib_pollmouse(void);
 void conioxlib_box(unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2, unsigned int atr, char* tipo, char* titulo, unsigned int sombra);
 void conioxlib_cputsc(unsigned int x1, unsigned int x2, unsigned int y, char* str);
 void conioxlib_blocks(void);
-void conioxlib_watch(void);
+void conioxlib_clock(void);
 
 void getcountry(struct conioxlib_scountry *);
 void setpal (unsigned char);

@@ -92,23 +92,29 @@ void conioxlib_box(unsigned int x1, unsigned int y1, unsigned int x2, unsigned i
 }
 
 
-/* ------------ Escribe en pantalla el estado de los bloqueos ------------- */
-void conioxlib_watch(void)
+/* ------------ Escribe en pantalla el reloj ------------- */
+void conioxlib_clock(void)
 {
 	unsigned int oldx, oldy;
+	unsigned int oldmin;
 	time_t t;
 	struct tm* ti;
-
-	oldx = wherex();
-	oldy = wherey();
+	
 
 	time(&t);
 	ti = localtime(&t);
+	if (oldmin != ti->tm_min)
+	{
+		oldmin = ti->tm_min;
+		
+		oldx = wherex();
+		oldy = wherey();
 
-	gotoxy(62, 25);
-	textattr(7 * 16 + 0);
-	cprintf("%2u:%02u", ti->tm_hour, ti->tm_min);
-	gotoxy(oldx, oldy);
+		gotoxy(62, 25);
+		textattr(7 * 16 + 0);
+		cprintf("%2u:%02u", ti->tm_hour, ti->tm_min);
+		gotoxy(oldx, oldy);
+	}
 }
 
 
@@ -188,9 +194,8 @@ void conioxlib_blocks(void)
 	SHORT fun;
 	unsigned int oldx, oldy;
 	char status[17];
+	static char oldstatus[17];
 
-	oldx = wherex();
-	oldy = wherey();
 
 	memset(status, 32, sizeof(status));
 	status[sizeof(status) - 1] = 0;
@@ -213,11 +218,17 @@ void conioxlib_blocks(void)
 		memcpy(&status[12], "SCR", 3);
 	}
 
-	textattr(7 * 16 + 0);
-	gotoxy(64, 25);
-	_wscroll = 0;
-	cputs(status);
-	gotoxy(oldx, oldy);
+	if (memcmp(oldstatus, status, sizeof(status)) != 0)
+	{
+		memcpy(oldstatus, status, sizeof(status));
+		oldx = wherex();
+		oldy = wherey();
+		textattr(7 * 16 + 0);
+		gotoxy(64, 25);
+		_wscroll = 0;
+		cputs(status);
+		gotoxy(oldx, oldy);
+	}
 }
 
 

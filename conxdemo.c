@@ -37,7 +37,7 @@ void main(void)
 		cprintf("wheely: %03u\r\n", conioxlib_mousestatus.wheely);
 		window(1, 1, 80, 25);
 		conioxlib_blocks();
-		conioxlib_watch();
+		conioxlib_clock();
 	}
 }
 
