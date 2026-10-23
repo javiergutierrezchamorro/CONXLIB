@@ -1,6 +1,6 @@
 /**
 @file coniox.h
-CONIOX v5.0                                                     (c) Copyright 1995-2019 by Javier Gutiérrez Chamorro
+CONIOX v5.0                                                     (c) Copyright 1995-2026 by Javier Gutiérrez Chamorro
                                                             https://nikkhokkho.sourceforge.io/static.php?page=CONIOX
 
 
@@ -111,13 +111,18 @@ VERSION HISTORY
 4.99 - 
  - All functions are now working, including ASM pragma aux
  - Several optimizations to Windows and DOS paths
+ 
+ 5.00 - 2026/10/22
+ - All functions are now working, including ASM pragma aux
+ - Several optimizations to Windows and DOS paths
+ - Lots of tests with ZEROFILL
 */
 
 #pragma once
 #ifndef _CONIOX_H_ 
 #define _CONIOX_H_
 
-#define coniox_version (499)
+#define coniox_version (500)
 #define coniox_build (__DATE__)
 
 #ifdef __cplusplus
@@ -159,12 +164,6 @@ extern "C" {
 	#undef puttext
 #endif
 
-#ifdef UNICODE
-	#define gettextbuffersize(__left, __top, __right, __bottom) (((__right) - (__left) + 1) * ((__bottom) - (__top) + 1) * 3)
-#else
-	#define gettextbuffersize(__left, __top, __right, __bottom) (((__right) - (__left) + 1) * ((__bottom) - (__top) + 1) * 2)
-#endif
-
 #define PRINTFBUF_SIZE	255
 
 
@@ -172,8 +171,6 @@ extern "C" {
 #include <dos.h>
 #include <bios.h>
 
-#define coniox_far __far
-	
 
 #if defined(__WATCOMC__)
 	#include <i86.h>
@@ -183,8 +180,14 @@ extern "C" {
 #if defined(__DJGPP__)
 	#include <sys/nearptr.h>
 	#define _fmemmove	memmove
-	#define fmemcpy		memcpy
+	#define _fmemcpy	memcpy
 	#define MK_FP(seg,off) ((((seg)<<4)|(off)) + __djgpp_conventional_base)
+	#define coniox_far
+#elif defined(__FLAT__)
+	/* DOS extender, flat model: every pointer is a 32 bit offset, and the first MB is mapped at linear address 0 */
+	#define coniox_far
+#else
+	#define coniox_far __far
 #endif
 
 
@@ -209,6 +212,16 @@ extern "C" {
 #endif
 
 
+#if ((defined(__FLAT__)) && (!defined(__DJGPP__)))
+	/* Flat model: a real mode segment:offset is the linear address seg * 16 + off */
+	#define coniox_linear(s,o)	((((unsigned long) (s)) << 4) + (unsigned long) (o))
+	#define peekb(s,o)			(*((unsigned char *) coniox_linear((s),(o))))
+	#define peekw(s,o)			(*((unsigned short *) coniox_linear((s),(o))))
+	#define peekl(s,o)			(*((unsigned long *) coniox_linear((s),(o))))
+	#define pokeb(s,o,x)		(*((unsigned char *) coniox_linear((s),(o))) = (unsigned char)(x))
+	#define pokew(s,o,x)		(*((unsigned short *) coniox_linear((s),(o))) = (unsigned short)(x))
+	#define pokel(s,o,x)		(*((unsigned long *) coniox_linear((s),(o))) = (unsigned long)(x))
+#else
 #define peekb(s,o)			(*((unsigned char coniox_far *) MK_FP((s),(o))))
 #define peekw(s,o)			(*((unsigned short coniox_far *) MK_FP((s),(o))))
 #define peekl(s,o)			(*((unsigned long coniox_far *) MK_FP((s),(o))))
@@ -216,7 +229,11 @@ extern "C" {
 #define pokew(s,o,x)		(*((unsigned short coniox_far *) MK_FP((s),(o))) = (unsigned short)(x))
 #define pokel(s,o,x)		(*((unsigned long coniox_far *) MK_FP((s),(o))) = (unsigned long)(x))
 #endif
+#endif
 
+#if !(((__DOS__) || (__MSDOS__)))
+    #define coniox_far
+#endif
 
 #pragma pack(push)
 #pragma pack(1)
@@ -337,10 +354,9 @@ Structure used by gettext/puttext.
 */
 typedef struct char_info
 {
-	char letter;			/**< character value */
-    unsigned short attr;	/**< attribute value */
+    unsigned char letter;	/**< character value */
+    unsigned char attr;	/**< attribute value: background in bits 4-6, blink in bit 7, foreground in bits 0-3 */
 } char_info;
-
 
 
 /**
@@ -357,6 +373,9 @@ Enables or disables scrolling in console I/O functions.
 _wscroll is a console I/O flag. You can use it to draw along the edges of a window without having the screen scroll.
 */
 extern int _wscroll;
+
+
+void inittextinfo(void);
 
 
 /**
@@ -410,7 +429,7 @@ Each position onscreen takes 2 bytes of memory: The first byte is the character 
 @param bottom Bottom coordinate of the rectangle, inclusive, starting from 1.
 @param buf You have to pass buffer of size <TT>(right - left + 1) * (bottom - top + 1) * sizeof(char_info)</TT>.
 */
-int gettext(int __left, int __top, int __right, int __bottom, void *__destin);
+int gettext(int __left, int __top, int __right, int __bottom, void coniox_far *__destin);
 
 
 /**
@@ -428,7 +447,7 @@ puttext is a text mode function performing direct video output.
 @param bottom Bottom coordinate of the rectangle, inclusive, starting from 1.
 @param buf You have to pass buffer of size <TT>(right - left + 1) * (bottom - top + 1) * sizeof(char_info)</TT>.
 */
-int puttext(int __left, int __top, int __right, int __bottom, void *__source);
+int puttext(int __left, int __top, int __right, int __bottom, void coniox_far *__source);
 
 
 /**
@@ -727,11 +746,13 @@ typedef struct wchar_info
     unsigned short attr;	/**< attribute value */
 } wchar_info;
 
-#if _MSC_VER <= 2000
+wchar_t  getwch(void);
+wchar_t  putwch(wchar_t);
+
+
+#if defined(UNICODE)
 	wchar_t *cgetws( wchar_t *__str );
 	int      cputws( const wchar_t *__str );
-	wchar_t  getwch(void);
-	wchar_t  putwch(wchar_t);
 	wchar_t  ungetwch( wchar_t );
 	wchar_t  getwche(void);
 	int cwscanf( const wchar_t *__format, ... );

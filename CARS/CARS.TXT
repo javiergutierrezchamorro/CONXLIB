@@ -1,0 +1,74 @@
+trnhea
+    strnhea
+        char mark[100]
+            "\rCars Connection v2.00 Turn File.\r\n (c) Copyright 1997 by De Trans
+              Software (D.T.S.)\r\n\26"
+        char registered[50]
+            "Registered to: " + nombre de registro
+
+mapa[50][20]
+    smapa
+        unsigned char conocido;
+            0: Si la coordenada es desconocida; ¢ 1 si es conocida
+
+objeto[300]
+    sobjeto
+        char x
+            Coordenada X del objeto
+        char y
+            Coordenada Y del objeto
+        char nombre[16]
+            Nombre del objeto; es una cadena y un n£mero
+                Casino: Hay un casino
+                Warehouse: Hay un almac‚n
+                Bank: Hay un banco.
+                Police: Hay un polic¡a.
+                El n£mero indica el n£mero de objeto.
+        long int val1
+            Materia del warehouse en los tres bits inferiores
+            Inter‚s del banco de dep¢sito de dinero (1-10).
+            Fuerza del polic¡a (0-2000)
+        long int val2
+            Precio del kilo para compra (50-100)
+            Dinero total del banco (100-100100)
+            Dinero del polic¡a (0-28000)
+        long int val3
+            Precio del kilo para venta (150-300)
+
+player[10]
+    splayer
+        char x
+
+        char y
+
+        char nombre[16]
+
+        char password[16]
+
+        unsigned char nivel
+
+        unsigned char turnos
+
+        unsigned int totalvida
+
+        unsigned int llevovida
+
+        unsigned int totalcargo
+
+        unsigned int llevocargo
+
+        unsigned char tipocargo
+
+        unsigned long int dinero
+
+        unsigned long int banco
+
+master
+    smaster
+        unsigned char maxturnos
+
+        char password[16]
+
+config
+    sconfig
+        unsigned char directvideo

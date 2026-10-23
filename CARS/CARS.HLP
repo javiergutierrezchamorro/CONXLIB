@@ -1,0 +1,606 @@
+; WIPE for DOS v4.0 Help file by De Trans Software (D.T.S.)
+; Please do not modify it, or the program may not work
+; correctly.
+
+@Attrib
+ษออออออออออออออออออ Attrib อออออออออออออออออออออป
+บ        You are going to delete file           บÛÛ
+บ          FileName (X,XXX,XXX bytes)           บÛÛ
+บ        From the directory: Directory          บÛÛ
+บ          Do you want to continue?             บÛÛ
+บ                                               บÛÛ
+บ     [Yes]           [No]           [All]      บÛÛ
+ศอออออออออออออออออออออออออออออออออออออออออออออออผÛÛ
+  ÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛ
+
+  You are gonna destroy one file with a special attribute
+(Read-Only, Hidden, or System).
+
+  If you choose Yes, WIPE will destroy this file, by
+choosing No, WIPE will skip this one; by choosing All WIPE
+will destroy this file and the rest with this the same
+characteristics, so you will not be prompted about this in
+future cases.
+
+ษอออออออออออ Configure Options ออออออออออออออป
+บ         Please set default WIPE            บÛÛ
+บ                 options                    บÛÛ
+บ                                            บÛÛ
+บ         [ ] Use 386 instructions           บÛÛ
+บ         [ ] Use EMS memory                 บÛÛ
+บ         [ ] Enable sound                   บÛÛ
+บ         [ ] Total confirmation             บÛÛ
+บ         [ ] Attrib confirmation            บÛÛ
+บ         [ ] File confirmation              บÛÛ
+บ         [ ] Cancel confirmation            บÛÛ
+บ         [ ] Autosave options               บÛÛ
+ศออออออออออออออออออออออออออออออออออออออออออออผÛÛ
+  ÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛ
+
+  By unchecking the Attrib confirmation in the options box,
+you will not be asked more about this topic.
+@
+
+@Cancel
+ษออออออออออออออออออ Cancel อออออออออออออออออออออป
+บ       Do you want to cancel current           บÛÛ
+บ                 operation?                    บÛÛ
+บ                                               บÛÛ
+บ       [Abort]                [Continue]       บÛÛ
+ศอออออออออออออออออออออออออออออออออออออออออออออออผÛÛ
+  ÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛ
+
+  You are gonna to cancel the current destruction process.
+
+  If you choose Abort, WIPE will abort the current
+destruction process, by choosing Continue, WIPE will
+continue destroying files.
+
+ษอออออออออออ Configure Options ออออออออออออออป
+บ         Please set default WIPE            บÛÛ
+บ                 options                    บÛÛ
+บ                                            บÛÛ
+บ         [ ] Use 386 instructions           บÛÛ
+บ         [ ] Use EMS memory                 บÛÛ
+บ         [ ] Enable sound                   บÛÛ
+บ         [ ] Total confirmation             บÛÛ
+บ         [ ] Attrib confirmation            บÛÛ
+บ         [ ] File confirmation              บÛÛ
+บ         [ ] Cancel confirmation            บÛÛ
+บ         [ ] Autosave options               บÛÛ
+ศออออออออออออออออออออออออออออออออออออออออออออผÛÛ
+  ÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛ
+
+  By unchecking the Cancel confirmation in the options box,
+you will not be asked more about this topic.
+@
+
+@Commands
+อออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+ÛÛ ÛÛ ÛÛ ÞÛÛÝ ÛÛÛÛÛÛÜ ÜÛÛÛÛÛÛ       Version 4 Revision 0
+ÛÛ ÛÛ ÛÛ  ÛÛ  ÛÛÜÜÜÛÛ ÛÛÜÜÜÜ       (c) Copyright 1994-1997
+ÛÛ ÛÛ ÛÛ  ÛÛ  ÛÛ฿฿฿฿  ÛÛ฿฿฿฿                 by
+฿ÛÛÛÛÛÛ฿ ÞÛÛÝ ÛÛ      ฿ÛÛÛÛÛÛ      De Trans Software (DTS)
+อออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+
+  WIPE is a program tha allows you to destroy files
+completely.
+
+  USAGE: WIPED <Mask> [Options] [Method]
+
+         <Mask>
+         Is a valid DOS mask, it may include wildcards and
+         paths. Eg: *.*, C:\DOS\*.COM, ..\*.??A
+
+         [Options]
+         They are optional.
+         Are valid switches that modifies WIPE defaults.
+         You can activate one switch ending it with a + or
+         deactivate it ending int with a -.
+         Options suported are listed these:
+         /386:      Use 386 instructions (Registered only).
+                    WIPE will use 386 or later features if
+                    available.
+         /EMS:      Use EMS memory (Registered only).
+                    WIPE will use EMS memory if available.
+         /DIRECT:   Use direct output.
+                    WIPE will perform direct screen output.
+         /SOUND:    Enable sound.
+                    WIPE will enable system sounds.
+         /STACKER:  Duplicator tolerance.
+                    WIPE will use Stacker/Super Stor/Double
+                    Space compatibility.
+         /SLACK:    Clear slack.
+                    WIPE will clear the slack of each file.
+         /FAT:      Clear FAT.
+                    WIPE will clear the FAT.
+         /TOTAL     Total confirmation.
+                    WIPE will ask you before deleting
+                    files.
+         /ATTRIB:   Attrib confirmation.
+                    WIPE will ask you before deleting an
+                    attributed file.
+         /FILE:     File confirmation.
+                    WIPE will ask you before deleteing each
+                    file.
+         /CANCEL:   Cancel confirmation.
+                    WIPE will ask you after cancelling the
+                    process.
+         /SAVE      Autosave options.
+                    WIPE will save automatically the
+                    configuration.
+
+         [Method]
+         It is optional.
+         Are valid switches that modifies WIPE default
+         destruction method.
+         /STANDARD: Use Standard method.
+                    WIPE will use the DOS standard deletion
+                    method.
+         /FAST:     Use Fast method.
+                    WIPE will use the fast wipe method.
+         /SAFE:     Use Safe method.
+                    WIPE will use the safe wipe method.
+         /SECURE:   Use Secure method.
+                    WIPE will use the secure method.
+         /NCSA:     Use NCSA method (Registered only).
+                    WIPE will use the secure wipe method.
+@
+
+@D.T.S.
+  For registering, questions, or suggestions you can write
+to:
+
+                De Trans Software (DTS)
+                Javier Gutirrez Chamorro
+                Av. Meridiana 336, 7ง C
+                08027. Barcelona. [SPAIN]
+
+  For questions or suggestions you can send a E-Mail to:
+
+                Guti@bbs-ce.uab.es
+
+  For question, suggestions or downloading the latest
+versions our programs you can connect with our WEB page at:
+
+                http://www.geocities.com
+                     /SiliconValley/4505
+@
+
+@Disclaimer
+  WIPE is a potentially dangerous program because there is
+no possibility of recovering destroyed data, so De Trans
+Software can not be responsible of nothing you do.
+
+  If something "bad" happens we will be very pleased
+helping you.
+@
+
+@Error
+ษอออออออออออออออออออ Error อออออออออออออออออออออป
+บ             A fatal error ocurred             บÛÛ
+บ                 Error message                 บÛÛ
+บ                                               บÛÛ
+บ     [Retry]   [Fail]   [Ignore]   [Abort]     บÛÛ
+ศอออออออออออออออออออออออออออออออออออออออออออออออผÛÛ
+  ÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛ
+
+  A fatal error ocurred while executing program,
+acompaining this message you will see a sort description
+about the error produced:
+
+  þ Disk is write protected
+    Disk is protected against write.
+    Unprotect it and choose retry.
+  þ Unknown unit
+    You have selected a drive not recogniced.
+    Choose ignore and then retry the operation with a
+    correct drive
+  þ Drive is not ready
+    Drive is not ready to use.
+    Insert a disk, close the door and choose retry.
+  þ Unknown command
+    You have performed an operation not allowed.
+    Choose ignore and continue working normally, if this
+    error occurs again choose abort.
+  þ Data error (Bad CRC)
+    You have loaded data from a bad or damaged media.
+    Choose retry one time; if the error appears again then
+    choose abort.
+  þ Bad request structure length
+    You have requested one operation that have provoqued
+    the device not to work correctly.
+    Choose abort.
+  þ Seek error
+    You have acced your data, and the device seems not to
+    get the correct information.
+    Choose retry one time; if the error appears again then
+    choose abort.
+  þ Unkown media type
+    You have performed in a drive that is not recogniced
+    for the system.
+    Choose ignore and continue working normally, if this
+    error occurs again choose abort.
+  þ Sector not found
+    You have loaded or saved data from/to a bad, damaged,
+    or unformated media.
+    Choose retry one time; if the error appears again then
+    choose abort.
+  þ Printer is out of paper
+    You try to print to a printer withou paper.
+    Put paper in it and then choose retry.
+  þ Write fault
+    You have provoqued a write fault in a device.
+    Choose abort.
+  þ Read fault
+    You have provoqued a read fault in a device.
+    Choose abort.
+  þ General failure
+    A general error without a more concrete description
+    happened.
+
+  Possible actions are:
+
+  þ Retry
+    Retry the operation that has caused the error; and
+    execute it again.
+  þ Fail
+    Fail current operation; and skip all the program code
+    that causes the error.
+  þ Ignore
+    Ignore the operation that has caused the error; and
+    execute the rest.
+  þ Abort
+    Abort current process; and stop the execution
+    inmediately.
+@
+
+@Existing
+ษอออออออออออออออ Configuration อออออออออออออออออป
+บ     Do you have an existing configuration     บÛÛ
+บ          file, do you want to use it?         บÛÛ
+บ                                               บÛÛ
+บ        [Yes]                     [No]         บÛÛ
+ศอออออออออออออออออออออออออออออออออออออออออออออออผÛÛ
+  ÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛ
+
+  Do you have an existing old configuration file.
+
+  If you choose Yes, WIPE will use this configuration file
+as the defaults; by choosing No you will be asked by a new
+default values.
+
+  Normally you will choose Yes, use No only if you want to
+change one or more settings.
+@
+
+@Exit
+ษออออออออออออออออออออ Exit อออออออออออออออออออออป
+บ           Do you want to exit to DOS?         บÛÛ
+บ                                               บÛÛ
+บ      [Yes]           [No]         [Shell]     บÛÛ
+ศอออออออออออออออออออออออออออออออออออออออออออออออผÛÛ
+  ÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛ
+
+  You are gonna to exit WIPE.
+
+  If you choose Yes, you will return to the DOS, by choosing
+No, you will continue executing WIPE; if you choose Shell,
+a window with an access to DOS will be opened; in this
+window typing EXIT implies return to the program.
+@
+
+@File
+ษอออออออออออออออออออ File ออออออออออออออออออออออป
+บ        You are going to delete file           บÛÛ
+บ          FileName (X,XXX,XXX bytes)           บÛÛ
+บ        From the directory: Directory          บÛÛ
+บ          Do you want to continue?             บÛÛ
+บ                                               บÛÛ
+บ     [Yes]           [No]           [All]      บÛÛ
+ศอออออออออออออออออออออออออออออออออออออออออออออออผÛÛ
+  ÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛ
+
+  You are gonna to destroy one file.
+
+  If you choose Yes, WIPE will destroy this file, by
+choosing No, WIPE will skip this one; by choosing All WIPE
+will destroy this file and the rest, so you will not be
+prompted about this in future cases.
+
+ษอออออออออออ Configure Options ออออออออออออออป
+บ         Please set default WIPE            บÛÛ
+บ                 options                    บÛÛ
+บ                                            บÛÛ
+บ         [ ] Use 386 instructions           บÛÛ
+บ         [ ] Use EMS memory                 บÛÛ
+บ         [ ] Enable sound                   บÛÛ
+บ         [ ] Total confirmation             บÛÛ
+บ         [ ] Attrib confirmation            บÛÛ
+บ         [ ] File confirmation              บÛÛ
+บ         [ ] Cancel confirmation            บÛÛ
+บ         [ ] Autosave options               บÛÛ
+ศออออออออออออออออออออออออออออออออออออออออออออผÛÛ
+  ÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛ
+
+  By unchecking the File confirmation in the options box,
+you will not be asked more about this topic.
+@
+
+@Help
+ษอ[þ]ออออออออออออออออ Help: Topic ออออออออออออออออออออออป
+บ  Help about the topic topic.                          ÛÛ
+บ  .                                                    ฑÛÛ
+บ  .                                                    ฐÛÛ
+บ  .                                                    ฐÛÛ
+บ  .                                                    ฐÛÛ
+บ  .                                                    ฐÛÛ
+บ  .                                                    ฐÛÛ
+บ  .                                                    ฐÛÛ
+บ  .                                                    ฐÛÛ
+บ  .                                                    ฐÛÛ
+บ  .                                                    ฐÛÛ
+บ  .                                                    ฐÛÛ
+บ  .                                                    ฐÛÛ
+บ  .                                                    ÛÛ
+ศอออออออออออออออออออออออออออออออออออออออออออออออออออออออผÛÛ
+  ÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛ
+
+  You are displaying the context sensitive help for the
+topic 'topic'.
+
+  You can move througt the help text using Up, Down, PgUp,
+PgDw, Org, End; by pressing F-1 you will get the help
+index.
+@
+
+@Methods
+ษอออออออออออ Configure Method อออออออออออออออป
+บ     Which method of destruction do you     บÛÛ
+บ              want to use?                  บÛÛ
+บ                                            บÛÛ
+บ               ( ) Standard                 บÛÛ
+บ               ( ) Fast                     บÛÛ
+บ               ( ) Safe                     บÛÛ
+บ               ( ) Secure                   บÛÛ
+บ               ( ) NCSA                     บÛÛ
+ศออออออออออออออออออออออออออออออออออออออออออออผÛÛ
+  ÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛ
+
+  WIPE has different ways of destroying a file:
+
+  þ Standard: This is the DOS standard method (commonly
+              used by DEL, ERASE, and so on).
+  þ Fast:     This method overwrites the FAT allocation for
+              the file to be destroyed.
+  þ Secure:   This method overwrites the FAT allocation and
+              the header of the file to be destroyed.
+  þ Safe:     This method overwrites the FAT allocation and
+              the complete image of the file to be
+              destroyed.
+  þ NCSA:     This method overwrites the FAT allocation and
+              the complete image of the file to be
+              destroyed using the NCSA (National Computer
+              Security Association) method.
+              Only available in the registered version.
+
+  The methods are sorted by speed (from fast to slow), and
+by security (from less to more).
+
+  Recomended method is Safe for its balance between speed
+and security.
+
+  You can switch between methods using TAB and Shift-TAB,
+activate/deactivate one using SPACE or INS, and accept
+current selections with ENTER.
+@
+
+@Options
+ษอออออออออออ Configure Options ออออออออออออออป
+บ         Please set default WIPE            บÛÛ
+บ                 options                    บÛÛ
+บ                                            บÛÛ
+บ         [ ] Use 386 instructions           บÛÛ
+บ         [ ] Use EMS memory                 บÛÛ
+บ         [ ] Use EMS memory                 บÛÛ
+บ         [ ] Enable sound                   บÛÛ
+บ         [ ] Duplicator tolerance           บÛÛ
+บ         [ ] Clear slack                    บÛÛ
+บ         [ ] Clear FAT                      บÛÛ
+บ         [ ] Total confirmation             บÛÛ
+บ         [ ] Attrib confirmation            บÛÛ
+บ         [ ] File confirmation              บÛÛ
+บ         [ ] Cancel confirmation            บÛÛ
+บ         [ ] Autosave options               บÛÛ
+ศออออออออออออออออออออออออออออออออออออออออออออผÛÛ
+  ÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛ
+
+  WIPE has different general settings that modifies its
+general comportament:
+
+  þ Use 386 Instructions: This will allow WIPE to use
+                          enhaced 386 or latter
+                          instructions if available,
+                          getting more execution speed. We
+                          recommend to activate this
+                          option.
+                          Only available in the registered
+                          version.
+  þ Use EMS memory:       This will allow WIPE to use EMS
+                          memory if available getting more
+                          execution speed. We recommend to
+                          activate this option.
+                          Only available in the registered
+                          version.
+  þ Use direct output:    This will allow WIPE to use
+                          direct to screen output in front
+                          of BIOS output. Direct output is
+                          faster, but BIOS are more
+                          compatible. We recommend to
+                          activate this option.
+  þ Enable sound:         This will allow WIPE to produce
+                          system sounds.
+  þ Duplicator tolerance: This will allow WIPE to destroy
+                          files using a compatibility
+                          method for Stacker, Super Stor,
+                          Double Space, Double Disk, ...
+                          (This option is not compatible
+                          with the NCSA wiping method).
+  þ Clear slack:          This will allow WIPE to clear the
+                          slack data of each file (data at
+                          the end of a sector that not
+                          necessarily pertains to the file.
+  þ Clear FAT:            This will allow WIPE to clear the
+                          FAT (File Alocation Table) of
+                          each file.
+  þ Total confirmation:   This will ask you before start
+                          wipping.
+  þ Attrib confirmation:  This will ask you before start
+                          wipping on file that has special
+                          attributtes (Read-Only, System,
+                          or Hidden).
+  þ File confirmation:    This will ask you before start
+                          wipping one file.
+  þ Cancel confirmation:  This will ask you before
+                          cancelling the wipping process.
+  þ Autosave options:     This will automatically save the
+                          settings of WIPE each time they
+                          are modified in a file called
+                          WIPED.CFG.
+
+  You can switch between options using TAB and Shift-TAB,
+activate/deactivate one using SPACE or INS, and accept
+current selections with ENTER.
+@
+
+@Save
+ษอออออออออออออออออออ Save ออออออออออออออออออออออป
+บ        Do you want to save the current        บÛÛ
+บ                configuration?                 บÛÛ
+บ                                               บÛÛ
+บ        [Yes]                     [No]         บÛÛ
+ศอออออออออออออออออออออออออออออออออออออออออออออออผÛÛ
+  ÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛ
+
+  If you choose Yes, WIPE will automatically save your
+current settings; by choosing No the actual configurations
+will be used, but not save, so in future executions nothing
+will be modified.
+
+  Normally you will choose Yes, use No only if you want to
+change one or more settings for the actual execution.
+
+ษอออออออออออ Configure Options ออออออออออออออป
+บ         Please set default WIPE            บÛÛ
+บ                 options                    บÛÛ
+บ                                            บÛÛ
+บ         [ ] Use 386 instructions           บÛÛ
+บ         [ ] Use EMS memory                 บÛÛ
+บ         [ ] Enable sound                   บÛÛ
+บ         [ ] Total confirmation             บÛÛ
+บ         [ ] Attrib confirmation            บÛÛ
+บ         [ ] File confirmation              บÛÛ
+บ         [ ] Cancel confirmation            บÛÛ
+บ         [ ] Autosave options               บÛÛ
+ศออออออออออออออออออออออออออออออออออออออออออออผÛÛ
+  ÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛ
+
+  By checking the Autosave options in the options box, you
+will not be asked more about this topic.
+@
+
+@Select
+ษอ[þ]อออออัออออออออออ [C:\DOS\] อออออัออออออออออออออออออป
+บ   Name  ณ   Size    ณ  Date  ณTime ณ      Comment     บÛÛ
+วฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤลฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤถÛÛ
+บA      ณ๐  DRIVE  ๐ณ        ณ     ณ3ซ Floppy Disk    ÛÛ
+บB      ณ๐  DRIVE  ๐ณ        ณ     ณ5ฌ Floppy Disk    บÛÛ
+บC      ณ๐  DRIVE  ๐ณ        ณ     ณHard Disk         บÛÛ
+บ.        ณ๐DIRECTORY๐ณ15-09-89ณ16:28ณCurrent directory บÛÛ
+บ..       ณ๐DIRECTORY๐ณ15-09-89ณ16:28ณPrevious directoryบÛÛ
+บAnsi.Sys ณ      1,647ณ24-07-87ณ00:00ณ                  บÛÛ
+บComp.Com ณ      3,059ณ24-03-88ณ09:11ณ                  บÛÛ
+บFc.Exe   ณ     10,441ณ24-03-88ณ09:14ณ                  บÛÛ
+บFdisk.Comณ     25,078ณ04-10-88ณ17:59ณ                  บÛÛ
+บKeyb.Com ณ      6,567ณ16-03-88ณ10:00ณ                  บÛÛ
+บLabel.Comณ      1,944ณ18-03-88ณ09:54ณ                  บÛÛ
+บMode.Com ณ      8,632ณ16-03-88ณ10:03ณ                  บÛÛ
+บMouse.Comณ      6,688ณ04-10-88ณ12:14ณ                  บÛÛ
+บPark.Com ณ        835ณ16-11-89ณ12:22ณ                  บÛÛ
+บSys.Com  ณ      3,185ณ14-03-88ณ18:29ณ                  ÛÛ
+ศอออออออออฯอออออออออออฯออออออออฯอออออฯออออออออออออออออออผÛÛ
+ÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛ
+
+  You can tag or untag files using SPACE or INS, move
+across the files using Up, Down, PgUp, PgDw, Org, End, and
+accept selecction or change directory/drive pressing ENTER;
+using F-2 you will be asked by a mask, then all the files
+that complain the mask will be taged.
+
+  If no files have been selected using SPACE or INS then
+the file pointed by the selection bar when you pressed
+ENTER will be tagged automatically.
+
+  By selecting or clicking a directory or a drive, you will
+go to it.
+@
+
+@Shareware
+  This program is Shareware, it means that you can use,
+copy and distribute it freely only if your copy is
+complete and without modifications; but if you are gonna
+use it regulary, you must register by sending us 2000 Ptas
+or 20 US$ to:
+
+                  De Trans Software (DTS)
+                  Javier Gutirrez Chamorro
+                  Av. Meridiana 336, 7ง C
+                  08027. Barcelona. [SPAIN]
+
+  By registering you will recieve a registration file that
+when you put it in your WIPE directory, WIPE will be
+automatically registered (allowing you more options, and
+avoiding the wait of ten seconds at the beginning of the
+program in some executions), newer versions of WIPE will
+use this method of registrations too, so registering one
+release you will have all releases registered.
+
+  If you have the registration file, you are not allowed to
+distribute it.
+@
+
+@Total
+ษอออออออออออออออออออ Total อออออออออออออออออออออป
+บ      You are going to delete XX files         บÛÛ
+บ           Ocupping Y,YYY,YYY bytes            บÛÛ
+บ        From the directory: Directory          บÛÛ
+บ          Do you want to continue?             บÛÛ
+บ                                               บÛÛ
+บ        [Proceed]               [Abort]        บÛÛ
+ศอออออออออออออออออออออออออออออออออออออออออออออออผÛÛ
+  ÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛ
+
+  You are gonna destroy one or more files.
+
+  If you choose Proceed, WIPE will destroy the selected
+files, by choosing Abort, WIPE will abort the destruction
+process.
+
+ษอออออออออออ Configure Options ออออออออออออออป
+บ         Please set default WIPE            บÛÛ
+บ                 options                    บÛÛ
+บ                                            บÛÛ
+บ         [ ] Use 386 instructions           บÛÛ
+บ         [ ] Use EMS memory                 บÛÛ
+บ         [ ] Enable sound                   บÛÛ
+บ         [ ] Total confirmation             บÛÛ
+บ         [ ] Attrib confirmation            บÛÛ
+บ         [ ] File confirmation              บÛÛ
+บ         [ ] Cancel confirmation            บÛÛ
+บ         [ ] Autosave options               บÛÛ
+ศออออออออออออออออออออออออออออออออออออออออออออผÛÛ
+  ÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛ
+
+  By unchecking the Total confirmation in the options box,
+you will not be asked more about this topic.
+@
