@@ -1,6 +1,6 @@
 /**
 @file coniox.h
-CONIOX v5.0                                                     (c) Copyright 1995-2026 by Javier Gutiérrez Chamorro
+CONIOX v5.0                                                     (c) Copyright 1995-2026 by Javier GutiÃ©rrez Chamorro
                                                             https://nikkhokkho.sourceforge.io/static.php?page=CONIOX
 
 
@@ -15,9 +15,9 @@ DIRIO 2.4 - Oct 1995
 De Trans Software (D.T.S.)
 
 DIRIO 4.0 - Sep 2000
-Javier Gutiérrez Chamorro
+Javier GutiÃ©rrez Chamorro
 
-CONIO 1.31 - Aug 2005 
+CONIO 1.31 - Aug 2005
 C++ Con Clase (Salvador Pozo Coronado / Fru <elfrucool@yahoo.com.mx>)
 
 Borland-style CONIO 2.1 - Dec 2013
@@ -84,7 +84,7 @@ VERSION HISTORY
 
 4.94 - 2023/02/07
 - Cursor handling fixed and improved performance.
-- Added C4350 mode support.---
+- Added C4350 mode support.
 - Optimized 6845 base calculation.
 - Added delay().
 
@@ -102,32 +102,50 @@ VERSION HISTORY
 - Small fixes and optimizations.
 - Lots of Windows fixes.
 
-4.98 - 
+4.98 -
 - Fixed Windows ANSI gettext/puttext
 - Added _directvideo.
 - Fixes to DOS _setcursortype.
 - Fixes to DOS textmode C4350
 
-4.99 - 
+4.99 -
  - All functions are now working, including ASM pragma aux
  - Several optimizations to Windows and DOS paths
- 
- 5.00 - 2026/10/22
+
+5.00 - 2026/10/22
  - All functions are now working, including ASM pragma aux
  - Several optimizations to Windows and DOS paths
  - Lots of tests with ZEROFILL
+
+5.01 - 2026/10/27
+ - Fixed cputs() directvideo cell cache off by one after wrapping a line.
+ - Fixed MK_FP fallback macro for real mode (linear instead of far address).
+ - Fixed kbhit() BIOS branch did not compile under Borland (no flags in union REGS).
+ - Robustified coniox_fmemsetw pragma aux against dirty upper bits of EAX.
+ - Fixed Windows textmode() when the new mode is smaller than the current buffer.
+ - Removed unused coniox_int86x macros.
+
+5.02 - 2026/10/27
+ - Fixed cputs() directvideo wrap: the run already steps one cell past the window edge, so the cache delta is screenwidth - winwidth, not screenwidth - winwidth + 1 like putch().
+ - coniox_inline now expands to nothing for Borland/Turbo C older than 4.5, which have no inline keyword in C mode.
+
+5.03 - 2026/10/27
+ - Fixed delay() ending early at midnight: the BDA tick counter wraps at 0x1800B0, not at 2^32.
+ - Fixed getch() returning a pending extended key for a plain 0xE0 character typed with Alt+numpad (scan code 0).
+ - Fixed coniox_int86 under DJGPP (int386 does not exist there).
+ - DOS16 coniox_putrun pragma aux now takes a far source (DS:SI), so it also works in compact and large models.
+ - DOS32 coniox_putrun inner loop uses dec/jnz instead of the slow LOOP.
+ - inportb/outportb pragma aux no longer declare DX/AL as clobbered when IN/OUT leave them intact.
+ - coniox_basecrt is now a constant, so the 6845 port numbers are folded at compile time.
+ - gotoxy() computes the cell cache once for both directvideo and BIOS paths.
 */
 
 #pragma once
-#ifndef _CONIOX_H_ 
+#ifndef _CONIOX_H_
 #define _CONIOX_H_
 
-#define coniox_version (500)
+#define coniox_version (503)
 #define coniox_build (__DATE__)
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 #ifdef _MSC_VER
 	/* Visual Studio 2017 (15.0) or later */
@@ -165,23 +183,41 @@ extern "C" {
 #endif
 
 #define PRINTFBUF_SIZE	255
+#include <stdarg.h>	/* va_list, for cvprintf */
+#include <stddef.h>	/* wchar_t in strict C (wchar_info, getwch, ...) */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 
 #if ((__DOS__) || (__MSDOS__))
 #include <dos.h>
 #include <bios.h>
 
+#if defined(__TURBOC__)
+	/* Borland spells them disable()/enable(); the directvideo paths use the Watcom/MSC _disable()/_enable() names. */
+	#define _disable()	disable()
+	#define _enable()	enable()
+#endif
 
-#if defined(__WATCOMC__)
+
+#if defined(__WATCOMC__) && defined(__DOS__)
 	#include <i86.h>
-	unsigned int outp( int port, int value );
+	unsigned char inportb(unsigned int port);
+	#pragma aux inportb  = "in  al, dx" parm nomemory [dx] value [al] modify nomemory exact [al];
+	void outportb(unsigned int port, unsigned char value);
+	#pragma aux outportb = "out dx, al" parm nomemory [dx] [al] modify nomemory exact [];
 #endif
 
 #if defined(__DJGPP__)
 	#include <sys/nearptr.h>
+	#include <pc.h>
 	#define _fmemmove	memmove
 	#define _fmemcpy	memcpy
-	#define MK_FP(seg,off) ((((seg)<<4)|(off)) + __djgpp_conventional_base)
+	#define _disable disable
+	#define _enable  enable
+	#define MK_FP(seg,off) ((((seg)<<4)+(off)) + __djgpp_conventional_base)
 	#define coniox_far
 #elif defined(__FLAT__)
 	/* DOS extender, flat model: every pointer is a 32 bit offset, and the first MB is mapped at linear address 0 */
@@ -192,7 +228,13 @@ extern "C" {
 
 
 #ifndef MK_FP
-	#define MK_FP(seg,off) (((seg)<<4)|(off))
+	#if ((defined(__FLAT__)) && (!defined(__DJGPP__)))
+		/* Flat model: a real mode segment:offset maps to the linear address seg * 16 + off */
+		#define MK_FP(seg,off) (((seg)<<4)+(off))
+	#else
+		/* Real mode: a far pointer stores the segment in its high word */
+		#define MK_FP(seg,off) ((void coniox_far *) ((((unsigned long)(seg)) << 16) | ((unsigned long)(off))))
+	#endif
 #endif
 
 #if !defined(__TURBOC__)
@@ -203,10 +245,8 @@ extern "C" {
 	unsigned long outpd (int port, unsigned long value);
 	unsigned int outpw (int port, unsigned int value);
 
-	#define outportb		outp
 	#define outport			outpw
 	#define outportd		outpd
-	#define inportb			inp
 	#define inport			inpw
 	#define inportd			inpd
 #endif
@@ -222,21 +262,21 @@ extern "C" {
 	#define pokew(s,o,x)		(*((unsigned short *) coniox_linear((s),(o))) = (unsigned short)(x))
 	#define pokel(s,o,x)		(*((unsigned long *) coniox_linear((s),(o))) = (unsigned long)(x))
 #else
-#define peekb(s,o)			(*((unsigned char coniox_far *) MK_FP((s),(o))))
-#define peekw(s,o)			(*((unsigned short coniox_far *) MK_FP((s),(o))))
-#define peekl(s,o)			(*((unsigned long coniox_far *) MK_FP((s),(o))))
-#define pokeb(s,o,x)		(*((unsigned char coniox_far *) MK_FP((s),(o))) = (unsigned char)(x))
-#define pokew(s,o,x)		(*((unsigned short coniox_far *) MK_FP((s),(o))) = (unsigned short)(x))
-#define pokel(s,o,x)		(*((unsigned long coniox_far *) MK_FP((s),(o))) = (unsigned long)(x))
+	#define peekb(s,o)			(*((unsigned char coniox_far *) MK_FP((s),(o))))
+	#define peekw(s,o)			(*((unsigned short coniox_far *) MK_FP((s),(o))))
+	#define peekl(s,o)			(*((unsigned long coniox_far *) MK_FP((s),(o))))
+	#define pokeb(s,o,x)		(*((unsigned char coniox_far *) MK_FP((s),(o))) = (unsigned char)(x))
+	#define pokew(s,o,x)		(*((unsigned short coniox_far *) MK_FP((s),(o))) = (unsigned short)(x))
+	#define pokel(s,o,x)		(*((unsigned long coniox_far *) MK_FP((s),(o))) = (unsigned long)(x))
 #endif
 #endif
 
 #if !(((__DOS__) || (__MSDOS__)))
-    #define coniox_far
+	#define coniox_far
 #endif
 
 #pragma pack(push)
-#pragma pack(1)
+/* #pragma pack(1) */
 
 /**
 Structure holding information about screen.
@@ -248,13 +288,13 @@ struct text_info
 	unsigned short wintop;
 	unsigned short winright;
 	unsigned short winbottom;
-	unsigned short attribute;		/**< current text attribute */
-	unsigned short normattr;		/**< original value of text attribute after start of the application. If you don't called the <TT>inittextinfo</TT> on the beginning of the application, this always will be black background and light gray foreground */
+	unsigned short attribute;
+	unsigned short normattr;
 	unsigned short currmode;
-	unsigned short screenheight;	/**< screen width */
-	unsigned short screenwidth;		/**< screen height */
-	unsigned short curx;						/**< cursor coordinate x */
-	unsigned short cury;						/**< cursor coordinate y */
+	unsigned short screenheight;
+	unsigned short screenwidth;
+	unsigned short curx;
+	unsigned short cury;
 };
 
 /**
@@ -283,7 +323,7 @@ Colors which you can use in your application.
 	} COLORS;
 #endif
 
-#define BLINK			128 
+#define BLINK			128
 #define PASS_MAX		8
 
 
@@ -354,13 +394,13 @@ Structure used by gettext/puttext.
 */
 typedef struct char_info
 {
-    unsigned char letter;	/**< character value */
-    unsigned char attr;	/**< attribute value: background in bits 4-6, blink in bit 7, foreground in bits 0-3 */
+	unsigned char letter;	/**< character value */
+	unsigned char attr;	/**< attribute value: background in bits 4-6, blink in bit 7, foreground in bits 0-3 */
 } char_info;
 
 
 /**
-Controls de video output.
+Controls video output.
 directvideo controls where your program's console output goes:
 0: Goes via ROM calls.
 1: (Default). Goes directly to video RAM
@@ -395,8 +435,8 @@ void clreol(void);
 
 /**
 Clears the text-mode window.
-clrscr clears the current text window and places the cursor in the upper 
-left corner (at position 1,1). 
+clrscr clears the current text window and places the cursor in the upper
+left corner (at position 1,1).
 
 */
 void clrscr(void);
@@ -467,7 +507,7 @@ int movetext(int __left, int __top, int __right, int __bottom, int __destleft, i
 
 /**
 Positions cursor in text window.
-gotoxy moves the cursor to the given position in the current text window. If the coordinates are in any way invalid the call to gotoxy is ignored. 
+gotoxy moves the cursor to the given position in the current text window. If the coordinates are in any way invalid the call to gotoxy is ignored.
 An example of this is a call to 40,30) when (35,25) is the bottom right position in the window. Neither argument to gotoxy can be zero.
 @param x horizontal position
 @param y vertical position
@@ -522,12 +562,12 @@ This function does not affect any characters currently onscreen. It affects only
 @see COLORS
 @see highvideo
 */
-void lowvideo (void);
+void lowvideo(void);
 
 
 /**
 Selects new text background color.
-textbackground selects the background color. This function works for functions that produce output in text mode directly to the screen. 
+textbackground selects the background color. This function works for functions that produce output in text mode directly to the screen.
 newcolor selects the new background color. You can set newcolor to an integer from 0 to 7, or to one of the symbolic constants defined in conio.h. If you use symbolic constants, you must include conio.h.
 Once you have called textbackground, all subsequent functions using direct video output (such as cprintf) will use newcolor. textbackground does not affect any characters currently onscreen.
 @see COLORS
@@ -578,11 +618,23 @@ int cscanf(const char *__format, ...);
 Reads a string from the console.
 cgets reads a string of characters from the console, storing the string (and the string length) in the location pointed to by str.
 cgets reads characters until it encounters a carriage-return/linefeed (CR/LF) combination, or until the maximum allowable number of characters have been read. If cgets reads a CR/LF combination, it replaces the combination with a \0 (null terminator) before storing the string.
-Before cgets is called, set str[0] to the maximum length of the string to be read. On return, str[1] is set to the number of characters actually read. The characters read start at str[2] and end with a null terminator. 
+Before cgets is called, set str[0] to the maximum length of the string to be read. On return, str[1] is set to the number of characters actually read. The characters read start at str[2] and end with a null terminator.
 Thus, str must be at least str[0] plus 2 bytes long.
 */
 char *cgets(char *__str);
 
+
+/**
+Writes formatted output to the screen using an argument list.
+cvprintf is the va_list equivalent of cprintf, in the same way vprintf relates to printf.
+@see cprintf
+@param __format format string
+@param __arglist pointer to the list of arguments
+*/
+int cvprintf(const char *__format, va_list __arglist);
+
+#define _cvprintf	cvprintf
+#define vcprintf	cvprintf
 
 /**
 Writes formatted output to the screen.
@@ -607,11 +659,7 @@ Reads a password.
 getpass reads a password from the system console after prompting with the null-terminated string prompt and disabling the echo. A pointer is returned to a null-terminated string of up to eight characters (not counting the null-terminator).
 @see cgets
 @param prompt prompt which will be displayed to user
-@param str string for the password. <TT>str[0]</TT> have to contain
-length of the <TT>str</TT> - 3
-@returns <TT>&str[2]</TT>, the password will be stored in <TT>str</TT>
-beginning at <TT>str[2]</TT>, in <TT>str[1]</TT> will be length of the
-string without <TT>\\0</TT>, at <TT>str[2 + str[1]]</TT> will be \\0.
+@returns pointer to a static null-terminated string of up to PASS_MAX characters holding the typed password
 */
 char *getpass(const char *__prompt);
 
@@ -639,10 +687,10 @@ int kbhit(void);
 
 /**
 Outputs character to screen.
-putch outputs the character c to the current text window. It is a text mode 
-function performing direct video output to the console. putch does not 
+putch outputs the character c to the current text window. It is a text mode
+function performing direct video output to the console. putch does not
 translate linefeed characters (\n) into carriage-return/linefeed pairs.
-The string is written either directly to screen memory or by way of a BIOS 
+The string is written either directly to screen memory or by way of a BIOS
 call, depending on the value of the global variable _directvideo.
 */
 int putch(int __c);
@@ -698,10 +746,8 @@ void coniox_init(const void *title);
 	#define _cputws		cputws
 	#define _cwprintf	cwprintf
 	#define _cwscanf	cwscanf
-	#define gettextsize(__left, __top, __right, __bottom)	(((__right) - (__left) + 1) * ((__bottom) - (__top) + 1) * 3)
-#else
-#define gettextsize(__left, __top, __right, __bottom)	(((__right) - (__left) + 1) * ((__bottom) - (__top) + 1) * 2)
 #endif
+#define gettextsize(__left, __top, __right, __bottom)	(((__right) - (__left) + 1) * ((__bottom) - (__top) + 1) * 2)
 
 
 #define KEY_SPECIAL     0x100
@@ -743,22 +789,27 @@ Structure used by getwtext/putwtext.
 typedef struct wchar_info
 {
 	wchar_t letter;			/**< character value */
-    unsigned short attr;	/**< attribute value */
+	unsigned short attr;	/**< attribute value */
 } wchar_info;
 
 wchar_t  getwch(void);
-wchar_t  putwch(wchar_t);
 
+#if (((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32))
+	wchar_t  putwch(wchar_t);
+#endif
 
 #if defined(UNICODE)
-	wchar_t *cgetws( wchar_t *__str );
-	int      cputws( const wchar_t *__str );
-	wchar_t  ungetwch( wchar_t );
-	wchar_t  getwche(void);
-	int cwscanf( const wchar_t *__format, ... );
-	int cwprintf( const wchar_t *__format, ... );
-	int putwtext( int __left, int __top, int __right, int __bottom, const wchar_info *__source );
-	int getwtext(int __left, int __top, int __right, int __bottom, wchar_info *__destin);
+	#if (((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32))
+		/* The whole wchar_t family is Windows-only: DOS lacks portable swscanf/vswprintf, and only getwch() exists there. */
+		wchar_t *cgetws( wchar_t *__str );
+		int      cputws( const wchar_t *__str );
+		wchar_t  ungetwch( wchar_t );
+		wchar_t  getwche(void);
+		int cwscanf( const wchar_t *__format, ... );
+		int cwprintf( const wchar_t *__format, ... );
+		int putwtext( int __left, int __top, int __right, int __bottom, const wchar_info *__source );
+		int getwtext(int __left, int __top, int __right, int __bottom, wchar_info *__destin);
+	#endif
 #endif
 
 #pragma pack(pop)

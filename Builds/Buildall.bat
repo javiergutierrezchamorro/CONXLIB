@@ -64,17 +64,17 @@ SET EDPATH=%WATCOM%\EDDAT
 SET INCLUDE=%WATCOM%\H;%WATCOM%\MFC\INCLUDE;%WATCOM%\H\NT;INCLUDE;
 SET LIB=LIB;
 rem *** Win32 ***
-rem DEL coniox_ocw32.exe
-rem WCL386 -w3 -oneatx -ohirbk -ol -ol+ -oi -ei -zp16 -6r  -fpi87 -fp6 -mf -s -ri -zm /bt=nt /l=nt /fhwe /"OPTION ELIMINATE" /"OPTION VFREMOVAL" ..\coniodemo.c ..\coniox.c ..\conxlib.c
-REN coniodemo.exe coniox_ocw32.exe
+DEL conxdemo_ocw32.exe
+WCL386 -w3 -oneatx -ohirbk -ol -ol+ -oi -ei -zp16 -6r -fpi87 -fp6 -mf -s -ri -zm /bt=nt /l=nt /fhwe /"OPTION ELIMINATE" /"OPTION VFREMOVAL" ..\conxdemo.c ..\coniox.c ..\conxlib.c
+REN conxdemo.exe conxdemo_ocw32.exe
 rem *** DOS16 ***
-DEL conxdemo_ocd16.com
-WCL -w3 -oneatx -ohirbk -ol -ol+ -oi -ei -zp4 -0 -mt -s -ri -zm /bt=dos /l=com /fhwe /"OPTION ELIMINATE" /"OPTION VFREMOVAL" ..\conxdemo.c ..\coniox.c ..\conxlib.c
-REN coniodemo.com coniox_ocd16.com
+DEL conxdemo_ocd16.exe
+WCL -w3 -oneatx -ohirbk -ol -ol+ -oi -ei -zp4 -0 -ml -s -ri -zm /bt=dos /l=dos /fhwe /"OPTION ELIMINATE" /"OPTION VFREMOVAL" ..\conxdemo.c ..\coniox.c ..\conxlib.c
+REN conxdemo.exe conxdemo_ocd16.exe
 rem *** DOS32 ***
 DEL conxdemo_ocd32.exe
 WCL386 -w3 -oneatx -ohirbk -ol -ol+ -oi -ei -zp16 -6r -fpi87 -fp6 -mf -s -ri -zm /bt=dos /l=pmodewi /fhwe /"OPTION ELIMINATE" /"OPTION VFREMOVAL" ..\conxdemo.c ..\coniox.c ..\conxlib.c
-REN coniodemo.exe coniox_ocd32.exe
+REN conxdemo.exe conxdemo_ocd32.exe
 
 SET WATCOM=
 SET PATH=%OLDPATH%

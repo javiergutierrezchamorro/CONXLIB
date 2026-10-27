@@ -1,0 +1,5 @@
+CONXDEMO.C CONXLIB 2.0 demonstration program source
+CONXLIB.C CONXLIB library implementation (DOS + Windows)
+CONXLIB.H CONXLIB public header and API
+"descript.ion" 4DOS / Take Command file descriptions for the selector
+README.TXT Project overview and build notes

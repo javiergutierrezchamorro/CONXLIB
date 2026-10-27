@@ -4,66 +4,58 @@
 
 #include "coniox.h"
 
-#define conioxlib_version (190)
+#define conioxlib_version (201)
 #define conioxlib_build (__DATE__)
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-
-#if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32)
-	#include <windows.h>
-	#include <WinUser.h>
-	#define CONIOXLIB_BOX_A_NONE    "       "
-	#define CONIOXLIB_BOX_A_BLOCK   "██▀▄███"
-	#define CONIOXLIB_BOX_A_SINGLE  "┌┐──│└┘"
-	#define CONIOXLIB_BOX_A_DOUBLE  "╔╗══║╚╝"
-	#define CONIOXLIB_BOX_U_SINGLE  "╓╖──║╙╜"
-	#define CONIOXLIB_BOX_S_DOUBLE  U_SIMPLE
-	#define CONIOXLIB_BOX_U_DOUBLE  "╒╕══│╘╛"
-	#define CONIOXLIB_BOX_S_SINGLE  U_DOUBLE
-#else
-	//#include <bios.h>
-	//#include <dir.h>
-	#define CONIOXLIB_BOX_A_NONE    "       "
-	#define CONIOXLIB_BOX_A_BLOCK   "ÛÛßÜÛÛÛ"
-	#define CONIOXLIB_BOX_A_SINGLE  "Ú¿ÄÄ³ÀÙ"
-	#define CONIOXLIB_BOX_A_DOUBLE  "É»ÍÍºÈ¼"
-	#define CONIOXLIB_BOX_U_SINGLE  "Ö·ÄÄºÓ½"
-	#define CONIOXLIB_BOX_S_DOUBLE  U_SIMPLE
-	#define CONIOXLIB_BOX_U_DOUBLE  "Õ¸ÍÍ³Ô¾"
-	#define CONIOXLIB_BOX_S_SINGLE  U_DOUBLE
-#endif
-#include "conxlib.h"
-
+/* Box characters in CP437: defined by value so sources compile the same on DOS and Windows with any encoding */
+#define CONIOXLIB_BOX_A_NONE    "       "
+#define CONIOXLIB_BOX_A_BLOCK   "\xDB\xDB\xDF\xDC\xDB\xDB\xDB"
+#define CONIOXLIB_BOX_A_SINGLE  "\xDA\xBF\xC4\xC4\xB3\xC0\xD9"
+#define CONIOXLIB_BOX_A_DOUBLE  "\xC9\xBB\xCD\xCD\xBA\xC8\xBC"
+#define CONIOXLIB_BOX_U_SINGLE  "\xD6\xB7\xC4\xC4\xBA\xD3\xBD"
+#define CONIOXLIB_BOX_S_DOUBLE  CONIOXLIB_BOX_U_SINGLE
+#define CONIOXLIB_BOX_U_DOUBLE  "\xD5\xB8\xCD\xCD\xB3\xD4\xBE"
+#define CONIOXLIB_BOX_S_SINGLE  CONIOXLIB_BOX_U_DOUBLE
 
 #define CONIOXLIB_BOX_SHADOW    1
 #define CONIOXLIB_BOX_CLOSE     2
 #define CONIOXLIB_BOX_NOWINDOW	4
 
-#define KBD_UP    0x4800
-#define KBD_DOWN  0x5000
-#define KBD_LEFT  0x4B00
-#define KBD_RIGHT 0x4D00
-#define KBD_PGUP  0x4900
-#define KBD_PGDW  0x5100
-#define KBD_ORG   0x4700
-#define KBD_END   0x4F00
-#define KBD_ENTER 0x1C0D
-#define KBD_ESC   0x011B
-#define KBD_F1    0x3B00
-#define KBD_F2    0x3C00
-#define KBD_F3    0x3D00
-#define KBD_F4    0x3E00
-#define KBD_F5    0x3F00
-#define KBD_F6    0x4000
-#define KBD_F7    0x4100
-#define KBD_F8    0x4200
-#define KBD_F9    0x4300
-#define KBD_F10   0x4400
+/* Portable key codes built on coniox KEY_* (scan codes). Extended keys arrive as (scan << 8). */
+#define KBD_UP    ((KEY_UP) << 8)
+#define KBD_DOWN  ((KEY_DOWN) << 8)
+#define KBD_LEFT  ((KEY_LEFT) << 8)
+#define KBD_RIGHT ((KEY_RIGHT) << 8)
+#define KBD_PGUP  ((KEY_PGUP) << 8)
+#define KBD_PGDW  ((KEY_PGDN) << 8)
+#define KBD_ORG   ((KEY_HOME) << 8)
+#define KBD_END   ((KEY_END) << 8)
+#define KBD_ENTER 0x0D
+#define KBD_ESC   KEY_ESC
+#define KBD_BACK  0x08
+#define KBD_TAB   0x09
+#define KBD_STAB  0x0F00
+#define KBD_SPACE 0x20
+#define KBD_INS   ((KEY_INSERT) << 8)
+#define KBD_F1    ((KEY_F1) << 8)
+#define KBD_F2    ((KEY_F2) << 8)
+#define KBD_F3    ((KEY_F3) << 8)
+#define KBD_F4    ((KEY_F4) << 8)
+#define KBD_F5    ((KEY_F5) << 8)
+#define KBD_F6    ((KEY_F6) << 8)
+#define KBD_F7    ((KEY_F7) << 8)
+#define KBD_F8    ((KEY_F8) << 8)
+#define KBD_F9    ((KEY_F9) << 8)
+#define KBD_F10   ((KEY_F10) << 8)
 
 #define conioxlib_textsize(x1, y1, x2, y2)  ((((x2)-(x1)+1)*((y2)-(y1)+1))<<1)
+
+/* Attribute helpers using CONIOX color names */
+#define CONIOXLIB_ATTR(fg, bg)	((unsigned int)(((bg) << 4) | (fg)))
 
 
 struct conioxlib_smousestatus
@@ -89,62 +81,163 @@ struct conioxlib_sfiles
 
 struct conioxlib_scountry
 {
-	unsigned int date;					/* Formato de fecha */
-	char curr[5];               /* S¡mbolo de moneda */
-	char thsep[2];              /* Separador de miles */
-	char dsep[2];               /* Separador decimal */
-	char dtsep[2];              /* Separador de fecha */
-	char tmsep[2];              /* Separador de hora */
-	unsigned char currstyle[2]; /* Estilo de moneda */
-	unsigned char digits;       /* D¡gitos significativos de la moneda */
-	unsigned char time;         /* Formato de hora */
-	unsigned long int convcase; /* Conversi¢n a may£sculas */
-	unsigned char dasep;        /* Separador de datos */
-	char reserved[10];          /* Reservado */
-	unsigned int code;          /* C¢digo de p gina */
+	unsigned int date;					/* Date format */
+	char curr[5];               /* Currency symbol */
+	char thsep[2];              /* Thousands separator */
+	char dsep[2];               /* Decimal separator */
+	char dtsep[2];              /* Date separator */
+	char tmsep[2];              /* Time separator */
+	unsigned char currstyle[2]; /* Currency style */
+	unsigned char digits;       /* Significant currency digits */
+	unsigned char time;         /* Time format */
+	unsigned long int convcase; /* Uppercase conversion */
+	unsigned char dasep;        /* Data separator */
+	char reserved[10];          /* Reserved */
+	unsigned int code;          /* Code page */
+};
+
+
+/* Extended free disk space: filled by conioxlib_getdiskfree_ext() */
+struct conioxlib_sdiskfree
+{
+	unsigned int size;                  /* Size of this structure */
+	unsigned int version;               /* Structure version */
+	unsigned long int sectors_per_cluster;
+	unsigned long int bytes_per_sector;
+	unsigned long int avail_clusters;   /* Free clusters */
+	unsigned long int total_clusters;   /* Total clusters */
 };
 
 
 extern struct conioxlib_smousestatus conioxlib_mousestatus;
 
+/* After pollmouse(), keyboard may sit in pendingkey; use these instead of raw kbhit/getch. */
+unsigned int conioxlib_getkey(void);
+int conioxlib_kbhit(void);
+
 
 void conioxlib_pollmouse(void);
-void conioxlib_box(unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2, unsigned int atr, char* tipo, char* titulo, unsigned int sombra);
-void conioxlib_cputsc(unsigned int x1, unsigned int x2, unsigned int y, char* str);
+void conioxlib_box(unsigned short x1, unsigned short y1, unsigned short x2, unsigned short y2, unsigned int atr, char *frame, char *title, unsigned int flags);
+void conioxlib_cputsc(unsigned short x1, unsigned short x2, unsigned short y, char *str);
 void conioxlib_blocks(void);
 void conioxlib_clock(void);
 
-void getcountry(struct conioxlib_scountry *);
-void setpal (unsigned char);
-void empuja (void);
-unsigned int ckey (void);
+void conioxlib_getcountry(struct conioxlib_scountry *);
+/* getdiskfree_ext(): drive 0 = current, 1 = A, 2 = B... Fills df; returns 0 on
+   success, 1 on error. DOS uses int 21h AX=7303h (FAT32) with AH=36h fallback. */
+unsigned char conioxlib_getdiskfree_ext(unsigned char drive, struct conioxlib_sdiskfree *df);
+/* filesize(): file length in bytes, 0xFFFFFFFFUL when it cannot be opened/read */
+unsigned long int conioxlib_filesize(const char *path);
+void conioxlib_setpal(unsigned char);
+/* vgaremap(): DOS only. With 1 remaps font glyphs 0x01 (mouse pointer), 0x10/0x11
+   (solid triangles) and 0x18/0x19 (chunky arrows) of the 8x16 VGA font, hides the
+   driver pointer and enables the library-drawn mouse pointer; with 0 restores the
+   driver pointer. No-op on Windows and 32-bit Watcom. */
+void conioxlib_vgaremap(unsigned char on);
+void conioxlib_push(void);
+void conioxlib_bounce(void);
+void conioxlib_wipe(void);
+unsigned int conioxlib_ckey(void);
+void conioxlib_getstr(unsigned short x, unsigned short y, unsigned char atr, char *str, char len);
+void conioxlib_getpw(unsigned short x, unsigned short y, unsigned char atr, char *pass, char len);
+unsigned char conioxlib_grid(unsigned short x1, unsigned short y1, unsigned char atr0, unsigned char atr1, char items[][16], unsigned char noptions);
+/* Escribe s en (x,y) con el color atr; la tecla caliente (marcada con '&' o la
+   primera letra) se pinta con el color de primer plano atrhot sobre el fondo propio. */
+void conioxlib_cputs_hot(unsigned short x, unsigned short y, unsigned char atr, unsigned char atrhot, const char *s);
+/* Boton estilo Turbo Vision 2.0: cara de espacios coloreados con el titulo centrado,
+   esquina superior derecha 0xDC y fila inferior de sombra 0xDF (atributo 0x08), sin
+   caracteres de marco. El ancho de cada boton es la longitud visible del titulo + 4;
+   el parametro "separation" es el hueco horizontal entre botones. atrhot aporta solo
+   el color de primer plano de la tecla caliente; el fondo es siempre el del boton. */
+unsigned char conioxlib_buttons(unsigned short x1, unsigned short y1, unsigned char atr0, unsigned char atr1, unsigned char atrhot, char items[][11], char desc[][71], unsigned char noptions, unsigned char separation);
+/* Item whose first character is '-' is a non-selectable separator (drawn as a line). */
+#define CONIOXLIB_SEPARATOR	"-"
+/* menu()/menubar() reserved return codes (valid item indices are 0..noptions-1) */
+#define CONIOXLIB_MENU_RIGHT	252
+#define CONIOXLIB_MENU_LEFT	253
+#define CONIOXLIB_MENU_HELP	254
+#define CONIOXLIB_MENU_ESC	255
+/* menu(): items whose first character is '-' are non-selectable separators.
+   Every row is drawn full-width (the widest visible item, up to 20 columns), so
+   the highlight bar covers the whole width and redrawing leaves no debris. If
+   the items do not fit between y1 and row 24 a scrollbar is drawn to the right
+   (0x18/0x19 arrows, 0xB0 track, 0xB2 thumb) and the list pages with PGUP/PGDN,
+   the mouse wheel or a click on the bar. sel selects the initial item. */
+unsigned char conioxlib_menu(unsigned short x1, unsigned short y1, unsigned char atr0, unsigned char atr1, unsigned char atrhot, char items[][21], char desc[][71], unsigned char noptions, unsigned char separation, unsigned char sel);
+/* Top menu bar (Borland-style). Returns selected index, CONIOXLIB_MENU_ESC/HELP on cancel.
+   init sets the initially highlighted item (clamped to noptions-1). */
+unsigned char conioxlib_menubar(unsigned short y, unsigned char atr0, unsigned char atr1, unsigned char atrhot, char items[][21], char desc[][71], unsigned char noptions, unsigned char init);
+unsigned char conioxlib_option(unsigned short x1, unsigned short y1, unsigned char atr0, unsigned char atr1, unsigned char atrhot, char items[][21], char desc[][71], char *sel, unsigned char noptions, unsigned char separation, unsigned char activado);
+unsigned char conioxlib_property(unsigned short x1, unsigned short y1, unsigned char atr0, unsigned char atr1, unsigned char atrhot, char items[][21], char desc[][71], char *sel, unsigned char noptions, unsigned char separation, unsigned char activado);
+void conioxlib_background(unsigned char msg[]);
+void conioxlib_hello(char *, unsigned char);
+void conioxlib_bye(char *, unsigned char, unsigned char);
+void conioxlib_about(unsigned char);
+unsigned char conioxlib_exittodos(char *);
+void conioxlib_screensaver(void);
+void conioxlib_shell(unsigned short x1, unsigned short y1, unsigned short x2, unsigned short y2, char *);
+/* conioxlib_calendar(): month is 1 = January .. 12 = December; 0 uses the current month */
+void conioxlib_calendar(unsigned short x, unsigned short y, unsigned char atr0, unsigned char atr1, unsigned char atr2, unsigned char day, unsigned char month, unsigned int year);
+unsigned char conioxlib_view(unsigned short x1, unsigned short y1, unsigned short x2, unsigned short y2, unsigned char atr0, unsigned char atr1, char buffer[][61], unsigned char ultimo, char *title);
+unsigned char conioxlib_help(unsigned short x1, unsigned short y1, unsigned short x2, unsigned short y2, unsigned char atr0, unsigned char atr1, char *, char *, char[][61]);
+unsigned char conioxlib_helpindex(unsigned short x1, unsigned short y1, unsigned char atr0, unsigned char atr1, char *, char [][16]);
+unsigned char conioxlib_select(unsigned char *, char *, struct conioxlib_sfiles *);
 
+/* Theme package: 0=Borland C++ 3.1, 1=Turbo C 2.0, 2=Turbo C 1.x, 3=Norton Utilities, 4=PC Tools */
+struct conioxlib_stheme
+{
+	unsigned char atr0;
+	unsigned char atr1;
+	unsigned char atrhot;
+	unsigned char atrstatus;
+	unsigned char atrdialog;
+	char *frame;
+	char name[20];
+};
+void conioxlib_theme(unsigned char id);
+void conioxlib_gettheme(struct conioxlib_stheme *t);
 
-void cputsc (unsigned char, unsigned char, unsigned char, char *);
-void getstr (unsigned char, unsigned char, unsigned char, char *, char);
-void getpw (unsigned char, unsigned char, unsigned char, char *, char);
-unsigned char tabla (unsigned char, unsigned char, unsigned char, unsigned char, char [][16], unsigned char);
-unsigned char buttons (unsigned char, unsigned char, unsigned char, unsigned char, char [][11], char [][71], unsigned char, unsigned char);
-unsigned char menu (unsigned char, unsigned char, unsigned char, unsigned char, char [][21], char [][71], unsigned char, unsigned char);
-unsigned char option (unsigned char, unsigned char, unsigned char, unsigned char, char [][21], char [][71], char *, unsigned char, unsigned char, unsigned char);
-unsigned char property (unsigned char, unsigned char, unsigned char, unsigned char, char [][21], char [][71], char *, unsigned char, unsigned char, unsigned char);
-void box (unsigned char, unsigned char, unsigned char, unsigned char, unsigned char, char *, char *, unsigned char);
-void hello (char *, unsigned char);
-void bye (char *, unsigned char, unsigned char);
-//void interrupt error (unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int);
-void background (unsigned char msg[]);
-void about (unsigned char);
-unsigned char exittodos (char *);
-void screensaver (void);
-void rebota (void);
-void shell (unsigned char, unsigned char, unsigned char, unsigned char, char *);
-//void interrupt shell_patch (unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int);
-void calendar (unsigned char, unsigned char, unsigned char, unsigned char, unsigned char, unsigned char, unsigned char, unsigned int);
-unsigned char view (unsigned char, unsigned char, unsigned char, unsigned char, unsigned char, unsigned char, char [][61], unsigned char ultimo, char *);
-unsigned char help (unsigned char, unsigned char, unsigned char, unsigned char, unsigned char, unsigned char, char *, char *, char[][61]);
-unsigned char helpindex (unsigned char, unsigned char, unsigned char, unsigned char, char *, char [][16]);
-//unsigned char select (unsigned char *, char *, struct conioxlib_sfiles *);
-int select_sort(const void *, const void *);
-void select_puntua (char *, long int);
+/* Safer screen region save/restore (malloc inside; restorescr frees) */
+char *conioxlib_savescr(unsigned short x1, unsigned short y1, unsigned short x2, unsigned short y2);
+void conioxlib_restorescr(unsigned short x1, unsigned short y1, unsigned short x2, unsigned short y2, char *buf);
+
+void conioxlib_status(const char *msg);
+void conioxlib_tooltip(unsigned short x, unsigned short y, const char *msg, unsigned int ms);
+void conioxlib_progressbar(unsigned short x, unsigned short y, unsigned short width, unsigned char atr, unsigned int value, unsigned int maxv);
+void conioxlib_progress(const char *title, unsigned int value, unsigned int maxv);
+unsigned char conioxlib_msgbox(const char *title, const char *msg, char buttons[][11], unsigned char nbuttons);
+unsigned char conioxlib_inputbox(const char *title, const char *label, char *buf, char len);
+unsigned char conioxlib_inputmask(const char *title, const char *label, char *buf, char len, char mindigits);
+unsigned char conioxlib_listbox(unsigned short x1, unsigned short y1, unsigned short x2, unsigned short y2, unsigned char atr0, unsigned char atr1, char items[][41], unsigned char nitems, char *title);
+unsigned char conioxlib_edit(char *filename);
+
+#if ((__DOS__) || (__MSDOS__)) && defined(__TURBOC__)
+void interrupt error(unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int);
+void interrupt conioxlib_shell_patch(unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int);
+#endif
+
+/* Compatibility aliases with the original CONXLIB short names */
+#define textsize(x1, y1, x2, y2)	conioxlib_textsize(x1, y1, x2, y2)
+#define cputsc		conioxlib_cputsc
+#define box		conioxlib_box
+#define watch		conioxlib_clock
+#define blocks		conioxlib_blocks
+#define A_NONE		CONIOXLIB_BOX_A_NONE
+#define A_BLOCK		CONIOXLIB_BOX_A_BLOCK
+#define A_SINGLE	CONIOXLIB_BOX_A_SINGLE
+#define A_DOUBLE	CONIOXLIB_BOX_A_DOUBLE
+#define U_SINGLE	CONIOXLIB_BOX_U_SINGLE
+#define S_DOUBLE	CONIOXLIB_BOX_S_DOUBLE
+#define U_DOUBLE	CONIOXLIB_BOX_U_DOUBLE
+#define S_SINGLE	CONIOXLIB_BOX_S_SINGLE
+#define SHADOW		CONIOXLIB_BOX_SHADOW
+#define CLOSE		CONIOXLIB_BOX_CLOSE
+#define NOWINDOW	CONIOXLIB_BOX_NOWINDOW
+#define sfiles		conioxlib_sfiles
+#define scountry	conioxlib_scountry
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
