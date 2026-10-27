@@ -52,10 +52,18 @@ extern "C" {
 #define KBD_F9    ((KEY_F9) << 8)
 #define KBD_F10   ((KEY_F10) << 8)
 
-#define conioxlib_textsize(x1, y1, x2, y2)  ((((x2)-(x1)+1)*((y2)-(y1)+1))<<1)
 
 /* Attribute helpers using CONIOX color names */
 #define CONIOXLIB_ATTR(fg, bg)	((unsigned int)(((bg) << 4) | (fg)))
+
+/* Large static buffers are declared far under 16 bit DOS compilers (Watcom
+   large model, Borland) so they do not overflow the 64 KB DGROUP segment;
+   the macro is empty everywhere else */
+#if ((__DOS__) || (__MSDOS__)) && !defined(__FLAT__) && !defined(__DJGPP__) && (defined(__WATCOMC__) || defined(__TURBOC__))
+#define CONIOXLIB_FARDATA	far
+#else
+#define CONIOXLIB_FARDATA
+#endif
 
 
 struct conioxlib_smousestatus
@@ -117,8 +125,8 @@ int conioxlib_kbhit(void);
 
 
 void conioxlib_pollmouse(void);
-void conioxlib_box(unsigned short x1, unsigned short y1, unsigned short x2, unsigned short y2, unsigned int atr, char *frame, char *title, unsigned int flags);
-void conioxlib_cputsc(unsigned short x1, unsigned short x2, unsigned short y, char *str);
+void conioxlib_box(unsigned short x1, unsigned short y1, unsigned short x2, unsigned short y2, unsigned int atr, const char *frame, const char *title, unsigned int flags);
+void conioxlib_cputsc(unsigned short x1, unsigned short x2, unsigned short y, const char *str);
 void conioxlib_blocks(void);
 void conioxlib_clock(void);
 
@@ -141,14 +149,17 @@ unsigned int conioxlib_ckey(void);
 void conioxlib_getstr(unsigned short x, unsigned short y, unsigned char atr, char *str, char len);
 void conioxlib_getpw(unsigned short x, unsigned short y, unsigned char atr, char *pass, char len);
 unsigned char conioxlib_grid(unsigned short x1, unsigned short y1, unsigned char atr0, unsigned char atr1, char items[][16], unsigned char noptions);
-/* Escribe s en (x,y) con el color atr; la tecla caliente (marcada con '&' o la
-   primera letra) se pinta con el color de primer plano atrhot sobre el fondo propio. */
+/* Writes s at (x,y) with the atr color; the accelerator key (marked with an
+   ampersand or the first letter) is painted with the atrhot foreground over its own background. */
 void conioxlib_cputs_hot(unsigned short x, unsigned short y, unsigned char atr, unsigned char atrhot, const char *s);
-/* Boton estilo Turbo Vision 2.0: cara de espacios coloreados con el titulo centrado,
-   esquina superior derecha 0xDC y fila inferior de sombra 0xDF (atributo 0x08), sin
-   caracteres de marco. El ancho de cada boton es la longitud visible del titulo + 4;
-   el parametro "separation" es el hueco horizontal entre botones. atrhot aporta solo
-   el color de primer plano de la tecla caliente; el fondo es siempre el del boton. */
+/* Button in Turbo Vision 2.0 style (TButton::drawState()): a face of colored spaces
+   with the centered title (in the gray Borland dialogs: green background, black
+   text and yellow accelerator; white text when selected), top-right corner
+   0xDC and a bottom row of two spaces plus the 0xDF strip up to the last column
+   (shadow attribute 0x70), no frame characters. The width of each button is the
+   visible title length + 4; the "separation" parameter is the horizontal gap
+   between buttons. atrhot provides only the foreground color of the accelerator;
+   the background is always the one of the button. */
 unsigned char conioxlib_buttons(unsigned short x1, unsigned short y1, unsigned char atr0, unsigned char atr1, unsigned char atrhot, char items[][11], char desc[][71], unsigned char noptions, unsigned char separation);
 /* Item whose first character is '-' is a non-selectable separator (drawn as a line). */
 #define CONIOXLIB_SEPARATOR	"-"
@@ -167,8 +178,8 @@ unsigned char conioxlib_menu(unsigned short x1, unsigned short y1, unsigned char
 /* Top menu bar (Borland-style). Returns selected index, CONIOXLIB_MENU_ESC/HELP on cancel.
    init sets the initially highlighted item (clamped to noptions-1). */
 unsigned char conioxlib_menubar(unsigned short y, unsigned char atr0, unsigned char atr1, unsigned char atrhot, char items[][21], char desc[][71], unsigned char noptions, unsigned char init);
-unsigned char conioxlib_option(unsigned short x1, unsigned short y1, unsigned char atr0, unsigned char atr1, unsigned char atrhot, char items[][21], char desc[][71], char *sel, unsigned char noptions, unsigned char separation, unsigned char activado);
-unsigned char conioxlib_property(unsigned short x1, unsigned short y1, unsigned char atr0, unsigned char atr1, unsigned char atrhot, char items[][21], char desc[][71], char *sel, unsigned char noptions, unsigned char separation, unsigned char activado);
+unsigned char conioxlib_option(unsigned short x1, unsigned short y1, unsigned char atr0, unsigned char atr1, unsigned char atrhot, char items[][21], char desc[][71], char *sel, unsigned char noptions, unsigned char separation, unsigned char enabled);
+unsigned char conioxlib_property(unsigned short x1, unsigned short y1, unsigned char atr0, unsigned char atr1, unsigned char atrhot, char items[][21], char desc[][71], char *sel, unsigned char noptions, unsigned char separation, unsigned char enabled);
 void conioxlib_background(unsigned char msg[]);
 void conioxlib_hello(char *, unsigned char);
 void conioxlib_bye(char *, unsigned char, unsigned char);
@@ -176,14 +187,17 @@ void conioxlib_about(unsigned char);
 unsigned char conioxlib_exittodos(char *);
 void conioxlib_screensaver(void);
 void conioxlib_shell(unsigned short x1, unsigned short y1, unsigned short x2, unsigned short y2, char *);
-/* conioxlib_calendar(): month is 1 = January .. 12 = December; 0 uses the current month */
-void conioxlib_calendar(unsigned short x, unsigned short y, unsigned char atr0, unsigned char atr1, unsigned char atr2, unsigned char day, unsigned char month, unsigned int year);
-unsigned char conioxlib_view(unsigned short x1, unsigned short y1, unsigned short x2, unsigned short y2, unsigned char atr0, unsigned char atr1, char buffer[][61], unsigned char ultimo, char *title);
+/* conioxlib_calendar(): interactive month view; month is 1 = January .. 12 = December, 0 uses the current month, and day, month and year receive the date chosen with the cursors, PGUP/PGDW (month), HOME/END (year) or the mouse; returns 1 when ENTER picks a day and 0 when ESC cancels */
+unsigned char conioxlib_calendar(unsigned short x, unsigned short y, unsigned char atr0, unsigned char atr1, unsigned char atr2, unsigned char *day, unsigned char *month, unsigned int *year);
+unsigned char conioxlib_view(unsigned short x1, unsigned short y1, unsigned short x2, unsigned short y2, unsigned char atr0, unsigned char atr1, char buffer[][61], unsigned char last, const char *title);
 unsigned char conioxlib_help(unsigned short x1, unsigned short y1, unsigned short x2, unsigned short y2, unsigned char atr0, unsigned char atr1, char *, char *, char[][61]);
 unsigned char conioxlib_helpindex(unsigned short x1, unsigned short y1, unsigned char atr0, unsigned char atr1, char *, char [][16]);
-unsigned char conioxlib_select(unsigned char *, char *, struct conioxlib_sfiles *);
+unsigned char conioxlib_filemultiselector(unsigned char *sdisk, char *sdir, struct conioxlib_sfiles *files);
+/* conioxlib_fileselector(): compact single file picker (drives, directories and names only) for the Open and Save as dialogs; returns 1 when a file is chosen and 0 when cancelled */
+unsigned char conioxlib_fileselector(unsigned char *sdisk, char *sdir, char *name);
 
-/* Theme package: 0=Borland C++ 3.1, 1=Turbo C 2.0, 2=Turbo C 1.x, 3=Norton Utilities, 4=PC Tools */
+/* Theme package: 0=Borland C++ 3.1, 1=Turbo C 2.0, 2=Turbo C 1.x, 3=Norton Utilities 9, 4=PC Tools, 5=Turbo Pascal 7.0, 6=Norton Commander, 7=MS-DOS Edit, 8=Lotus 1-2-3 */
+#define CONIOXLIB_THEMES	9
 struct conioxlib_stheme
 {
 	unsigned char atr0;
@@ -208,8 +222,8 @@ void conioxlib_progress(const char *title, unsigned int value, unsigned int maxv
 unsigned char conioxlib_msgbox(const char *title, const char *msg, char buttons[][11], unsigned char nbuttons);
 unsigned char conioxlib_inputbox(const char *title, const char *label, char *buf, char len);
 unsigned char conioxlib_inputmask(const char *title, const char *label, char *buf, char len, char mindigits);
-unsigned char conioxlib_listbox(unsigned short x1, unsigned short y1, unsigned short x2, unsigned short y2, unsigned char atr0, unsigned char atr1, char items[][41], unsigned char nitems, char *title);
-unsigned char conioxlib_edit(char *filename);
+unsigned char conioxlib_listbox(unsigned short x1, unsigned short y1, unsigned short x2, unsigned short y2, unsigned char atr0, unsigned char atr1, char items[][41], unsigned char nitems, const char *title);
+unsigned char conioxlib_edit(unsigned short x1, unsigned short y1, unsigned short x2, unsigned short y2, unsigned char atr0, unsigned char atr1, const char *title, const char *filename);
 
 #if ((__DOS__) || (__MSDOS__)) && defined(__TURBOC__)
 void interrupt error(unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int);
@@ -217,10 +231,10 @@ void interrupt conioxlib_shell_patch(unsigned int, unsigned int, unsigned int, u
 #endif
 
 /* Compatibility aliases with the original CONXLIB short names */
-#define textsize(x1, y1, x2, y2)	conioxlib_textsize(x1, y1, x2, y2)
+#define textsize(x1, y1, x2, y2)	gettextsize(x1, y1, x2, y2)
 #define cputsc		conioxlib_cputsc
 #define box		conioxlib_box
-#define watch		conioxlib_clock
+#define conioxlib_watch		conioxlib_clock
 #define blocks		conioxlib_blocks
 #define A_NONE		CONIOXLIB_BOX_A_NONE
 #define A_BLOCK		CONIOXLIB_BOX_A_BLOCK
