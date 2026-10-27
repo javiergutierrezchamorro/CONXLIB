@@ -65,7 +65,7 @@ or U_DOUBLE; title is painted centered on the top border;
 flags combines SHADOW, CLOSE and NOWINDOW.
 Example:
   box(3, 3, 36, 23, CONIOXLIB_ATTR(BLACK, CYAN),
-      A_DOUBLE, \"Files\", SHADOW | CLOSE);
+      A_DOUBLE, "Files", SHADOW | CLOSE);
 @cputsc
 Prototype:
 void conioxlib_cputsc(unsigned short x1, unsigned short x2,
@@ -74,7 +74,7 @@ Writes str centered between columns x1 and x2 on row y.
 Parameters: x1 and x2 define the centering range, y is the
 destination row and str the text to write.
 Example:
-  cputsc(20, 60, 9, \"Title\");
+  cputsc(20, 60, 9, "Title");
 @blocks
 Prototype:
 void conioxlib_blocks(void);
@@ -93,11 +93,11 @@ Parameters: none.
 It shows the time in columns 76 to 80 with the color of
 the active theme and also refreshes the lock indicators.
 Call it inside every wait loop; the compatibility alias
-is watch().
+is conioxlib_watch().
 Example:
   while (!conioxlib_kbhit())
   {
-      watch();
+      conioxlib_watch();
   }
 @getcountry
 Prototype:
@@ -109,8 +109,8 @@ the currency style and digits and the time format.
 Example:
   struct conioxlib_scountry c;
   conioxlib_getcountry(&c);
-  printf(\"Currency: %s\", c.curr);
-@getdiskfree_ext
+  printf("Currency: %s", c.curr);
+@getdiskfree
 Prototype:
 unsigned char conioxlib_getdiskfree_ext(
     unsigned char drive, struct conioxlib_sdiskfree *df);
@@ -124,7 +124,7 @@ Example:
   struct conioxlib_sdiskfree df;
   if (conioxlib_getdiskfree_ext(3, &df) == 0)
   {
-      printf(\"%lu KB free\",
+      printf("%lu KB free",
           (df.avail_clusters * df.sectors_per_cluster
           * df.bytes_per_sector) / 1024UL);
   }
@@ -136,7 +136,7 @@ Parameters: path is the file to measure.
 It returns 0xFFFFFFFFUL when the file cannot be opened or
 read.
 Example:
-  fsz = conioxlib_filesize(\"CONXDEMO.C\");
+  fsz = conioxlib_filesize("CONXDEMO.C");
 @setpal
 Prototype:
 void conioxlib_setpal(unsigned char e);
@@ -212,7 +212,7 @@ BACKSPACE erases and ENTER accepts; ESC restores the
 initial text.
 Example:
   char name[15];
-  strcpy(name, \"CONXLIB\");
+  strcpy(name, "CONXLIB");
   conioxlib_getstr(10, 5, CONIOXLIB_ATTR(WHITE, BLUE),
       name, 14);
 @getpw
@@ -238,7 +238,7 @@ Parameters: atr0 is the normal color and atr1 the selected
 one, items holds the texts and noptions their number.
 The arrow keys, the mouse wheel and the left button move
 the selection. Returns the index of the chosen item or 255
-when cancelled with ESC or the close button.
+when cancelled with ESC.
 Example:
   i = conioxlib_grid(41, 6, atr0, atr1, items, 9);
 @cputs_hot
@@ -252,7 +252,7 @@ the highlighted letter. An ampersand before a letter
 marks it as the accelerator and is never drawn; with no
 ampersand the first letter is the accelerator.
 Example:
-  conioxlib_cputs_hot(10, 5, atr, atrhot, \"&File\");
+  conioxlib_cputs_hot(10, 5, atr, atrhot, "&File");
 @buttons
 Prototype:
 unsigned char conioxlib_buttons(unsigned short x1,
@@ -265,8 +265,10 @@ Parameters: (x1,y1) is the top left corner, atr0 and atr1
 are the normal and pressed colors, atrhot the accelerator
 color, items the labels, desc the status line hints,
 noptions their number and separation the gap between
-buttons. Returns the index of the pressed button, 255
-when F1 was pressed or 0 when cancelled with ESC.
+buttons. The chosen button flashes inverted like the
+Turbo Vision press feedback. Returns the index of the
+pressed button, 255 when F1 was pressed or 0 when
+cancelled with ESC.
 Example:
   i = conioxlib_buttons(28, 12, atr0, atr1, atrhot,
       btns, descs, 3, 2);
@@ -304,9 +306,8 @@ colors, atrhot the accelerator color, items the labels,
 desc the hints, noptions their number and init the item
 highlighted on entry. The horizontal wheel and the arrows
 move; ENTER or a click picks an item.
-Returns the chosen index, CONIOXLIB_MENU_ESC,
-CONIOXLIB_MENU_LEFT, CONIOXLIB_MENU_RIGHT or
-CONIOXLIB_MENU_HELP.
+Returns the chosen index, CONIOXLIB_MENU_ESC
+or CONIOXLIB_MENU_HELP.
 Example:
   i = conioxlib_menubar(1, atr0, atr1, atrhot, bar,
       desc, 4, 0);
@@ -320,13 +321,13 @@ unsigned char conioxlib_option(unsigned short x1,
     unsigned char enabled);
 Runs a list of check boxes.
 Parameters: sel holds one mark byte per item, a space for
-unchecked and the character \\xFE for checked; enabled
+unchecked and the character \xFE for checked; enabled
 must be nonzero to allow interaction. The space bar and
 the left button toggle the entries. Returns 255 when F1
 was pressed or 0 when the dialog is closed.
 Example:
   memset(sel, ' ', 9);
-  sel[0] = '\\xFE';
+  sel[0] = '\xFE';
   r = conioxlib_option(41, 6, atr0, atr1, atrhot,
       items, desc, sel, 9, 1, 1);
 @property
@@ -339,10 +340,10 @@ unsigned char conioxlib_property(unsigned short x1,
     unsigned char enabled);
 Runs a radio button list: exactly one item is marked.
 Parameters: identical to conioxlib_option(), but only one
-entry holds the character \\xFE mark at a time.
+entry holds the character \xFE mark at a time.
 Returns 255 when F1 was pressed or 0 on close.
 Example:
-  sel[demo_theme] = '\\xFE';
+  sel[demo_theme] = '\xFE';
   r = conioxlib_property(41, 6, atr0, atr1, atrhot,
       names, desc, sel, 9, 1, 1);
 @background
@@ -364,7 +365,7 @@ the shareware and the personal about text.
 Under Turbo C it also installs the critical error
 handler restored by conioxlib_bye().
 Example:
-  conioxlib_hello(\"CONXDEMO.TMP\", 0);
+  conioxlib_hello("CONXDEMO.TMP", 0);
 @bye
 Prototype:
 void conioxlib_bye(char *name, unsigned char e,
@@ -374,7 +375,7 @@ the program.
 Parameters: name is the same file given to hello(), e is
 the exit code and commercial selects the farewell text.
 Example:
-  conioxlib_bye(\"CONXDEMO.TMP\", 0, 0);
+  conioxlib_bye("CONXDEMO.TMP", 0, 0);
 @about
 Prototype:
 void conioxlib_about(unsigned char commercial);
@@ -412,24 +413,29 @@ void conioxlib_shell(unsigned short x1, unsigned short y1,
 Runs a DOS shell inside a window.
 Parameters: the rectangle frames the shell output and
 command is the program to run; an empty command starts
-the interactive interpreter named by COMSPEC. Type EXIT
-inside the shell to come back; the screen is restored on
-return.
+the interactive interpreter named by COMSPEC. Under
+Windows the shell takes the whole screen and the
+rectangle is ignored. Type EXIT inside the shell to
+come back; the screen is restored on return.
 Example:
-  conioxlib_shell(3, 2, 75, 22, \"\");
+  conioxlib_shell(3, 2, 75, 22, "");
 @calendar
 Prototype:
-void conioxlib_calendar(unsigned short x, unsigned short y,
-    unsigned char atr0, unsigned char atr1,
-    unsigned char atr2, unsigned char day,
-    unsigned char month, unsigned int year);
-Draws a month calendar at (x,y) and waits for a key.
-Parameters: atr0 is the color of the normal days, atr1 the
-color of the day chosen with the day parameter and atr2
-the color of the Sundays; day, month and year set the
-date to show and 0 uses the current value.
+unsigned char conioxlib_calendar(unsigned short x,
+    unsigned short y, unsigned char atr0,
+    unsigned char atr1, unsigned char atr2,
+    unsigned char *day, unsigned char *month,
+    unsigned int *year);
+Draws an interactive month calendar at (x,y).
+Parameters: atr0 is the color of the normal days, atr1
+the color of the selected day and atr2 the color of the
+Sundays; day, month and year receive the date picked
+with the cursors, PGUP/PGDW (month), HOME/END (year)
+or the mouse. Returns 1 when ENTER picks a day and 0
+when ESC cancels.
 Example:
-  conioxlib_calendar(30, 5, atr0, atr1, atr2, 0, 0, 0);
+  conioxlib_calendar(30, 5, atr0, atr1, atr2,
+      &day, &month, &year);
 @view
 Prototype:
 unsigned char conioxlib_view(unsigned short x1,
@@ -446,7 +452,7 @@ move; clicking a line jumps to it. Returns 255 when
 cancelled with ESC.
 Example:
   r = conioxlib_view(6, 3, 72, 21, atr0, atr1,
-      helpbuf, n - 1, \"Help: getkey\");
+      helpbuf, n - 1, "Help: getkey");
 @help
 Prototype:
 unsigned char conioxlib_help(unsigned short x1,
@@ -462,7 +468,7 @@ when it was not or the file is missing. Lines are cut at
 60 characters and the next @ line ends the entry.
 Example:
   r = conioxlib_help(7, 3, 69, 21, atr0, atr1,
-      DEMO_HELP, \"getkey\", helpbuf);
+      DEMO_HELP, "getkey", helpbuf);
 @helpindex
 Prototype:
 unsigned char conioxlib_helpindex(unsigned short x1,
@@ -476,10 +482,11 @@ topic shown or 255 when cancelled.
 Example:
   conioxlib_helpindex(5, 3, atr0, atr1, DEMO_HELP,
       helpbuf);
-@select
+@filemultisel
 Prototype:
-unsigned char conioxlib_select(unsigned char *sdisk,
-    char *sdir, struct conioxlib_sfiles *files);
+unsigned char conioxlib_filemultiselector(
+    unsigned char *sdisk, char *sdir,
+    struct conioxlib_sfiles *files);
 Runs the file selector with multiple marks.
 Parameters: sdisk receives the chosen drive letter, sdir
 the chosen directory and files the table with the name,
@@ -490,9 +497,25 @@ or accepts a drive. Returns 0 when accepted and 255 when
 cancelled.
 Example:
   disk = 'C';
-  if (conioxlib_select(&disk, dir, files) == 0)
+  if (conioxlib_filemultiselector(&disk, dir, files) == 0)
   {
-      sprintf(str, \"%c:%s\", disk, dir);
+      sprintf(str, "%c:%s", disk, dir);
+  }
+@fileselector
+Prototype:
+unsigned char conioxlib_fileselector(
+    unsigned char *sdisk, char *sdir, char *name);
+Runs a compact picker for a single file: drives,
+directories and names only, without sizes, dates or
+descriptions, so it fits the Open and Save as dialogs
+of the editor. Parameters: sdisk receives the chosen
+drive letter, sdir the chosen directory and name the
+chosen file name. Returns 1 when a file was chosen and
+0 when cancelled.
+Example:
+  if (conioxlib_fileselector(&disk, dir, name) != 0)
+  {
+      sprintf(str, "%c:%s%s", disk, dir, name);
   }
 @theme
 Prototype:
@@ -515,7 +538,7 @@ Example:
   struct conioxlib_stheme th;
   conioxlib_gettheme(&th);
   box(3, 3, 36, 23, th.atrdialog, th.frame,
-      \"CONXLIB 2.0\", SHADOW | CLOSE);
+      "CONXLIB 2.0", SHADOW | CLOSE);
 @savescr
 Prototype:
 char *conioxlib_savescr(unsigned short x1,
@@ -546,7 +569,7 @@ Parameters: msg is the text to show.
 The status line lives in columns 1 to 59 of line 25; the
 lock indicators use 60 to 74 and the clock 76 to 80.
 Example:
-  conioxlib_status(\"Ready.\");
+  conioxlib_status("Ready.");
 @tooltip
 Prototype:
 void conioxlib_tooltip(unsigned short x, unsigned short y,
@@ -554,7 +577,7 @@ void conioxlib_tooltip(unsigned short x, unsigned short y,
 Shows a tooltip near (x,y) during ms milliseconds.
 Parameters: msg is the text of the tip.
 Example:
-  conioxlib_tooltip(50, 12, \"Tooltip sample\", 1500);
+  conioxlib_tooltip(50, 12, "Tooltip sample", 1500);
 @progressbar
 Prototype:
 void conioxlib_progressbar(unsigned short x,
@@ -564,23 +587,26 @@ void conioxlib_progressbar(unsigned short x,
 Draws an installer style progress ruler.
 Parameters: (x,y) is the position, width the length in
 cells, atr the color, and value and maxv the proportion
-shown: '=' segments with a '>' tip in the last filled
-cell and blank spaces in the rest.
+shown: the ruler spans width - 5 cells as a 0xB0 grid
+that fills up with solid 0xDB cells like the Turbo
+Vision gauges and the percentage number follows it
+on the right.
 Example:
   conioxlib_progressbar(22, 13, 30, atr, done, total);
 @progress
 Prototype:
 void conioxlib_progress(const char *title,
     unsigned int value, unsigned int maxv);
-Shows the progress on the status line.
-Parameters: title is the label shown as title NN% and
-value and maxv the proportion. The ruler is drawn from
-column 50 with the status line color of the active
-theme.
+Shows an installer style gauge on the status line.
+Parameters: title is the label drawn at column 1 and
+value and maxv the proportion. The gauge starts at
+column 30 with the status line color of the active
+theme and conioxlib_progressbar() ends it with the
+percentage number on the right.
 Example:
   for (i = 0; i <= 100; i++)
   {
-      conioxlib_progress(\"Copying\", i, 100);
+      conioxlib_progress("Copying", i, 100);
       delay(50);
   }
 @msgbox
@@ -595,8 +621,8 @@ as buttons uses the defaults OK and Cancel. Returns as
 conioxlib_buttons() does: the index of the pressed
 button, 255 when F1 was pressed or 0 when cancelled.
 Example:
-  r = conioxlib_msgbox(\"Confirm\",
-      \"Exit the demo?\", btns, 2);
+  r = conioxlib_msgbox("Confirm",
+      "Exit the demo?", btns, 2);
 @inputbox
 Prototype:
 unsigned char conioxlib_inputbox(const char *title,
@@ -608,7 +634,7 @@ initial value, and len the maximum length. Returns 0
 when accepted with ENTER, 1 when cancelled and 255 when
 F1 was pressed.
 Example:
-  r = conioxlib_inputbox(\"Open\", \"File:\", name, 60);
+  r = conioxlib_inputbox("Open", "File:", name, 60);
 @inputmask
 Prototype:
 unsigned char conioxlib_inputmask(const char *title,
@@ -621,7 +647,7 @@ many digits were typed. Invalid characters are ignored
 as they are pressed. Returns 0 when accepted, 1 when
 cancelled and 255 when F1 was pressed.
 Example:
-  r = conioxlib_inputmask(\"Port\", \"Value:\", buf,
+  r = conioxlib_inputmask("Port", "Value:", buf,
       5, 2);
 @listbox
 Prototype:
@@ -640,7 +666,7 @@ Returns the index of the chosen item or 255 when
 cancelled with ESC.
 Example:
   i = conioxlib_listbox(30, 6, 55, 18, atr0, atr1,
-      items, 26, \"Pick one\");
+      items, 26, "Pick one");
 @error
 Prototype (Turbo C DOS builds only):
 void interrupt error(unsigned int, ...);
@@ -671,10 +697,12 @@ Embeds a text editor in a rectangle.
 Parameters: atr0 is the text color, atr1 the color of the
 active line, title the caption and filename the file
 loaded at startup (an empty string starts empty). The
-File, Edit, Search and Quit menus open with F10 or a
-click; the mouse and the wheel work and the undo and
-redo stacks keep four levels. Returns 0.
+File, Edit and Search menus open with F10 or a click;
+the mouse and the wheel work, PGUP/PGDW page and HOME/
+END jump, and Shift plus those keys marks a block that
+Cut, Copy, Paste and typing replace. File > Open picks
+the file with conioxlib_fileselector() and the undo
+and redo stacks keep four levels. Returns 0.
 Example:
   conioxlib_edit(1, 1, 80, 25, atr0, atr1,
-      \"Editor\", \"NOTES.TXT\");
-};
+      "Editor", "NOTES.TXT");

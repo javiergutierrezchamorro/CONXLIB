@@ -516,7 +516,12 @@ static void demo_menubar(void)
 		"Clear the current selection                                       "};
 	unsigned char bar, sub;
 	char *oldscr;
+	char *olddrop;
 	int donebar;
+	int bi, pos, k, visible;
+	int oldbar;
+	int cellpos[10];
+	int dropx1, dropy1, dropx2, dropy2;
 	unsigned int i;
 	unsigned int t;
 	struct conioxlib_stheme th;
@@ -533,62 +538,45 @@ static void demo_menubar(void)
 	}
 	/* Redraw the bar with the colors of the active theme */
 	conioxlib_gettheme(&th);
+	/* Start of every bar cell: switching drop-downs repaints single cells */
+	pos = 1;
+	for (bi = 0; bi < 10; bi++)
+	{
+		/* Cell width = visible length (without the ampersand) + 2 */
+		visible = 0;
+		for (k = 0; baritems[bi][k] != 0; k++)
+		{
+			if (baritems[bi][k] != '&')
+			{
+				visible++;
+			}
+		}
+		cellpos[bi] = pos;
+		pos += visible + 2;
+	}
 	bar = conioxlib_menubar(1, th.atr0, th.atr1, th.atrhot, baritems, bardesc, 10, 0);
 	donebar = 0;
 	while ((bar != CONIOXLIB_MENU_ESC) && (!donebar))
 	{
-		if (oldscr != 0)
-		{
-			puttext(1, 1, 80, 25, oldscr);
-		}
-		textattr(th.atr0);
-		gotoxy(1, 1);
-		for (i = 0; i < 80; i++)
-		{
-			putch(' ');
-		}
-		{
-			int bi, pos, k, visible;
-			pos = 1;
-			for (bi = 0; bi < 10; bi++)
-			{
-				/* Cell width = visible length (without the ampersand) + 2 */
-				visible = 0;
-				for (k = 0; baritems[bi][k] != 0; k++)
-				{
-					if (baritems[bi][k] != '&')
-					{
-						visible++;
-					}
-				}
-				if (bi == (int) bar)
-				{
-					gotoxy(pos, 1);
-					textattr(th.atr1);
-					putch(' ');
-					conioxlib_cputs_hot((unsigned short) (pos + 1), 1, th.atr1, th.atrhot, baritems[bi]);
-					textattr(th.atr1);
-					putch(' ');
-				}
-				else
-				{
-					gotoxy(pos, 1);
-					textattr(th.atr0);
-					putch(' ');
-					conioxlib_cputs_hot((unsigned short) (pos + 1), 1, th.atr0, th.atrhot, baritems[bi]);
-					textattr(th.atr0);
-					putch(' ');
-				}
-				pos += visible + 2;
-			}
-		}
+		olddrop = 0;
 		if (bar == 0)
 		{
+			/* The saved area covers the drop-down plus its shadow */
+			dropx1 = 1;
+			dropy1 = 2;
+			dropx2 = 19;
+			dropy2 = 15;
+			olddrop = conioxlib_savescr(dropx1, dropy1, dropx2, dropy2);
 			box(1, 2, 17, 14, CONIOXLIB_ATTR(BLACK, LIGHTGRAY), A_SINGLE, "", SHADOW);
 			sub = conioxlib_menu(2, 3, th.atr0, th.atr1, th.atrhot, fileitems, filedesc, 11, 1, 0);
 		}
 		else if (bar == 1)
 		{
+			dropx1 = 7;
+			dropy1 = 2;
+			dropx2 = 25;
+			dropy2 = 9;
+			olddrop = conioxlib_savescr(dropx1, dropy1, dropx2, dropy2);
 			box(7, 2, 23, 8, CONIOXLIB_ATTR(BLACK, LIGHTGRAY), A_SINGLE, "", SHADOW);
 			sub = conioxlib_menu(8, 3, th.atr0, th.atr1, th.atrhot, edititems, editdesc, 5, 1, 0);
 		}
@@ -610,26 +598,51 @@ static void demo_menubar(void)
 			break;
 		}
 		window(1, 1, 80, 25);
-		if (sub == CONIOXLIB_MENU_LEFT)
+		if ((sub == CONIOXLIB_MENU_LEFT) || (sub == CONIOXLIB_MENU_RIGHT))
 		{
-			if (bar == 0)
+			/* Close only the drop-down and move the highlight: the bar stays on screen */
+			if (olddrop != 0)
 			{
-				bar = 9;
+				conioxlib_restorescr(dropx1, dropy1, dropx2, dropy2, olddrop);
+			}
+			oldbar = (int) bar;
+			if (sub == CONIOXLIB_MENU_LEFT)
+			{
+				if (bar == 0)
+				{
+					bar = 9;
+				}
+				else
+				{
+					bar--;
+				}
 			}
 			else
 			{
-				bar--;
+				bar++;
+				if (bar > 9)
+				{
+					bar = 0;
+				}
 			}
+			textattr(th.atr0);
+			gotoxy(cellpos[oldbar], 1);
+			putch(' ');
+			conioxlib_cputs_hot((unsigned short) (cellpos[oldbar] + 1), 1, th.atr0, th.atrhot, baritems[oldbar]);
+			textattr(th.atr0);
+			putch(' ');
+			textattr(th.atr1);
+			gotoxy(cellpos[bar], 1);
+			putch(' ');
+			conioxlib_cputs_hot((unsigned short) (cellpos[bar] + 1), 1, th.atr1, th.atrhot, baritems[bar]);
+			textattr(th.atr1);
+			putch(' ');
+			conioxlib_status(bardesc[bar]);
 			continue;
 		}
-		if (sub == CONIOXLIB_MENU_RIGHT)
+		if (olddrop != 0)
 		{
-			bar++;
-			if (bar > 9)
-			{
-				bar = 0;
-			}
-			continue;
+			conioxlib_restorescr(dropx1, dropy1, dropx2, dropy2, olddrop);
 		}
 		if (oldscr != 0)
 		{
@@ -1413,7 +1426,7 @@ static char CONIOXLIB_FARDATA helptext[] =
 	"one, items holds the texts and noptions their number." "\r\n"
 	"The arrow keys, the mouse wheel and the left button move" "\r\n"
 	"the selection. Returns the index of the chosen item or 255" "\r\n"
-	"when cancelled with ESC or the close button." "\r\n"
+	"when cancelled with ESC." "\r\n"
 	"Example:" "\r\n"
 	"  i = conioxlib_grid(41, 6, atr0, atr1, items, 9);" "\r\n"
 	"@cputs_hot" "\r\n"
@@ -1481,9 +1494,8 @@ static char CONIOXLIB_FARDATA helptext[] =
 	"desc the hints, noptions their number and init the item" "\r\n"
 	"highlighted on entry. The horizontal wheel and the arrows" "\r\n"
 	"move; ENTER or a click picks an item." "\r\n"
-	"Returns the chosen index, CONIOXLIB_MENU_ESC," "\r\n"
-	"CONIOXLIB_MENU_LEFT, CONIOXLIB_MENU_RIGHT or" "\r\n"
-	"CONIOXLIB_MENU_HELP." "\r\n"
+	"Returns the chosen index, CONIOXLIB_MENU_ESC" "\r\n"
+	"or CONIOXLIB_MENU_HELP." "\r\n"
 	"Example:" "\r\n"
 	"  i = conioxlib_menubar(1, atr0, atr1, atrhot, bar," "\r\n"
 	"      desc, 4, 0);" "\r\n"
@@ -1763,8 +1775,10 @@ static char CONIOXLIB_FARDATA helptext[] =
 	"Draws an installer style progress ruler." "\r\n"
 	"Parameters: (x,y) is the position, width the length in" "\r\n"
 	"cells, atr the color, and value and maxv the proportion" "\r\n"
-	"shown: the ruler is a 0xB0 grid that fills up with" "\r\n"
-	"solid 0xDB cells like the Turbo Vision gauges." "\r\n"
+	"shown: the ruler spans width - 5 cells as a 0xB0 grid" "\r\n"
+	"that fills up with solid 0xDB cells like the Turbo" "\r\n"
+	"Vision gauges and the percentage number follows it" "\r\n"
+	"on the right." "\r\n"
 	"Example:" "\r\n"
 	"  conioxlib_progressbar(22, 13, 30, atr, done, total);" "\r\n"
 	"@progress" "\r\n"
@@ -1773,9 +1787,10 @@ static char CONIOXLIB_FARDATA helptext[] =
 	"    unsigned int value, unsigned int maxv);" "\r\n"
 	"Shows an installer style gauge on the status line." "\r\n"
 	"Parameters: title is the label drawn at column 1 and" "\r\n"
-	"value and maxv the proportion. The gauge runs from" "\r\n"
-	"column 30 to 49 with the status line color of the" "\r\n"
-	"active theme and the percentage follows it." "\r\n"
+	"value and maxv the proportion. The gauge starts at" "\r\n"
+	"column 30 with the status line color of the active" "\r\n"
+	"theme and conioxlib_progressbar() ends it with the" "\r\n"
+	"percentage number on the right." "\r\n"
 	"Example:" "\r\n"
 	"  for (i = 0; i <= 100; i++)" "\r\n"
 	"  {" "\r\n"
@@ -1870,8 +1885,10 @@ static char CONIOXLIB_FARDATA helptext[] =
 	"Parameters: atr0 is the text color, atr1 the color of the" "\r\n"
 	"active line, title the caption and filename the file" "\r\n"
 	"loaded at startup (an empty string starts empty). The" "\r\n"
-	"File, Edit, Search and Quit menus open with F10 or a" "\r\n"
-	"click; the mouse and the wheel work, File > Open picks" "\r\n"
+	"File, Edit and Search menus open with F10 or a click;" "\r\n"
+	"the mouse and the wheel work, PGUP/PGDW page and HOME/" "\r\n"
+	"END jump, and Shift plus those keys marks a block that" "\r\n"
+	"Cut, Copy, Paste and typing replace. File > Open picks" "\r\n"
 	"the file with conioxlib_fileselector() and the undo" "\r\n"
 	"and redo stacks keep four levels. Returns 0." "\r\n"
 	"Example:" "\r\n"
@@ -1957,7 +1974,6 @@ int main(void)
 			break;
 		}
 	}
-	remove(DEMO_HELP);
 	conioxlib_bye("CONXDEMO.TMP", 0, 0);
 	return(0);
 }
