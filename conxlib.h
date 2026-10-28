@@ -4,7 +4,7 @@
 
 #include "coniox.h"
 
-#define conioxlib_version (201)
+#define conioxlib_version (202)
 #define conioxlib_build (__DATE__)
 
 #ifdef __cplusplus
@@ -159,7 +159,8 @@ void conioxlib_cputs_hot(unsigned short x, unsigned short y, unsigned char atr, 
    (shadow attribute 0x70), no frame characters. The width of each button is the
    visible title length + 4; the "separation" parameter is the horizontal gap
    between buttons. atrhot provides only the foreground color of the accelerator;
-   the background is always the one of the button. */
+   the background is always the one of the button. Returns the index of the
+   pressed button, 254 on F1 (help) or 255 on ESC (cancel). */
 unsigned char conioxlib_buttons(unsigned short x1, unsigned short y1, unsigned char atr0, unsigned char atr1, unsigned char atrhot, char items[][11], char desc[][71], unsigned char noptions, unsigned char separation);
 /* Item whose first character is '-' is a non-selectable separator (drawn as a line). */
 #define CONIOXLIB_SEPARATOR	"-"

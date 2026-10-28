@@ -10,7 +10,8 @@
 #define DEMO_TITLE	"CONXLIB DEMO 2.0               (c) Copyright 1997-2026 Javier Gutierrez Chamorro"
 #define DEMO_HELP	"CONXDEMO.HLP"
 #define DEMO_HOT	CONIOXLIB_ATTR(RED, LIGHTGRAY)
-#define DEMO_HOT_SEL	CONIOXLIB_ATTR(RED, GREEN)
+#define DEMO_FILES	220
+#define DEMO_HELPBUF	(256 * 61)
 #if ((__DOS__) || (__MSDOS__)) && !defined(__DJGPP__)
 	#if defined(__TURBOC__)
 		extern unsigned _stklen = 16384U;
@@ -18,9 +19,7 @@
 		unsigned __stack = 16384U;
 	#endif
 #endif
-static struct conioxlib_sfiles CONIOXLIB_FARDATA files[220];
-static char CONIOXLIB_FARDATA helpbuf[256][61];
-static char CONIOXLIB_FARDATA demomenu[DEMO_OPTIONS][21] = {	"&Exit",
+static const char *demooptions[DEMO_OPTIONS] = {	"&Exit",
 											"&Windows",
 											"&Mouse info",
 											"&Text input",
@@ -47,7 +46,7 @@ static char CONIOXLIB_FARDATA demomenu[DEMO_OPTIONS][21] = {	"&Exit",
 											"&Editor",
 											"S&tatus/tooltip",
 											"&Tetris"};
-static char CONIOXLIB_FARDATA demodesc[DEMO_OPTIONS][71] = {	"Leave the demo: conioxlib_exittodos() confirms and bye restores       ",
+static const char *demohints[DEMO_OPTIONS] = {	"Leave the demo: conioxlib_exittodos() confirms and bye restores       ",
 											"All box() frame styles: double, single, rounded, solid                ",
 											"Live conioxlib_mousestatus: position, buttons and wheel               ",
 											"conioxlib_getstr() and getpw(): field editors with cursor keys        ",
@@ -104,7 +103,7 @@ static char btndesc[4][71] = {	"Accept the current selection and close          
 								"Discard changes and return                               ",
 								"Open context help for this dialog                        ",
 								"Apply changes without closing the dialog                 "};
-static char *demotext[] = {	"CONXLIB 2.0 - Retro console library over CONIOX 5.03",
+static const char *demotext[] = {	"CONXLIB 2.0 - Retro console library over CONIOX 5.03",
 							"",
 							"Accelerators: mark a letter with & in the item text.",
 							"Press that letter to activate the option. atrhot sets",
@@ -113,6 +112,39 @@ static char *demotext[] = {	"CONXLIB 2.0 - Retro console library over CONIOX 5.0
 							"Works with Borland Turbo C, Watcom C (16 and 32 bits),",
 							"DJGPP, and Microsoft Visual C++ for Windows 32/64 bits.",
 							0};
+/* Allocates a rows*w items table on the heap copying the rows strings of list */
+static char *demo_newtable(const char **list, unsigned int rows, unsigned int w)
+{
+	char *table;
+	unsigned int i;
+
+	table = (char *) malloc((size_t) (rows * w));
+	if (table != 0)
+	{
+		for (i = 0; i < rows; i++)
+		{
+			strncpy(table + (i * w), list[i], w - 1);
+			table[(i * w) + (w - 1)] = 0;
+		}
+	}
+	return(table);
+}
+/* Copies item into out skipping the & accelerator marks: returns out */
+static char *demo_plainitem(const char *item, char *out)
+{
+	char *o = out;
+
+	while (*item != 0)
+	{
+		if (*item != '&')
+		{
+			*o++ = *item;
+		}
+		item++;
+	}
+	*o = 0;
+	return(out);
+}
 /* ------------------ Clears the output window ------------------------- */
 static void demo_clear_output(void)
 {
@@ -189,6 +221,7 @@ static void demo_textinput(void)
 	conioxlib_getstr(41, 9, CONIOXLIB_ATTR(WHITE, BLUE), str, 20);
 	gotoxy(41, 11);
 	cputs("conioxlib_getpw():");
+	pass[0] = 0;
 	conioxlib_getpw(41, 12, CONIOXLIB_ATTR(WHITE, BLUE), pass, 8);
 	textattr(CONIOXLIB_ATTR(WHITE, LIGHTGRAY));
 	gotoxy(41, 14);
@@ -216,6 +249,7 @@ static void demo_checkboxes(void)
 static void demo_radiobuttons(void)
 {
 	unsigned char propsel[5];
+	char plain[21];
 	unsigned int i;
 	unsigned int t;
 	box(39, 5, 76, 14, CONIOXLIB_ATTR(BLACK, LIGHTGRAY), A_DOUBLE, "property()", SHADOW);
@@ -227,7 +261,7 @@ static void demo_radiobuttons(void)
 	gotoxy(41, 13);
 	if (i < 5)
 	{
-		cprintf("Choice: %s", optmenu[i]);
+		cprintf("Choice: %s", demo_plainitem(optmenu[i], plain));
 	}
 	t = conioxlib_ckey();
 	(void) t;
@@ -276,8 +310,14 @@ static void demo_fileselector(void)
 	unsigned char disk;
 	unsigned int i;
 	unsigned int t;
+	struct conioxlib_sfiles *files;
 	struct conioxlib_sdiskfree df;
 	unsigned long int fsz;
+	files = (struct conioxlib_sfiles *) malloc(DEMO_FILES * sizeof(struct conioxlib_sfiles));
+	if (files == 0)
+	{
+		return;
+	}
 	strcpy(dir, "\\");
 	disk = 'C';
 	if (conioxlib_filemultiselector(&disk, dir, files) == 0)
@@ -287,12 +327,12 @@ static void demo_fileselector(void)
 		textattr(CONIOXLIB_ATTR(WHITE, LIGHTGRAY));
 		cputsc(20, 60, 9, str);
 		i = 0;
-		while ((i < 220) && ((files[i].selected == 0) || (files[i].size[0] == '\xF0')))
+		while ((i < DEMO_FILES) && ((files[i].selected == 0) || (files[i].size[0] == '\xF0')))
 		{
 			i++;
 		}
 		gotoxy(22, 11);
-		if (i < 220)
+		if (i < DEMO_FILES)
 		{
 			cprintf("Marked: %s", files[i].name);
 		}
@@ -312,7 +352,7 @@ static void demo_fileselector(void)
 		}
 		/* Size of the marked file with filesize() */
 		gotoxy(22, 14);
-		if (i < 220)
+		if (i < DEMO_FILES)
 		{
 			sprintf(str, "%c:%s%s", disk, dir, files[i].name);
 			fsz = conioxlib_filesize(str);
@@ -332,21 +372,32 @@ static void demo_fileselector(void)
 		t = conioxlib_ckey();
 		(void) t;
 	}
+	free(files);
 }
 /* ------------------------ Text viewer with view() ---------------------- */
 static void demo_viewer(void)
 {
+	char (*helpbuf)[61];
 	unsigned int i;
 	unsigned int last;
 	i = 0;
 	while (demotext[i] != 0)
 	{
-		memset(helpbuf[i], 0, 61);
-		strncpy(helpbuf[i], demotext[i], 60);
 		i++;
 	}
 	last = i - 1;
+	helpbuf = (char (*)[61]) malloc((size_t) ((last + 1) * 61));
+	if (helpbuf == 0)
+	{
+		return;
+	}
+	for (i = 0; demotext[i] != 0; i++)
+	{
+		memset(helpbuf[i], 0, 61);
+		strncpy(helpbuf[i], demotext[i], 60);
+	}
 	conioxlib_view(6, 3, 72, 21, CONIOXLIB_ATTR(WHITE, CYAN), CONIOXLIB_ATTR(BLACK, CYAN), helpbuf, (unsigned char) last, "CONXLIB overview");
+	free(helpbuf);
 }
 /* -------------------- Screen saver with screensaver() ------------------- */
 static void demo_screensaver(void)
@@ -466,8 +517,8 @@ static void demo_colorattrs(void)
 /* -------------- Menu bar and pull-downs IDE style ---------------- */
 static void demo_menubar(void)
 {
-	static char baritems[10][21] = {"&File", "&Edit", "&Search", "&Run", "&Compile", "&Debug", "&Project", "&Options", "&Window", "&Help"};
-	static char bardesc[10][71] = {
+	static const char *baritems_list[10] = {"&File", "&Edit", "&Search", "&Run", "&Compile", "&Debug", "&Project", "&Options", "&Window", "&Help"};
+	static const char *bardesc_list[10] = {
 		"File commands: new, open, save, quit                              ",
 		"Edit commands: cut, copy, paste                                   ",
 		"Search and replace                                                ",
@@ -478,7 +529,7 @@ static void demo_menubar(void)
 		"Environment and compiler options                                  ",
 		"Window arrangement                                                ",
 		"Help contents and about                                           "};
-	static char fileitems[11][21] = {
+	static const char *fileitems_list[11] = {
 		"&New           ",
 		"&Open...       ",
 		"&Save          ",
@@ -490,7 +541,7 @@ static void demo_menubar(void)
 		"&DOS shell     ",
 		"-",
 		"&Quit          "};
-	static char filedesc[11][71] = {
+	static const char *filedesc_list[11] = {
 		"Create a new file in a new Edit window                            ",
 		"Open an existing file in an Edit window                           ",
 		"Save the file in the active Edit window                           ",
@@ -502,19 +553,26 @@ static void demo_menubar(void)
 		"Shell out to DOS / command processor                              ",
 		"                                                                  ",
 		"Exit the demonstration                                            "};
-	static char edititems[5][21] = {
+	static const char *edititems_list[5] = {
 		"Cu&t           ",
 		"&Copy          ",
 		"&Paste         ",
 		"-",
 		"Cl&ear         "};
-	static char editdesc[5][71] = {
+	static const char *editdesc_list[5] = {
 		"Cut selection to clipboard                                        ",
 		"Copy selection to clipboard                                       ",
 		"Paste from clipboard                                              ",
 		"                                                                  ",
 		"Clear the current selection                                       "};
 	unsigned char bar, sub;
+	char (*baritems)[21];
+	char (*bardesc)[71];
+	char (*fileitems)[21];
+	char (*filedesc)[71];
+	char (*edititems)[21];
+	char (*editdesc)[71];
+	char plain[21];
 	char *oldscr;
 	char *olddrop;
 	int donebar;
@@ -525,6 +583,22 @@ static void demo_menubar(void)
 	unsigned int i;
 	unsigned int t;
 	struct conioxlib_stheme th;
+	baritems = (char (*)[21]) demo_newtable(baritems_list, 10, 21);
+	bardesc = (char (*)[71]) demo_newtable(bardesc_list, 10, 71);
+	fileitems = (char (*)[21]) demo_newtable(fileitems_list, 11, 21);
+	filedesc = (char (*)[71]) demo_newtable(filedesc_list, 11, 71);
+	edititems = (char (*)[21]) demo_newtable(edititems_list, 5, 21);
+	editdesc = (char (*)[71]) demo_newtable(editdesc_list, 5, 71);
+	if ((baritems == 0) || (bardesc == 0) || (fileitems == 0) || (filedesc == 0) || (edititems == 0) || (editdesc == 0))
+	{
+		free(baritems);
+		free(bardesc);
+		free(fileitems);
+		free(filedesc);
+		free(edititems);
+		free(editdesc);
+		return;
+	}
 	oldscr = (char *) malloc(textsize(1, 1, 80, 25));
 	if (oldscr != 0)
 	{
@@ -556,7 +630,7 @@ static void demo_menubar(void)
 	}
 	bar = conioxlib_menubar(1, th.atr0, th.atr1, th.atrhot, baritems, bardesc, 10, 0);
 	donebar = 0;
-	while ((bar != CONIOXLIB_MENU_ESC) && (!donebar))
+	while ((bar != CONIOXLIB_MENU_ESC) && (bar != CONIOXLIB_MENU_HELP) && (!donebar))
 	{
 		olddrop = 0;
 		if (bar == 0)
@@ -592,7 +666,7 @@ static void demo_menubar(void)
 			box(39, 6, 76, 12, CONIOXLIB_ATTR(BLACK, LIGHTGRAY), A_DOUBLE, "Menu bar", SHADOW);
 			textattr(CONIOXLIB_ATTR(BLACK, LIGHTGRAY));
 			gotoxy(41, 8);
-			cprintf("Selected: %s", baritems[bar]);
+			cprintf("Selected: %s", demo_plainitem(baritems[bar], plain));
 			t = conioxlib_ckey();
 			(void) t;
 			break;
@@ -657,17 +731,17 @@ static void demo_menubar(void)
 		}
 		else if (bar == 0)
 		{
-			cprintf("File / %s", fileitems[sub]);
+			cprintf("File / %s", demo_plainitem(fileitems[sub], plain));
 		}
 		else if (bar == 1)
 		{
-			cprintf("Edit / %s", edititems[sub]);
+			cprintf("Edit / %s", demo_plainitem(edititems[sub], plain));
 		}
 		t = conioxlib_ckey();
 		(void) t;
 		donebar = 1;
 	}
-	if ((bar == CONIOXLIB_MENU_ESC) && (oldscr != 0))
+	if (((bar == CONIOXLIB_MENU_ESC) || (bar == CONIOXLIB_MENU_HELP)) && (oldscr != 0))
 	{
 		puttext(1, 1, 80, 25, oldscr);
 	}
@@ -675,6 +749,12 @@ static void demo_menubar(void)
 	{
 		free(oldscr);
 	}
+	free(baritems);
+	free(bardesc);
+	free(fileitems);
+	free(filedesc);
+	free(edititems);
+	free(editdesc);
 }
 /* ------------- Environment and credits with getcountry() and about() ------------- */
 static void demo_about(void)
@@ -754,15 +834,21 @@ static void demo_inputmask(void)
 /* ------------------ Scrollable list with listbox() ----------------------- */
 static void demo_listbox(void)
 {
-	static char items[26][41] = {
+	static const char *items_list[26] = {
 		"Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot",
 		"Golf", "Hotel", "India", "Juliet", "Kilo", "Lima",
 		"Mike", "November", "Oscar", "Papa", "Quebec", "Romeo",
 		"Sierra", "Tango", "Uniform", "Victor", "Whiskey", "X-ray",
 		"Yankee", "Zulu"
 	};
+	char (*items)[41];
 	unsigned char r;
 	unsigned int t;
+	items = (char (*)[41]) demo_newtable(items_list, 26, 41);
+	if (items == 0)
+	{
+		return;
+	}
 	/* 26 items and only 12 visible rows: forces trying the scroll, the wheel
 	   and the side bar of the listbox */
 	r = conioxlib_listbox(20, 5, 55, 18, CONIOXLIB_ATTR(BLACK, LIGHTGRAY), CONIOXLIB_ATTR(WHITE, GREEN), items, 26, "Listbox");
@@ -779,6 +865,7 @@ static void demo_listbox(void)
 	}
 	t = conioxlib_ckey();
 	(void) t;
+	free(items);
 }
 /* ---------------- Progress with progress() and progressbar() --------------- */
 static void demo_progress(void)
@@ -807,13 +894,23 @@ static void demo_progress(void)
 static void demo_themes(void)
 {
 	static unsigned char demo_theme = 0;
-	static char themenames[CONIOXLIB_THEMES][21] = {"Borland C++ 3.1", "Turbo C 2.0", "Turbo C 1.x", "Norton Utilities 9", "PC Tools", "Turbo Pascal 7.0", "Norton Commander", "MS-DOS Edit", "Lotus 1-2-3"};
-	static char themedesc[CONIOXLIB_THEMES][71] = {"Turbo Vision 2.0: blue desktop, gray dialogs    ", "Blue desktop, yellow text and cyan menus        ", "Monochrome with black background                 ", "Blue with cyan frames and yellow hotkeys         ", "White on cyan, PC Tools look                    ", "Same Turbo Vision 2.0 palette as Borland C++ 3.1", "Blue panels, cyan menus and black focus bars     ", "Blue screen with single cyan frames              ", "White on black with inverted selection           "};
+	static const char *themenames_list[CONIOXLIB_THEMES] = {"Borland C++ 3.1", "Turbo C 2.0", "Turbo C 1.x", "Norton Utilities 9", "PC Tools", "Turbo Pascal 7.0", "Norton Commander", "MS-DOS Edit", "Lotus 1-2-3"};
+	static const char *themedesc_list[CONIOXLIB_THEMES] = {"Turbo Vision 2.0: blue desktop, gray dialogs    ", "Blue desktop, yellow text and cyan menus        ", "Monochrome with black background                 ", "Blue with cyan frames and yellow hotkeys         ", "White on cyan, PC Tools look                    ", "Same Turbo Vision 2.0 palette as Borland C++ 3.1", "Blue panels, cyan menus and black focus bars     ", "Blue screen with single cyan frames              ", "White on black with inverted selection           "};
+	char (*themenames)[21];
+	char (*themedesc)[71];
 	unsigned char sel[CONIOXLIB_THEMES];
 	unsigned int i;
 	unsigned int t;
 	unsigned char r;
 	struct conioxlib_stheme th;
+	themenames = (char (*)[21]) demo_newtable(themenames_list, CONIOXLIB_THEMES, 21);
+	themedesc = (char (*)[71]) demo_newtable(themedesc_list, CONIOXLIB_THEMES, 71);
+	if ((themenames == 0) || (themedesc == 0))
+	{
+		free(themenames);
+		free(themedesc);
+		return;
+	}
 	conioxlib_gettheme(&th);
 	box(39, 4, 76, 19, th.atrdialog, th.frame, "Themes", SHADOW);
 	memset(sel, ' ', CONIOXLIB_THEMES);
@@ -837,6 +934,8 @@ static void demo_themes(void)
 	cputs("Main menu and boxes follow it now.");
 	t = conioxlib_ckey();
 	(void) t;
+	free(themenames);
+	free(themedesc);
 }
 /* --------------------- Text editor with edit() ------------------------ */
 static void demo_editor(void)
@@ -861,7 +960,6 @@ static void demo_statustip(void)
 	(void) t;
 }
 /* ------------------------------- Tetris -------------------------------- */
-static unsigned char CONIOXLIB_FARDATA tetrisboard[20][10];
 static const int tetrisshapes[7][4][2] = {	{{0, 0}, {1, 0}, {2, 0}, {3, 0}},
 					{{0, 0}, {1, 0}, {0, 1}, {1, 1}},
 					{{1, 0}, {0, 1}, {1, 1}, {2, 1}},
@@ -878,7 +976,7 @@ static const unsigned char tetrisattrs[7] = {	CONIOXLIB_ATTR(CYAN, BLACK),
 						CONIOXLIB_ATTR(BLUE, BLACK),
 						CONIOXLIB_ATTR(BROWN, BLACK)};
 /* Checks if the piece cells fit at (px,py); rows above the well only test the columns */
-static int demo_tetris_fit(int px, int py, int cells[4][2])
+static int demo_tetris_fit(int px, int py, int cells[4][2], unsigned char board[20][10])
 {
 	int i;
 	int bx, by;
@@ -890,7 +988,7 @@ static int demo_tetris_fit(int px, int py, int cells[4][2])
 		{
 			return(0);
 		}
-		if ((by >= 0) && (tetrisboard[by][bx] != 0))
+		if ((by >= 0) && (board[by][bx] != 0))
 		{
 			return(0);
 		}
@@ -923,9 +1021,10 @@ static void demo_tetris(void)
 	long score;
 	int lines, level;
 	int cells[4][2], saved[4][2];
+	unsigned char board[20][10];
 	char str[40];
 	char btns[1][11] = {"OK"};
-	memset(tetrisboard, 0, sizeof(tetrisboard));
+	memset(board, 0, sizeof(board));
 	score = 0;
 	lines = 0;
 	level = 1;
@@ -963,7 +1062,7 @@ static void demo_tetris(void)
 	px = (10 - tetrissize[cur]) >> 1;
 	py = -2;
 	memcpy(cells, tetrisshapes[cur], sizeof(cells));
-	if (demo_tetris_fit(px, py, cells) == 0)
+	if (demo_tetris_fit(px, py, cells, board) == 0)
 	{
 		goto gameover_1;
 	}
@@ -1025,7 +1124,7 @@ static void demo_tetris(void)
 			}
 			else if (key == KBD_LEFT)
 			{
-				if (demo_tetris_fit(px - 1, py, cells))
+				if (demo_tetris_fit(px - 1, py, cells, board))
 				{
 					for (j = 0; j != 4; j++)
 					{
@@ -1037,7 +1136,7 @@ static void demo_tetris(void)
 			}
 			else if (key == KBD_RIGHT)
 			{
-				if (demo_tetris_fit(px + 1, py, cells))
+				if (demo_tetris_fit(px + 1, py, cells, board))
 				{
 					for (j = 0; j != 4; j++)
 					{
@@ -1056,7 +1155,7 @@ static void demo_tetris(void)
 					cells[j][0] = cells[j][1];
 					cells[j][1] = tetrissize[cur] - 1 - k;
 				}
-				if (demo_tetris_fit(px, py, cells))
+				if (demo_tetris_fit(px, py, cells, board))
 				{
 					for (j = 0; j != 4; j++)
 					{
@@ -1071,7 +1170,7 @@ static void demo_tetris(void)
 			}
 			else if (key == KBD_DOWN)
 			{
-				if (demo_tetris_fit(px, py + 1, cells))
+				if (demo_tetris_fit(px, py + 1, cells, board))
 				{
 					for (j = 0; j != 4; j++)
 					{
@@ -1088,7 +1187,7 @@ static void demo_tetris(void)
 				{
 					demo_tetris_drawcell(px + cells[j][0], py + cells[j][1], 0);
 				}
-				while (demo_tetris_fit(px, py + 1, cells))
+				while (demo_tetris_fit(px, py + 1, cells, board))
 				{
 					py++;
 				}
@@ -1102,7 +1201,7 @@ static void demo_tetris(void)
 		delay(20);
 	}
 	/* One gravity row */
-	if (demo_tetris_fit(px, py + 1, cells))
+	if (demo_tetris_fit(px, py + 1, cells, board))
 	{
 		for (j = 0; j != 4; j++)
 		{
@@ -1128,14 +1227,14 @@ static void demo_tetris(void)
 	}
 	for (i = 0; i != 4; i++)
 	{
-		tetrisboard[py + cells[i][1]][px + cells[i][0]] = (unsigned char) (cur + 1);
+		board[py + cells[i][1]][px + cells[i][0]] = (unsigned char) (cur + 1);
 	}
 	/* Clear the full rows and pay the score of the active level */
 	n = 0;
 	for (i = 19; i >= 0; i--)
 	{
 		j = 0;
-		while ((j != 10) && (tetrisboard[i][j] != 0))
+		while ((j != 10) && (board[i][j] != 0))
 		{
 			j++;
 		}
@@ -1144,9 +1243,9 @@ static void demo_tetris(void)
 			n++;
 			for (k = i; k > 0; k--)
 			{
-				memcpy(tetrisboard[k], tetrisboard[k - 1], 10);
+				memcpy(board[k], board[k - 1], 10);
 			}
-			memset(tetrisboard[0], 0, 10);
+			memset(board[0], 0, 10);
 			i++;
 		}
 	}
@@ -1160,7 +1259,7 @@ static void demo_tetris(void)
 	{
 		for (j = 0; j != 20; j++)
 		{
-			demo_tetris_drawcell(i, j, tetrisboard[j][i]);
+			demo_tetris_drawcell(i, j, board[j][i]);
 		}
 	}
 	goto tetris_1;
@@ -1185,7 +1284,7 @@ static int demo_exit(void)
    dialogs. Every line must stay within 60 characters because conioxlib_help()
    truncates at 60, and topic names must stay within 15 characters because
    conioxlib_helpindex() truncates them at 15. */
-static char CONIOXLIB_FARDATA helptext[] =
+static const char CONIOXLIB_FARDATA helptext[] =
 	"@Main" "\r\n"
 	"Welcome to the CONXLIB 2.0 demonstration program." "\r\n"
 	"Pick an option with the arrow keys, hotkeys or the mouse." "\r\n"
@@ -1900,6 +1999,9 @@ int main(void)
 {
 	unsigned char opt;
 	struct conioxlib_stheme th;
+	char (*demomenu)[21];
+	char (*demodesc)[71];
+	char *helpbuf;
 	FILE *f;
 	int done = 0;
 	coniox_init(NULL);
@@ -1912,6 +2014,14 @@ int main(void)
 		fclose(f);
 	}
 	conioxlib_hello("CONXDEMO.TMP", 0);
+	/* The menu tables are copied once from the literals into heap buffers */
+	demomenu = (char (*)[21]) demo_newtable(demooptions, DEMO_OPTIONS, 21);
+	demodesc = (char (*)[71]) demo_newtable(demohints, DEMO_OPTIONS, 71);
+	if ((demomenu == 0) || (demodesc == 0))
+	{
+		conioxlib_bye("CONXDEMO.TMP", 0, 0);
+		return(1);
+	}
 	opt = 0;
 	for (;;)
 	{
@@ -1925,7 +2035,13 @@ int main(void)
 		opt = conioxlib_menu(5, 4, th.atr0, th.atr1, th.atrhot, demomenu, demodesc, DEMO_OPTIONS, 1, opt);
 		if (opt == CONIOXLIB_MENU_HELP)
 		{
-			conioxlib_helpindex(5, 3, CONIOXLIB_ATTR(WHITE, CYAN), CONIOXLIB_ATTR(BLACK, CYAN), DEMO_HELP, (char (*)[16]) helpbuf);
+			/* The topic index reuses the same 256*61 work area size of the viewer pages */
+			helpbuf = (char *) malloc(DEMO_HELPBUF);
+			if (helpbuf != 0)
+			{
+				conioxlib_helpindex(5, 3, CONIOXLIB_ATTR(WHITE, CYAN), CONIOXLIB_ATTR(BLACK, CYAN), DEMO_HELP, (char (*)[16]) helpbuf);
+				free(helpbuf);
+			}
 			continue;
 		}
 		if (opt == CONIOXLIB_MENU_ESC)
@@ -1974,6 +2090,8 @@ int main(void)
 			break;
 		}
 	}
+	free(demomenu);
+	free(demodesc);
 	conioxlib_bye("CONXDEMO.TMP", 0, 0);
 	return(0);
 }

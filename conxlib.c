@@ -96,11 +96,11 @@ struct conioxlib_smousestatus conioxlib_mousestatus = {0};
 /* Active theme: kept near the top of the file because clock()/blocks()/status()
    and the conioxlib_hint() macro use it from the very first moment */
 static struct conioxlib_stheme conioxlib_curtheme = {
-	CONIOXLIB_ATTR(BLACK, LIGHTGRAY),
-	CONIOXLIB_ATTR(BLACK, GREEN),
-	CONIOXLIB_ATTR(RED, LIGHTGRAY),
-	CONIOXLIB_ATTR(BLACK, LIGHTGRAY),
 	CONIOXLIB_ATTR(WHITE, BLUE),
+	CONIOXLIB_ATTR(BLACK, GREEN),
+	CONIOXLIB_ATTR(CYAN, LIGHTGRAY),
+	CONIOXLIB_ATTR(BLACK, CYAN),
+	CONIOXLIB_ATTR(BLACK, LIGHTGRAY),
 	CONIOXLIB_BOX_A_DOUBLE,
 	"Borland C++ 3.1"
 };
@@ -292,6 +292,10 @@ void conioxlib_cputsc (unsigned short x1, unsigned short x2, unsigned short y, c
 {
 	unsigned int x;
 
+	if ((str == 0) || (str[0] == 0))
+	{
+		return;
+	}
 	x = (((x2 - x1 + 1) >> 1) - (strlen(str) >> 1) + x1);
 	gotoxy(x, y);
 	cputs((char *) str);
@@ -315,46 +319,92 @@ void conioxlib_box (unsigned short x1, unsigned short y1, unsigned short x2, uns
 {
 	unsigned int x, y;
 	unsigned int c1, c2;
+	unsigned short sx1, sx2, sy1, sy2;
 	char l1[82], l2[82], l3[82], tmp[330];
 
-	/* Shadow */
+	if ((frame == 0) || (x2 < x1) || (y2 < y1))
+	{
+		return;
+	}
+	/* Shadow: clamp to the visible 80x25 console so gettext/puttext stay valid */
 	if (flags & 1)
 	{
-		gettext(x1 + 2, y2 + 1, x2 + 2, y2 + 1, tmp);
-		c2 = (((x2 + 2) - (x1 + 2) + 1) * ((y2 + 1) - (y2 + 1) + 1)) << 1;
-		for (c1 = 1; c1 <= c2; c1 += 2)
+		if (y2 < 25)
 		{
-			tmp[c1] = 8;
+			sx1 = (unsigned short) (x1 + 2);
+			sx2 = (unsigned short) (x2 + 2);
+			if (sx1 < 1)
+			{
+				sx1 = 1;
+			}
+			if (sx2 > 80)
+			{
+				sx2 = 80;
+			}
+			if (sx1 <= sx2)
+			{
+				gettext(sx1, y2 + 1, sx2, y2 + 1, tmp);
+				c2 = (unsigned int) ((sx2 - sx1 + 1) << 1);
+				for (c1 = 1; c1 <= c2; c1 += 2)
+				{
+					tmp[c1] = 8;
+				}
+				puttext(sx1, y2 + 1, sx2, y2 + 1, tmp);
+			}
 		}
-		puttext(x1 + 2, y2 + 1, x2 + 2, y2 + 1, tmp);
-		gettext(x2 + 1, y1 + 1, x2 + 2, y2 + 1, tmp);
-		c2 = (((x2 + 2) - (x2 + 1) + 1) * ((y2 + 1) - (y1 + 1) + 1)) << 1;
-		for (c1 = 1; c1 <= c2; c1 += 2)
+		if (x2 < 80)
 		{
-			tmp[c1] = 8;
+			sx1 = (unsigned short) (x2 + 1);
+			sx2 = (unsigned short) (x2 + 2);
+			sy1 = (unsigned short) (y1 + 1);
+			sy2 = (unsigned short) (y2 + 1);
+			if (sx2 > 80)
+			{
+				sx2 = 80;
+			}
+			if (sy2 > 25)
+			{
+				sy2 = 25;
+			}
+			if ((sx1 <= sx2) && (sy1 <= sy2))
+			{
+				gettext(sx1, sy1, sx2, sy2, tmp);
+				c2 = (unsigned int) (((sx2 - sx1 + 1) * (sy2 - sy1 + 1)) << 1);
+				for (c1 = 1; c1 <= c2; c1 += 2)
+				{
+					tmp[c1] = 8;
+				}
+				puttext(sx1, sy1, sx2, sy2, tmp);
+			}
 		}
-		puttext(x2 + 1, y1 + 1, x2 + 2, y2 + 1, tmp);
 	}
 	/* No window */
 	if ((flags & 4) == 0)
 	{
 		x = (x2 - x1);
+		if (x + 2 > sizeof(l1))
+		{
+			x = (unsigned int) (sizeof(l1) - 2);
+		}
 		memset(&l1, 0, x + 2);
 		memset(&l2, 0, x + 2);
 		memset(&l3, 0, x + 2);
 		l1[0] = frame[0];
-		memset(&l1[1], frame[2], x - 1);
+		if (x > 0)
+		{
+			memset(&l1[1], frame[2], x - 1);
+			memset(&l2[1], 32, x - 1);
+			memset(&l3[1], frame[3], x - 1);
+		}
 		l1[x] = frame[1];
 		l2[0] = frame[4];
-		memset(&l2[1], 32, x - 1);
 		l2[x] = frame[4];
 		l3[0] = frame[5];
-		memset(&l3[1], frame[3], x - 1);
 		l3[x] = frame[6];
 		textattr(atr);
 		gotoxy(x1, y1);
 		cputs(l1);
-		if (title[0] != 0)
+		if ((title != 0) && (title[0] != 0))
 		{
 			sprintf(tmp, " %s ", title);
 			conioxlib_cputsc(x1, x2, y1, tmp);
@@ -363,7 +413,7 @@ void conioxlib_box (unsigned short x1, unsigned short y1, unsigned short x2, uns
 		if (flags & 2)
 		{
 			gotoxy(x1 + 2, y1);
-			cputs("[\xFE]");
+			cputs("[þ]");
 		}
 		for (y = y1 + 1; y != y2; y++)
 		{
@@ -1438,21 +1488,26 @@ void conioxlib_getstr (unsigned short x, unsigned short y, unsigned char atr, ch
 	unsigned int tec;
 	char aux[80];
 
+	if ((str == 0) || (len < 1))
+	{
+		return;
+	}
+	/* Keep one byte for the terminator inside the local field buffer */
+	if (len > 78)
+	{
+		len = 78;
+	}
 	conioxlib_hint("Input a valid string");
 	_setcursortype(_SOLIDCURSOR);
-	memset(aux, 0, 80);
-	memset(aux, 32, len + 1);
+	memset(aux, 32, (size_t) len);
+	aux[len] = 0;
 	textattr(atr);
 	gotoxy(x, y);
 	cputs(aux);
-	strcpy(aux, str);
-	i = strlen(aux);
-	/* Truncate the initial string to the field length so aux cannot overflow */
-	if (i > len)
-	{
-		i = len;
-		aux[len] = 0;
-	}
+	/* Bound the initial value: never strcpy past the field width */
+	strncpy(aux, str, (size_t) len);
+	aux[len] = 0;
+	i = (int) strlen(aux);
 	gotoxy(x, y);
 	cputs(aux);
 	do
@@ -1469,7 +1524,7 @@ void conioxlib_getstr (unsigned short x, unsigned short y, unsigned char atr, ch
 		{
 			if (i > 0)
 			{
-				cputs("\b \b");
+				cputs(" ");
 				i--;
 				aux[i] = 0;
 			}
@@ -1480,7 +1535,7 @@ void conioxlib_getstr (unsigned short x, unsigned short y, unsigned char atr, ch
 		else if (tec == KBD_ENTER)
 		{
 			strcpy(str, aux);
-			i = strlen(aux);
+			i = (int) strlen(aux);
 		}
 		else if (tec == KBD_LEFT)
 		{
@@ -1532,15 +1587,25 @@ void conioxlib_getpw (unsigned short x, unsigned short y, unsigned char atr, cha
 {
 	int i;
 	unsigned int tec;
+	char aux[80];
+	char mask[80];
 
+	if ((pass == 0) || (len < 1))
+	{
+		return;
+	}
+	if (len > 78)
+	{
+		len = 78;
+	}
 	conioxlib_hint("Type password");
 	_setcursortype(_NOCURSOR);
-	memset(pass, 0, len + 1);
-	memset(pass, 32, len);
+	memset(mask, 32, (size_t) len);
+	mask[len] = 0;
 	textattr(atr);
 	gotoxy(x, y);
-	cputs(pass);
-	pass[0] = 0;
+	cputs(mask);
+	aux[0] = 0;
 	i = 0;
 	gotoxy(x, y);
 	do
@@ -1557,9 +1622,9 @@ void conioxlib_getpw (unsigned short x, unsigned short y, unsigned char atr, cha
 		{
 			if (i > 0)
 			{
-				cputs("\b \b");
+				cputs(" ");
 				i--;
-				pass[i] = 0;
+				aux[i] = 0;
 			}
 		}
 		else if ((tec == KBD_ENTER) || (tec == KBD_ESC))
@@ -1570,14 +1635,21 @@ void conioxlib_getpw (unsigned short x, unsigned short y, unsigned char atr, cha
 			if ((i < len) && (tec >= 32) && (tec <= 255))
 			{
 				putch('*');
-				pass[i] = (char) tec;
+				aux[i] = (char) tec;
 				i++;
-				pass[i] = 0;
+				aux[i] = 0;
 			}
 		}
 	}
 	while ((tec != KBD_ENTER) && (tec != KBD_ESC));
-	pass[i] = 0;
+	if (tec != KBD_ESC)
+	{
+		strcpy(pass, aux);
+	}
+	else
+	{
+		pass[0] = 0;
+	}
 	_setcursortype(_NOCURSOR);
 }
 
@@ -1778,11 +1850,12 @@ unsigned char conioxlib_buttons (unsigned short x1, unsigned short y1, unsigned 
 	while ((key != KBD_ENTER) && (key != KBD_ESC) && (key != KBD_F1));
 	if (key == KBD_ESC)
 	{
-		return(0);
+		/* Align with menu(): ESC is not a valid button index */
+		return(255);
 	}
 	else if (key == KBD_F1)
 	{
-		return(255);
+		return(254);
 	}
 	else
 	{
@@ -1790,7 +1863,7 @@ unsigned char conioxlib_buttons (unsigned short x1, unsigned short y1, unsigned 
 		conioxlib_drawbtn(x, (unsigned char) (((atr1 & 0x0F) << 4) | (atr1 >> 4)));
 		delay(120);
 		conioxlib_drawbtn(x, atr1);
-		return(x);
+		return((unsigned char) x);
 	}
 }
 
@@ -3319,7 +3392,8 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 		strncpy(files[i].name, ffd.cFileName, 12);
 		if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 #else
-		memcpy(files[i].name, conioxlib_ffname(ffblk), 13);
+		memcpy(files[i].name, conioxlib_ffname(ffblk), 12);
+		files[i].name[12] = 0;
 		if (conioxlib_ffattrib(ffblk) & 0x10)
 #endif
 		{
