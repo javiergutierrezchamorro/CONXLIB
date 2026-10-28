@@ -224,7 +224,6 @@ unsigned char conioxlib_msgbox(const char *title, const char *msg, char buttons[
 unsigned char conioxlib_inputbox(const char *title, const char *label, char *buf, char len);
 unsigned char conioxlib_inputmask(const char *title, const char *label, char *buf, char len, char mindigits);
 unsigned char conioxlib_listbox(unsigned short x1, unsigned short y1, unsigned short x2, unsigned short y2, unsigned char atr0, unsigned char atr1, char items[][41], unsigned char nitems, const char *title);
-unsigned char conioxlib_edit(unsigned short x1, unsigned short y1, unsigned short x2, unsigned short y2, unsigned char atr0, unsigned char atr1, const char *title, const char *filename);
 
 #if ((__DOS__) || (__MSDOS__)) && defined(__TURBOC__)
 void interrupt error(unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int);

@@ -3,10 +3,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32)
+	#include <windows.h>	/* demo_edit_shift() polls GetAsyncKeyState() */
+#endif
 #include "coniox.h"
 #include "conxlib.h"
 /* ----------------------------------------------------------------------------------------------------------------- */
-#define DEMO_OPTIONS	27
+#define DEMO_OPTIONS	28
 #define DEMO_TITLE	"CONXLIB DEMO 2.0               (c) Copyright 1997-2026 Javier Gutierrez Chamorro"
 #define DEMO_HELP	"CONXDEMO.HLP"
 #define DEMO_HOT	CONIOXLIB_ATTR(RED, LIGHTGRAY)
@@ -28,6 +31,7 @@ static const char *demooptions[DEMO_OPTIONS] = {	"&Exit",
 											"&Grid table",
 											"C&alendar",
 											"&File selector",
+											"File &picker",
 											"&Viewer",
 											"&Screensaver",
 											"&Effects",
@@ -55,6 +59,7 @@ static const char *demohints[DEMO_OPTIONS] = {	"Leave the demo: conioxlib_exitto
 											"conioxlib_grid(): grid picker returning the selected cell             ",
 											"conioxlib_calendar(): interactive month view returning the date       ",
 											"filemultiselector(): drives, folders, files and marked picks          ",
+											"conioxlib_fileselector(): compact single file picker                  ",
 											"conioxlib_view(): scrollable text window with a scrollbar             ",
 											"conioxlib_screensaver(): random effects until a key                   ",
 											"push, bounce and wipe screen effects                                  ",
@@ -70,7 +75,7 @@ static const char *demohints[DEMO_OPTIONS] = {	"Leave the demo: conioxlib_exitto
 											"conioxlib_listbox(): scrollable list with wheel support               ",
 											"conioxlib_progress / progressbar animated demo                        ",
 											"conioxlib_theme(): Borland, Norton, PC Tools, Edit, Lotus             ",
-											"conioxlib_edit(): simple Borland-style text editor                    ",
+											"demo_edit(): Borland-style editor moved from the library              ",
 											"conioxlib_status and tooltip without touching clock/locks             ",
 											"demo_tetris(): falling blocks game in a boxed window                  "};
 static char optmenu[5][21] = {	"&Icons",
@@ -306,7 +311,8 @@ static void demo_calendar(void)
 static void demo_fileselector(void)
 {
 	char dir[80];
-	char str[80];
+	/* str holds "X:\sub1\sub2\...\filename.ext" which can exceed 80 chars when dir is near its limit */
+	char str[96];
 	unsigned char disk;
 	unsigned int i;
 	unsigned int t;
@@ -374,6 +380,35 @@ static void demo_fileselector(void)
 	}
 	free(files);
 }
+/* ------------- Simple single file picker with fileselector() ------------- */
+static void demo_simplepicker(void)
+{
+	unsigned char disk;
+	char dir[80];
+	char name[41];
+	unsigned int t;
+
+	disk = 'C';
+	dir[0] = 0;
+	name[0] = 0;
+	/* conioxlib_fileselector() browses from the current drive and directory and fills
+	   the three outputs only when a plain file is picked with ENTER */
+	if (conioxlib_fileselector(&disk, dir, name) != 0)
+	{
+		box(20, 8, 60, 14, CONIOXLIB_ATTR(BLACK, LIGHTGRAY), A_DOUBLE, "Picked file", SHADOW);
+		textattr(CONIOXLIB_ATTR(WHITE, LIGHTGRAY));
+		gotoxy(22, 10);
+		cprintf("Drive: %c", disk);
+		gotoxy(22, 11);
+		cprintf("Path:  %s", dir);
+		gotoxy(22, 12);
+		cprintf("File:  %s", name);
+		gotoxy(22, 13);
+		cputs("Press a key to close");
+		t = conioxlib_ckey();
+		(void) t;
+	}
+}
 /* ------------------------ Text viewer with view() ---------------------- */
 static void demo_viewer(void)
 {
@@ -385,8 +420,11 @@ static void demo_viewer(void)
 	{
 		i++;
 	}
-	last = i - 1;
-	helpbuf = (char (*)[61]) malloc((size_t) ((last + 1) * 61));
+	/* conioxlib_view() treats `last` as the count of lines (rows 0..last-1 hold content),
+	   and its clear loop writes up to row last + (y2 - y1) - 1, so the buffer must hold
+	   that many rows: allocate DEMO_HELPBUF (256*61) which is the same size helpindex uses */
+	last = i;
+	helpbuf = (char (*)[61]) malloc((size_t) DEMO_HELPBUF);
 	if (helpbuf == 0)
 	{
 		return;
@@ -937,10 +975,1015 @@ static void demo_themes(void)
 	free(themenames);
 	free(themedesc);
 }
-/* --------------------- Text editor with edit() ------------------------ */
+/* --------------------------- Text editor ------------------------------- */
+/* demo_edit() moved here from the library (it was conioxlib_edit()): it
+   embeds a Borland-style editor in a rectangle (x1,y1)-(x2,y2) with a
+   File/Edit/Search menu bar (F10 or click), atr0/atr1 colors and an
+   optional title. It redraws only what is needed, highlights the active
+   line with atr1, expands tabs to 4 spaces when painting, loads up to 250
+   lines, supports mouse/wheel, block selection with Shift, paging with
+   PGUP/PGDW and undo/redo (4 levels). File > Open picks the file with
+   conioxlib_fileselector(). Returns 0. */
+
+/* Returns whether a shift key is held: Windows polls the async key state and DOS reads the BIOS shift flags */
+static int demo_edit_shift (void)
+{
+#if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32)
+	return ((GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0);
+#else
+	return ((peekb(0x40, 0x17) & 3) != 0);
+#endif
+}
+
+/* Editor undo stacks: demo_pushundo() pushes a full copy of the text onto
+   the stack (dst) and demo_clearundo() empties the opposite stack after a
+   change; they only expand inside demo_edit(). */
+#define demo_pushundo(dst, ndst) \
+	do { \
+		if ((ndst) == 4) \
+		{ \
+			free((dst)[0]); \
+			(dst)[0] = (dst)[1]; \
+			(dst)[1] = (dst)[2]; \
+			(dst)[2] = (dst)[3]; \
+			(ndst) = 3; \
+		} \
+		(dst)[(ndst)] = (struct demo_seditundo *) malloc(sizeof(struct demo_seditundo)); \
+		if ((dst)[(ndst)] != 0) \
+		{ \
+			memcpy((dst)[(ndst)]->lines, lines, sizeof(lines)); \
+			(dst)[(ndst)]->nlines = nlines; \
+			(dst)[(ndst)]->cur = cur; \
+			(dst)[(ndst)]->col = col; \
+			(ndst)++; \
+		} \
+	} while (0)
+
+#define demo_clearundo(dst, ndst) \
+	do { \
+		while ((ndst) > 0) \
+		{ \
+			(ndst)--; \
+			free((dst)[(ndst)]); \
+		} \
+	} while (0)
+
+static unsigned char demo_edit (unsigned short x1, unsigned short y1, unsigned short x2, unsigned short y2, unsigned char atr0, unsigned char atr1, const char *title, const char *filename)
+{
+#define DEMO_EDIT_MAXL	250
+#define DEMO_EDIT_MAXC	76
+	static char CONIOXLIB_FARDATA lines[DEMO_EDIT_MAXL][DEMO_EDIT_MAXC];
+	static char CONIOXLIB_FARDATA clip[DEMO_EDIT_MAXL][DEMO_EDIT_MAXC];
+	char fname[80];
+	char fdir[80];
+	char fname2[41];
+	unsigned char fdrive;
+	char findstr[40];
+	char repstr[40];
+	char gotobuf[8];
+	char outln[160];
+	unsigned char oldx, oldy;
+	char *oldb;
+	int nlines, cur, col, top, key, i, j, vis;
+	int off, lenfind, lenrep, lenrest;
+	int l, width, height;
+	int drawfull, drawline, oldtop, oldcur, oldnlines;
+	char *s;
+	FILE *f;
+	char baritems[3][21] = {"&File", "&Edit", "&Search"};
+	char bardesc[3][71];
+	char fileitems[5][21] = {"&Open...", "&Save", "Save &as...", "-", "E&xit"};
+	char filedesc[5][71];
+	char edititems[7][21] = {"Cu&t", "&Copy", "&Paste", "-", "C&lear line", "&Undo", "&Redo"};
+	char editdesc[7][71];
+	char searchitems[3][21] = {"&Find...", "&Replace...", "&Goto line..."};
+	char searchdesc[3][71];
+	int barpos[3];
+	int mbsel;
+	int nclip;
+	int selrow, selcol, selactive, selpaint, shiftpressed;
+	int clr, ln, r1, c1, r2, c2, a, b, vs, ve, k;
+	unsigned int selatr;
+	unsigned char bar, sub;
+	struct conioxlib_stheme th;
+	struct demo_seditundo
+	{
+		char lines[DEMO_EDIT_MAXL][DEMO_EDIT_MAXC];
+		int nlines;
+		int cur;
+		int col;
+	};
+	struct demo_seditundo *undo[4];
+	struct demo_seditundo *redo[4];
+	int nundo, nredo;
+
+	/* Expand tabs (stop every 4) into outln; returns visual length */
+#define demo_edit_expand(src, dst, maxw) \
+	do { \
+		int _si, _di, _ts; \
+		_di = 0; \
+		for (_si = 0; (src)[_si] != 0 && _di < (maxw); _si++) \
+		{ \
+			if ((src)[_si] == '\t') \
+			{ \
+				_ts = 4 - (_di % 4); \
+				while (_ts-- > 0 && _di < (maxw)) \
+				{ \
+					(dst)[_di++] = ' '; \
+				} \
+			} \
+			else \
+			{ \
+				(dst)[_di++] = (src)[_si]; \
+			} \
+		} \
+		(dst)[_di] = 0; \
+	} while (0)
+
+	/* Compares two block selection corners: negative when the first comes before the second */
+#define demo_edit_selcmp(r1, c1, r2, c2)	(((r1) != (r2)) ? ((r1) - (r2)) : ((c1) - (c2)))
+
+	/* Copies the active block selection, or the current line when none, to the multiline clipboard */
+#define demo_edit_selcopy() \
+	do { \
+		int _r1, _c1, _r2, _c2, _k, _from, _len; \
+		if (selactive != 0) \
+		{ \
+			if (demo_edit_selcmp(selrow, selcol, cur, col) <= 0) \
+			{ \
+				_r1 = selrow; _c1 = selcol; _r2 = cur; _c2 = col; \
+			} \
+			else \
+			{ \
+				_r1 = cur; _c1 = col; _r2 = selrow; _c2 = selcol; \
+			} \
+			if (_c2 > (int) strlen(lines[_r2])) \
+			{ \
+				_c2 = (int) strlen(lines[_r2]); \
+			} \
+			for (_k = _r1; _k <= _r2; _k++) \
+			{ \
+				_from = (_k == _r1) ? _c1 : 0; \
+				_len = ((_k == _r2) ? _c2 : (int) strlen(lines[_k])) - _from; \
+				if (_len < 0) \
+				{ \
+					_len = 0; \
+				} \
+				if (_len > DEMO_EDIT_MAXC - 1) \
+				{ \
+					_len = DEMO_EDIT_MAXC - 1; \
+				} \
+				memcpy(clip[_k - _r1], &lines[_k][_from], (size_t) _len); \
+				clip[_k - _r1][_len] = 0; \
+			} \
+			nclip = _r2 - _r1 + 1; \
+		} \
+		else \
+		{ \
+			strcpy(clip[0], lines[cur]); \
+			nclip = 1; \
+		} \
+	} while (0)
+
+	/* Deletes the active block selection with undo; typing, ENTER and BACK call it before editing */
+#define demo_edit_delsel() \
+	do { \
+		int _r1, _c1, _r2, _c2, _k; \
+		if (selactive != 0) \
+		{ \
+			if (demo_edit_selcmp(selrow, selcol, cur, col) <= 0) \
+			{ \
+				_r1 = selrow; _c1 = selcol; _r2 = cur; _c2 = col; \
+			} \
+			else \
+			{ \
+				_r1 = cur; _c1 = col; _r2 = selrow; _c2 = selcol; \
+			} \
+			if (_c2 > (int) strlen(lines[_r2])) \
+			{ \
+				_c2 = (int) strlen(lines[_r2]); \
+			} \
+			if (_c1 > (int) strlen(lines[_r1])) \
+			{ \
+				_c1 = (int) strlen(lines[_r1]); \
+			} \
+			demo_pushundo(undo, nundo); \
+			demo_clearundo(redo, nredo); \
+			if (_r1 == _r2) \
+			{ \
+				memmove(&lines[_r1][_c1], &lines[_r1][_c2], (size_t) (strlen(&lines[_r1][_c2]) + 1)); \
+			} \
+			else \
+			{ \
+				strncpy(&lines[_r1][_c1], &lines[_r2][_c2], (size_t) (DEMO_EDIT_MAXC - 2 - _c1)); \
+				lines[_r1][DEMO_EDIT_MAXC - 2] = 0; \
+				for (_k = _r2 + 1; _k < nlines; _k++) \
+				{ \
+					strcpy(lines[_k - (_r2 - _r1)], lines[_k]); \
+				} \
+				nlines -= (_r2 - _r1); \
+			} \
+			cur = _r1; \
+			col = _c1; \
+			selactive = 0; \
+			selpaint = 1; \
+			drawline = 1; \
+		} \
+	} while (0)
+
+	/* Computes in res the widest visible item of a drop-down, skipping separators: the width every row shares */
+#define demo_edit_menuw(items, nitems, res) \
+	do { \
+		int _w, _c, _n; \
+		(res) = 1; \
+		for (_w = 0; _w < (nitems); _w++) \
+		{ \
+			if ((items)[_w][0] != '-') \
+			{ \
+				_n = 0; \
+				for (_c = 0; (items)[_w][_c] != 0; _c++) \
+				{ \
+					if ((items)[_w][_c] != '&') \
+					{ \
+						_n++; \
+					} \
+				} \
+				if (_n > (res)) \
+				{ \
+					(res) = _n; \
+				} \
+			} \
+		} \
+	} while (0)
+
+	/* Loads the whole file f into the lines buffer: nl receives the line count, never zero */
+#define demo_edit_load(f, nl) \
+	do { \
+		int _ll; \
+		(nl) = 0; \
+		while (((nl) < DEMO_EDIT_MAXL - 1) && (fgets(lines[(nl)], DEMO_EDIT_MAXC - 1, (f)) != 0)) \
+		{ \
+			for (_ll = 0; lines[(nl)][_ll] != 0; _ll++) \
+			{ \
+				if ((lines[(nl)][_ll] == '\r') || (lines[(nl)][_ll] == '\n')) \
+				{ \
+					lines[(nl)][_ll] = 0; \
+					break; \
+				} \
+			} \
+			(nl)++; \
+		} \
+		if ((nl) == 0) \
+		{ \
+			(nl) = 1; \
+		} \
+	} while (0)
+
+	if ((x2 <= x1 + 4) || (y2 <= y1 + 3))
+	{
+		return(255);
+	}
+	width = (int) (x2 - x1 + 1);
+	height = (int) (y2 - y1 + 1);
+	vis = height - 3;
+	if (vis < 1)
+	{
+		vis = 1;
+	}
+	if (width > DEMO_EDIT_MAXC - 1)
+	{
+		width = DEMO_EDIT_MAXC - 1;
+	}
+	memset(bardesc, 32, sizeof(bardesc));
+	memset(filedesc, 32, sizeof(filedesc));
+	memset(editdesc, 32, sizeof(editdesc));
+	memset(searchdesc, 32, sizeof(searchdesc));
+	for (i = 0; i < 4; i++)
+	{
+		undo[i] = 0;
+		redo[i] = 0;
+	}
+	nundo = 0;
+	nredo = 0;
+	conioxlib_gettheme(&th);
+	oldx = wherex();
+	oldy = wherey();
+	oldb = conioxlib_savescr(x1, y1, x2, y2);
+	if (oldb == 0)
+	{
+		return(255);
+	}
+	memset(lines, 0, sizeof(lines));
+	nclip = 0;
+	findstr[0] = 0;
+	repstr[0] = 0;
+	nlines = 1;
+	cur = 0;
+	col = 0;
+	top = 0;
+	fname[0] = 0;
+	barpos[0] = (int) x1;
+	barpos[1] = (int) x1 + 6;
+	barpos[2] = (int) x1 + 12;
+	if ((filename != 0) && (filename[0] != 0))
+	{
+		strncpy(fname, filename, 79);
+		fname[79] = 0;
+		f = fopen(fname, "rb");
+		if (f != 0)
+		{
+			demo_edit_load(f, nlines);
+			fclose(f);
+		}
+	}
+	_setcursortype(_NORMALCURSOR);
+	drawfull = 1;
+	drawline = 0;
+	oldtop = -1;
+	oldcur = -1;
+	oldnlines = -1;
+	selactive = 0;
+	selpaint = 0;
+	mbsel = 0;
+	for (;;)
+	{
+		selatr = (unsigned int) (((atr0 & 0x0F) << 4) | (atr0 >> 4));
+		clr = ((top != oldtop) || (nlines != oldnlines));
+		/* Repaint the menu bar row and the caption only on full redraws */
+		if (drawfull != 0)
+		{
+			textattr(atr0);
+			gotoxy(x1, y1);
+			for (i = 0; i < (int) (x2 - x1 + 1); i++)
+			{
+				putch(' ');
+			}
+			for (i = 0; i < 3; i++)
+			{
+				gotoxy((unsigned short) barpos[i], y1);
+				textattr(atr0);
+				putch(' ');
+				conioxlib_cputs_hot((unsigned short) (barpos[i] + 1), y1, atr0, th.atrhot, baritems[i]);
+				textattr(atr0);
+				putch(' ');
+			}
+			if ((title != 0) && (title[0] != 0))
+			{
+				textattr(atr0);
+				gotoxy((unsigned short) (x2 - (unsigned short) strlen(title) - 1), y1);
+				cputs((char *) title);
+			}
+		}
+		/* Clear the text area when the page or the line count moved to wipe stale rows */
+		if ((clr != 0) || (drawfull != 0))
+		{
+			textattr(atr0);
+			window((int) x1, (int) (y1 + 1), (int) x2, (int) (y2 - 1));
+			clrscr();
+			window(1, 1, 80, 25);
+		}
+		/* Repaint the visible lines: each line is fully covered, so repainting needs no clrscr() */
+		if ((drawfull != 0) || (clr != 0) || (cur != oldcur) || (drawline != 0) || (selpaint != 0))
+		{
+			window((int) x1, (int) (y1 + 1), (int) x2, (int) (y2 - 1));
+			if (selactive != 0)
+			{
+				if (demo_edit_selcmp(selrow, selcol, cur, col) <= 0)
+				{
+					r1 = selrow; c1 = selcol; r2 = cur; c2 = col;
+				}
+				else
+				{
+					r1 = cur; c1 = col; r2 = selrow; c2 = selcol;
+				}
+				if (c1 > (int) strlen(lines[r1]))
+				{
+					c1 = (int) strlen(lines[r1]);
+				}
+				if (c2 > (int) strlen(lines[r2]))
+				{
+					c2 = (int) strlen(lines[r2]);
+				}
+			}
+			else
+			{
+				r1 = 0; c1 = 0; r2 = -1; c2 = 0;
+			}
+			for (i = 0; i < vis; i++)
+			{
+				if (top + i >= nlines)
+				{
+					break;
+				}
+				ln = top + i;
+				gotoxy(1, i + 1);
+				demo_edit_expand(lines[ln], outln, width);
+				textattr((ln == cur) ? atr1 : atr0);
+				cprintf("%-*.*s", width, width, outln);
+				/* Overlay the selected segment of the line with inverted video */
+				if ((ln >= r1) && (ln <= r2))
+				{
+					a = (ln == r1) ? c1 : 0;
+					b = ((ln == r2) ? c2 : (int) strlen(lines[ln]));
+					if (b > (int) strlen(lines[ln]))
+					{
+						b = (int) strlen(lines[ln]);
+					}
+					if (b < a)
+					{
+						b = a;
+					}
+					vs = 0;
+					for (k = 0; (k < a) && (lines[ln][k] != 0); k++)
+					{
+						vs += (lines[ln][k] == '\t') ? (4 - (vs % 4)) : 1;
+					}
+					ve = vs;
+					for (k = a; (k < b) && (lines[ln][k] != 0); k++)
+					{
+						ve += (lines[ln][k] == '\t') ? (4 - (ve % 4)) : 1;
+					}
+					if ((ve > vs) && (vs < width))
+					{
+						if (ve > width)
+						{
+							ve = width;
+						}
+						textattr((unsigned char) selatr);
+						gotoxy((unsigned short) (vs + 1), (unsigned short) (i + 1));
+						cprintf("%-.*s", ve - vs, &outln[vs]);
+					}
+				}
+			}
+			window(1, 1, 80, 25);
+			oldtop = top;
+			oldcur = cur;
+			oldnlines = nlines;
+			drawfull = 0;
+			drawline = 0;
+			selpaint = 0;
+		}
+		/* Status bar at bottom of region */
+		textattr(th.atrstatus);
+		gotoxy(x1, y2);
+		cprintf(" %-12.12s Ln %3d Col %3d F10=menu ESC=quit", fname[0] ? fname : "(untitled)", cur + 1, col + 1);
+		/* Never putch() the bottom-right console cell: with the window
+		   covering (80,25) and scrolling disabled the cursor would not
+		   advance and this loop would hang the editor */
+		while (wherex() <= (int) x2)
+		{
+			if ((wherex() >= 80) && ((int) y2 >= 25))
+			{
+				break;
+			}
+			putch(' ');
+		}
+		if (((int) x2 >= 80) && ((int) y2 >= 25))
+		{
+			unsigned short cell;
+
+			cell = (unsigned short) ((th.atrstatus << 8) | ' ');
+			puttext(80, 25, 80, 25, &cell);
+		}
+		/* Cursor visual: column after tab expansion up to col */
+		{
+			int vcol = 0;
+			for (i = 0; i < col && lines[cur][i] != 0; i++)
+			{
+				if (lines[cur][i] == '\t')
+				{
+					vcol += 4 - (vcol % 4);
+				}
+				else
+				{
+					vcol++;
+				}
+			}
+			if (vcol >= width)
+			{
+				vcol = width - 1;
+			}
+			gotoxy((unsigned short) (x1 + vcol), (unsigned short) (y1 + 1 + (cur - top)));
+		}
+		key = 0;
+		shiftpressed = 0;
+		do
+		{
+			conioxlib_pollmouse();
+			if (conioxlib_kbhit())
+			{
+				key = conioxlib_getkey();
+				shiftpressed = demo_edit_shift();
+			}
+			else if (conioxlib_mousestatus.lclick != 0)
+			{
+				if (conioxlib_mousestatus.y == (unsigned int) y1)
+				{
+					mbsel = (int) ((conioxlib_mousestatus.x > (unsigned int) barpos[2]) ? 2 : ((conioxlib_mousestatus.x > (unsigned int) barpos[1]) ? 1 : 0));
+					key = KBD_F10;
+				}
+				else if ((conioxlib_mousestatus.y > (unsigned int) y1) && (conioxlib_mousestatus.y < (unsigned int) y2) && (conioxlib_mousestatus.x >= (unsigned int) x1) && (conioxlib_mousestatus.x <= (unsigned int) x2))
+				{
+					i = top + (int) conioxlib_mousestatus.y - (int) y1 - 1;
+					if (i < nlines)
+					{
+						cur = i;
+					}
+					i = (int) conioxlib_mousestatus.x - (int) x1;
+					j = (int) strlen(lines[cur]);
+					if (i > j)
+					{
+						i = j;
+					}
+					if (i > DEMO_EDIT_MAXC - 2)
+					{
+						i = DEMO_EDIT_MAXC - 2;
+					}
+					if (i < 0)
+					{
+						i = 0;
+					}
+					col = i;
+					if (selactive != 0)
+					{
+						selactive = 0;
+						selpaint = 1;
+					}
+					key = 0x1312;
+				}
+			}
+			else if (conioxlib_mousestatus.wheely < 0)
+			{
+				key = KBD_DOWN;
+			}
+			else if (conioxlib_mousestatus.wheely > 0)
+			{
+				key = KBD_UP;
+			}
+			if (key == 0)
+			{
+				delay(15);
+			}
+		}
+		while (key == 0);
+		/* Shift plus a movement key starts or extends the block selection; a plain movement clears it */
+		if ((key == KBD_UP) || (key == KBD_DOWN) || (key == KBD_LEFT) || (key == KBD_RIGHT) || (key == KBD_PGUP) || (key == KBD_PGDW) || (key == KBD_ORG) || (key == KBD_END))
+		{
+			if (shiftpressed != 0)
+			{
+				if (selactive == 0)
+				{
+					selrow = cur;
+					selcol = col;
+					selactive = 1;
+				}
+				selpaint = 1;
+			}
+			else if (selactive != 0)
+			{
+				selactive = 0;
+				selpaint = 1;
+			}
+		}
+		if (key == KBD_ESC)
+		{
+			break;
+		}
+		else if (key == KBD_F10)
+		{
+			mbsel = (mbsel < 0) ? 0 : mbsel;
+			bar = conioxlib_menubar(y1, atr0, atr1, th.atrhot, baritems, bardesc, 3, (unsigned char) mbsel);
+			/* Keep the last visited menu so the next F10 comes back to it */
+			if (bar < 3)
+			{
+				mbsel = (int) bar;
+				if (bar == 0)
+				{
+					demo_edit_menuw(fileitems, 5, l);
+					box(x1, (unsigned short) (y1 + 1), (unsigned short) (x1 + l + 2), (unsigned short) (y1 + 7), th.atrdialog, th.frame, "", SHADOW);
+					sub = conioxlib_menu((unsigned short) (x1 + 1), (unsigned short) (y1 + 2), atr0, atr1, th.atrhot, fileitems, filedesc, 5, 1, 0);
+					if (sub == 0)
+					{
+						fdrive = 0;
+						fdir[0] = 0;
+						if (conioxlib_fileselector(&fdrive, fdir, fname2) != 0)
+						{
+							sprintf(outln, "%c:%s%s", fdrive, fdir, fname2);
+						}
+						else
+						{
+							outln[0] = 0;
+						}
+						f = fopen(outln, "rb");
+						if (f != 0)
+						{
+							strcpy(fname, outln);
+							memset(lines, 0, sizeof(lines));
+							demo_edit_load(f, nlines);
+							fclose(f);
+							cur = 0;
+							col = 0;
+							selactive = 0;
+							top = 0;
+						}
+					}
+					else if ((sub == 1) || (sub == 2))
+					{
+						if ((sub == 2) || (fname[0] == 0))
+						{
+							conioxlib_inputbox("Save as", "File:", fname, 40);
+						}
+						if (fname[0] != 0)
+						{
+							f = fopen(fname, "wb");
+							if (f != 0)
+							{
+								for (i = 0; i < nlines; i++)
+								{
+									fprintf(f, "%s\r\n", lines[i]);
+								}
+								fclose(f);
+							}
+						}
+					}
+					else if (sub == 4)
+					{
+						break;
+					}
+				}
+				else if (bar == 1)
+				{
+					demo_edit_menuw(edititems, 7, l);
+					box((unsigned short) (x1 + 6), (unsigned short) (y1 + 1), (unsigned short) (x1 + l + 8), (unsigned short) (y1 + 9), th.atrdialog, th.frame, "", SHADOW);
+					sub = conioxlib_menu((unsigned short) (x1 + 7), (unsigned short) (y1 + 2), atr0, atr1, th.atrhot, edititems, editdesc, 7, 1, 0);
+					if (sub == 0)
+					{
+						if (selactive != 0)
+						{
+							demo_edit_selcopy();
+							demo_edit_delsel();
+						}
+						else
+						{
+							demo_pushundo(undo, nundo);
+							demo_clearundo(redo, nredo);
+							strcpy(clip[0], lines[cur]);
+							nclip = 1;
+							lines[cur][0] = 0;
+							col = 0;
+							drawline = 1;
+						}
+					}
+					else if (sub == 1)
+					{
+						demo_edit_selcopy();
+					}
+					else if (sub == 2)
+					{
+						if (nclip > 0)
+						{
+							if (selactive != 0)
+							{
+								demo_edit_delsel();
+							}
+							else
+							{
+								demo_pushundo(undo, nundo);
+								demo_clearundo(redo, nredo);
+							}
+							if ((nclip == 1) && ((int) strlen(lines[cur]) + (int) strlen(clip[0]) < DEMO_EDIT_MAXC - 1))
+							{
+								memmove(&lines[cur][col + (int) strlen(clip[0])], &lines[cur][col], (size_t) (strlen(&lines[cur][col]) + 1));
+								memcpy(&lines[cur][col], clip[0], (size_t) strlen(clip[0]));
+								col += (int) strlen(clip[0]);
+								drawline = 1;
+							}
+							else if ((nclip > 1) && (nlines + nclip - 1 < DEMO_EDIT_MAXL) && (col + (int) strlen(clip[0]) < DEMO_EDIT_MAXC - 1) && ((int) strlen(clip[nclip - 1]) + (int) strlen(&lines[cur][col]) < DEMO_EDIT_MAXC - 1))
+							{
+								strcpy(outln, &lines[cur][col]);
+								strcpy(&lines[cur][col], clip[0]);
+								for (j = nlines - 1; j > cur; j--)
+								{
+									strcpy(lines[j + nclip - 1], lines[j]);
+								}
+								for (j = 1; j < nclip - 1; j++)
+								{
+									strcpy(lines[cur + j], clip[j]);
+								}
+								strcpy(lines[cur + nclip - 1], clip[nclip - 1]);
+								strcat(lines[cur + nclip - 1], outln);
+								nlines += nclip - 1;
+								cur += nclip - 1;
+								col = (int) strlen(clip[nclip - 1]);
+								drawline = 1;
+							}
+						}
+					}
+					else if (sub == 4)
+					{
+						if (selactive != 0)
+						{
+							demo_edit_delsel();
+						}
+						else
+						{
+							demo_pushundo(undo, nundo);
+							demo_clearundo(redo, nredo);
+							lines[cur][0] = 0;
+							col = 0;
+							drawline = 1;
+						}
+					}
+					else if (sub == 5)
+					{
+						if (nundo > 0)
+						{
+							demo_pushundo(redo, nredo);
+							nundo--;
+							memcpy(lines, undo[nundo]->lines, sizeof(lines));
+							nlines = undo[nundo]->nlines;
+							cur = undo[nundo]->cur;
+							col = undo[nundo]->col;
+							free(undo[nundo]);
+							selactive = 0;
+						}
+					}
+					else if (sub == 6)
+					{
+						if (nredo > 0)
+						{
+							demo_pushundo(undo, nundo);
+							nredo--;
+							memcpy(lines, redo[nredo]->lines, sizeof(lines));
+							nlines = redo[nredo]->nlines;
+							cur = redo[nredo]->cur;
+							col = redo[nredo]->col;
+							free(redo[nredo]);
+							selactive = 0;
+						}
+					}
+				}
+				else if (bar == 2)
+				{
+					demo_edit_menuw(searchitems, 3, l);
+					box((unsigned short) (x1 + 12), (unsigned short) (y1 + 1), (unsigned short) (x1 + l + 14), (unsigned short) (y1 + 5), th.atrdialog, th.frame, "", SHADOW);
+					sub = conioxlib_menu((unsigned short) (x1 + 13), (unsigned short) (y1 + 2), atr0, atr1, th.atrhot, searchitems, searchdesc, 3, 1, 0);
+					if (sub == 0)
+					{
+						conioxlib_inputbox("Find", "Text:", findstr, 30);
+						if (findstr[0] != 0)
+						{
+							for (i = cur; i < nlines; i++)
+							{
+							s = strstr(&lines[i][(i == cur) ? col : 0], findstr);
+							if (s != 0)
+							{
+								cur = i;
+								col = (int) (s - lines[i]);
+								break;
+							}
+							}
+						}
+					}
+					else if (sub == 1)
+					{
+						conioxlib_inputbox("Replace", "Find:", findstr, 30);
+						if (findstr[0] != 0)
+						{
+							conioxlib_inputbox("Replace", "With:", repstr, 30);
+							lenfind = (int) strlen(findstr);
+							lenrep = (int) strlen(repstr);
+							s = 0;
+							for (i = cur; (i < nlines) && (s == 0); i++)
+							{
+								s = strstr(&lines[i][(i == cur) ? col : 0], findstr);
+							}
+							if (s != 0)
+							{
+								i--;
+								off = (int) (s - lines[i]);
+								lenrest = (int) strlen(&lines[i][off + lenfind]);
+								if (off + lenrep + lenrest < DEMO_EDIT_MAXC - 1)
+								{
+									demo_pushundo(undo, nundo);
+									demo_clearundo(redo, nredo);
+									memmove(&lines[i][off + lenrep], &lines[i][off + lenfind], (size_t) lenrest + 1);
+									memcpy(&lines[i][off], repstr, (size_t) lenrep);
+									cur = i;
+									col = off + lenrep;
+								}
+							}
+						}
+					}
+					else if (sub == 2)
+					{
+						if (conioxlib_inputmask("Goto", "Line:", gotobuf, 4, 1) == 0)
+						{
+							i = atoi(gotobuf);
+							if ((i >= 1) && (i <= nlines))
+							{
+								cur = i - 1;
+								col = 0;
+							}
+						}
+					}
+				}
+			}
+			drawfull = 1;
+		}
+		/* Vertical moves drop the cursor on the line end when the column sits past it, so typing always lands on screen */
+		else if (key == KBD_UP)
+		{
+			if (cur > 0)
+			{
+				cur--;
+				if (col > (int) strlen(lines[cur]))
+				{
+					col = (int) strlen(lines[cur]);
+				}
+			}
+		}
+		else if (key == KBD_DOWN)
+		{
+			if (cur < nlines - 1)
+			{
+				cur++;
+				if (col > (int) strlen(lines[cur]))
+				{
+					col = (int) strlen(lines[cur]);
+				}
+			}
+		}
+		else if (key == KBD_LEFT)
+		{
+			if (col > 0)
+			{
+				col--;
+			}
+		}
+		else if (key == KBD_RIGHT)
+		{
+			if ((col < (int) strlen(lines[cur])) && (col < DEMO_EDIT_MAXC - 2))
+			{
+				col++;
+			}
+		}
+		else if (key == KBD_PGUP)
+		{
+			cur -= vis;
+			if (cur < 0)
+			{
+				cur = 0;
+			}
+			if (col > (int) strlen(lines[cur]))
+			{
+				col = (int) strlen(lines[cur]);
+			}
+		}
+		else if (key == KBD_PGDW)
+		{
+			cur += vis;
+			if (cur > nlines - 1)
+			{
+				cur = nlines - 1;
+			}
+			if (col > (int) strlen(lines[cur]))
+			{
+				col = (int) strlen(lines[cur]);
+			}
+		}
+		else if (key == KBD_ORG)
+		{
+			col = 0;
+		}
+		else if (key == KBD_END)
+		{
+			col = (int) strlen(lines[cur]);
+			if (col > DEMO_EDIT_MAXC - 2)
+			{
+				col = DEMO_EDIT_MAXC - 2;
+			}
+		}
+		else if (key == KBD_ENTER)
+		{
+			j = (selactive != 0) ? 1 : 0;
+			if (selactive != 0)
+			{
+				demo_edit_delsel();
+			}
+			if (nlines < DEMO_EDIT_MAXL - 1)
+			{
+				if (j == 0)
+				{
+					demo_pushundo(undo, nundo);
+					demo_clearundo(redo, nredo);
+				}
+				for (j = nlines; j > cur + 1; j--)
+				{
+					strcpy(lines[j], lines[j - 1]);
+				}
+				strcpy(lines[cur + 1], &lines[cur][col]);
+				lines[cur][col] = 0;
+				nlines++;
+				cur++;
+				col = 0;
+			}
+		}
+		else if (key == KBD_BACK)
+		{
+			if (selactive != 0)
+			{
+				demo_edit_delsel();
+			}
+			else if (col > 0)
+			{
+				demo_pushundo(undo, nundo);
+				demo_clearundo(redo, nredo);
+				for (i = col - 1; lines[cur][i] != 0; i++)
+				{
+					lines[cur][i] = lines[cur][i + 1];
+				}
+				col--;
+				drawline = 1;
+			}
+		}
+		else if (key == '\t')
+		{
+			j = (selactive != 0) ? 1 : 0;
+			if (selactive != 0)
+			{
+				demo_edit_delsel();
+			}
+			i = (int) strlen(lines[cur]);
+			if (i < DEMO_EDIT_MAXC - 2)
+			{
+				if (j == 0)
+				{
+					demo_pushundo(undo, nundo);
+					demo_clearundo(redo, nredo);
+				}
+				for (j = i; j >= col; j--)
+				{
+					lines[cur][j + 1] = lines[cur][j];
+				}
+				lines[cur][col] = '\t';
+				col++;
+				drawline = 1;
+			}
+		}
+		else if ((key >= 32) && (key < 127))
+		{
+			j = (selactive != 0) ? 1 : 0;
+			if (selactive != 0)
+			{
+				demo_edit_delsel();
+			}
+			i = (int) strlen(lines[cur]);
+			if (i < DEMO_EDIT_MAXC - 2)
+			{
+				if (j == 0)
+				{
+					demo_pushundo(undo, nundo);
+					demo_clearundo(redo, nredo);
+				}
+				for (j = i; j >= col; j--)
+				{
+					lines[cur][j + 1] = lines[cur][j];
+				}
+				lines[cur][col] = (char) key;
+				col++;
+				drawline = 1;
+			}
+		}
+		if (cur < top)
+		{
+			top = cur;
+		}
+		if (cur >= top + vis)
+		{
+			top = cur - vis + 1;
+		}
+	}
+	_setcursortype(_NOCURSOR);
+	demo_clearundo(undo, nundo);
+	demo_clearundo(redo, nredo);
+	conioxlib_restorescr(x1, y1, x2, y2, oldb);
+	gotoxy(oldx, oldy);
+	return(0);
+#undef DEMO_EDIT_MAXL
+#undef DEMO_EDIT_MAXC
+#undef demo_edit_expand
+#undef demo_edit_load
+#undef demo_edit_menuw
+#undef demo_edit_selcmp
+#undef demo_edit_selcopy
+#undef demo_edit_delsel
+}
+
+/* --------------------- Text editor with demo_edit() ------------------- */
 static void demo_editor(void)
 {
-	conioxlib_edit(1, 1, 80, 25, CONIOXLIB_ATTR(BLACK, LIGHTGRAY), CONIOXLIB_ATTR(WHITE, GREEN), "Editor", "");
+	demo_edit(1, 1, 80, 25, CONIOXLIB_ATTR(BLACK, LIGHTGRAY), CONIOXLIB_ATTR(WHITE, GREEN), "Editor", "");
 }
 /* --------------------- Status line and tooltip ------------------------- */
 static void demo_statustip(void)
@@ -1972,27 +3015,7 @@ static const char CONIOXLIB_FARDATA helptext[] =
 	"It redirects the CON output of the child process into the" "\r\n"
 	"shell window. Do not call it directly." "\r\n"
 	"Example:" "\r\n"
-	"  /* installed automatically by conioxlib_shell() */" "\r\n"
-	"@edit" "\r\n"
-	"Prototype:" "\r\n"
-	"unsigned char conioxlib_edit(unsigned short x1," "\r\n"
-	"    unsigned short y1, unsigned short x2," "\r\n"
-	"    unsigned short y2, unsigned char atr0," "\r\n"
-	"    unsigned char atr1, const char *title," "\r\n"
-	"    const char *filename);" "\r\n"
-	"Embeds a text editor in a rectangle." "\r\n"
-	"Parameters: atr0 is the text color, atr1 the color of the" "\r\n"
-	"active line, title the caption and filename the file" "\r\n"
-	"loaded at startup (an empty string starts empty). The" "\r\n"
-	"File, Edit and Search menus open with F10 or a click;" "\r\n"
-	"the mouse and the wheel work, PGUP/PGDW page and HOME/" "\r\n"
-	"END jump, and Shift plus those keys marks a block that" "\r\n"
-	"Cut, Copy, Paste and typing replace. File > Open picks" "\r\n"
-	"the file with conioxlib_fileselector() and the undo" "\r\n"
-	"and redo stacks keep four levels. Returns 0." "\r\n"
-	"Example:" "\r\n"
-	"  conioxlib_edit(1, 1, 80, 25, atr0, atr1," "\r\n"
-	"      \"Editor\", \"NOTES.TXT\");" "\r\n";
+	"  /* installed automatically by conioxlib_shell() */" "\r\n";
 /* ----------------------------------------------------------------------------------------------------------------- */
 /* ------------------------------ Main -------------------------------- */
 int main(void)
@@ -2019,7 +3042,8 @@ int main(void)
 	demodesc = (char (*)[71]) demo_newtable(demohints, DEMO_OPTIONS, 71);
 	if ((demomenu == 0) || (demodesc == 0))
 	{
-		conioxlib_bye("CONXDEMO.TMP", 0, 0);
+		/* conioxlib_bye(name, e, ...) calls exit(e): pass the real error code */
+		conioxlib_bye("CONXDEMO.TMP", 1, 0);
 		return(1);
 	}
 	opt = 0;
@@ -2048,6 +3072,11 @@ int main(void)
 		{
 			opt = 0;
 		}
+		/* Left/Right in the menu (CONIOXLIB_MENU_LEFT/RIGHT) keep the menu open without any action */
+		if ((opt == CONIOXLIB_MENU_LEFT) || (opt == CONIOXLIB_MENU_RIGHT))
+		{
+			continue;
+		}
 		demo_clear_output();
 		switch (opt)
 		{
@@ -2059,24 +3088,25 @@ int main(void)
 			case 6: demo_grid(); break;
 			case 7: demo_calendar(); break;
 			case 8: demo_fileselector(); break;
-			case 9: demo_viewer(); break;
-			case 10: demo_screensaver(); break;
-			case 11: demo_effects(); break;
-			case 12: demo_buttons(); break;
-			case 13: demo_shell(); break;
-			case 14: demo_palette(); break;
-			case 15: demo_colorattrs(); break;
-			case 16: demo_menubar(); break;
-			case 17: demo_about(); break;
-			case 18: demo_msgbox(); break;
-			case 19: demo_inputbox(); break;
-			case 20: demo_inputmask(); break;
-			case 21: demo_listbox(); break;
-			case 22: demo_progress(); break;
-			case 23: demo_themes(); break;
-			case 24: demo_editor(); break;
-			case 25: demo_statustip(); break;
-			case 26: demo_tetris(); break;
+			case 9: demo_simplepicker(); break;
+			case 10: demo_viewer(); break;
+			case 11: demo_screensaver(); break;
+			case 12: demo_effects(); break;
+			case 13: demo_buttons(); break;
+			case 14: demo_shell(); break;
+			case 15: demo_palette(); break;
+			case 16: demo_colorattrs(); break;
+			case 17: demo_menubar(); break;
+			case 18: demo_about(); break;
+			case 19: demo_msgbox(); break;
+			case 20: demo_inputbox(); break;
+			case 21: demo_inputmask(); break;
+			case 22: demo_listbox(); break;
+			case 23: demo_progress(); break;
+			case 24: demo_themes(); break;
+			case 25: demo_editor(); break;
+			case 26: demo_statustip(); break;
+			case 27: demo_tetris(); break;
 			case 0:
 			default:
 				if (demo_exit())
