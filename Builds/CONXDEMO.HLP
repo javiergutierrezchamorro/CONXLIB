@@ -18,7 +18,7 @@ Reads the next key from the keyboard.
 Parameters: none.
 Plain keys arrive as their ASCII code and extended keys as
 (scan code << 8), so the KBD_ constants can be compared
-directly. It also drains the pending key captured by
+directly. It also drains the pending keys captured by
 conioxlib_pollmouse() under Windows.
 Example:
   if (conioxlib_kbhit())
@@ -30,7 +30,7 @@ Prototype:
 int conioxlib_kbhit(void);
 Returns nonzero when a key is waiting.
 Parameters: none.
-It sees both the keyboard buffer and the pending key kept
+It sees both the keyboard buffer and the pending keys kept
 by conioxlib_pollmouse() under Windows, so it is the safe
 replacement for the raw kbhit().
 Example:
@@ -343,7 +343,7 @@ Parameters: identical to conioxlib_option(), but only one
 entry holds the character \xFE mark at a time.
 Returns 255 when F1 was pressed or 0 on close.
 Example:
-  sel[demo_theme] = '\xFE';
+  sel[_demo_theme] = '\xFE';
   r = conioxlib_property(41, 6, atr0, atr1, atrhot,
       names, desc, sel, 9, 1, 1);
 @background
@@ -631,8 +631,8 @@ Asks for a string in a dialog box.
 Parameters: title is the caption, label the text next to
 the field, buf receives the answer and is also the
 initial value, and len the maximum length. Returns 0
-when accepted with ENTER, 1 when cancelled and 255 when
-F1 was pressed.
+when accepted, 1 when cancelled, 254 when F1 was
+pressed and 255 when cancelled with ESC.
 Example:
   r = conioxlib_inputbox("Open", "File:", name, 60);
 @inputmask
@@ -645,7 +645,7 @@ Parameters: like conioxlib_inputbox(), plus mindigits:
 the OK button only accepts the answer when at least that
 many digits were typed. Invalid characters are ignored
 as they are pressed. Returns 0 when accepted, 1 when
-cancelled and 255 when F1 was pressed.
+cancelled and 254 when F1 was pressed.
 Example:
   r = conioxlib_inputmask("Port", "Value:", buf,
       5, 2);
@@ -686,23 +686,3 @@ It redirects the CON output of the child process into the
 shell window. Do not call it directly.
 Example:
   /* installed automatically by conioxlib_shell() */
-@edit
-Prototype:
-unsigned char conioxlib_edit(unsigned short x1,
-    unsigned short y1, unsigned short x2,
-    unsigned short y2, unsigned char atr0,
-    unsigned char atr1, const char *title,
-    const char *filename);
-Embeds a text editor in a rectangle.
-Parameters: atr0 is the text color, atr1 the color of the
-active line, title the caption and filename the file
-loaded at startup (an empty string starts empty). The
-File, Edit and Search menus open with F10 or a click;
-the mouse and the wheel work, PGUP/PGDW page and HOME/
-END jump, and Shift plus those keys marks a block that
-Cut, Copy, Paste and typing replace. File > Open picks
-the file with conioxlib_fileselector() and the undo
-and redo stacks keep four levels. Returns 0.
-Example:
-  conioxlib_edit(1, 1, 80, 25, atr0, atr1,
-      "Editor", "NOTES.TXT");

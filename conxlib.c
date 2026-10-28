@@ -35,67 +35,67 @@
 /* int86 and registers: Watcom uses r.w, the rest use r.x */
 #if ((__DOS__) || (__MSDOS__))
 	#if ((defined(__FLAT__)) || (defined(__DJGPP__)))
-		#define coniox_int86	int386
-		#define coniox_int86x	int386x
+		#define _coniox_int86	int386
+		#define _coniox_int86x	int386x
 	#else
-		#define coniox_int86	int86
-		#define coniox_int86x	int86x
+		#define _coniox_int86	int86
+		#define _coniox_int86x	int86x
 	#endif
 	#if defined(__WATCOMC__)
-		#define conioxlib_rax(r)	(r).w.ax
-		#define conioxlib_rbx(r)	(r).w.bx
-		#define conioxlib_rcx(r)	(r).w.cx
-		#define conioxlib_rdx(r)	(r).w.dx
-		#define conioxlib_rdi(r)	(r).w.di
-		#define conioxlib_rcflag(r)	(r).w.cflag
-		#define conioxlib_getdisk()		(_getdrive() - 1)
-		#define conioxlib_setdisk(d)	_chdrive((d) + 1)
-		#define conioxlib_getcwd(p, n)	getcwd(p, n)
+		#define _conioxlib_rax(r)	(r).w.ax
+		#define _conioxlib_rbx(r)	(r).w.bx
+		#define _conioxlib_rcx(r)	(r).w.cx
+		#define _conioxlib_rdx(r)	(r).w.dx
+		#define _conioxlib_rdi(r)	(r).w.di
+		#define _conioxlib_rcflag(r)	(r).w.cflag
+		#define _conioxlib_getdisk()		(_getdrive() - 1)
+		#define _conioxlib_setdisk(d)	_chdrive((d) + 1)
+		#define _conioxlib_getcwd(p, n)	getcwd(p, n)
 	#else
-		#define conioxlib_rax(r)	(r).x.ax
-		#define conioxlib_rbx(r)	(r).x.bx
-		#define conioxlib_rcx(r)	(r).x.cx
-		#define conioxlib_rdx(r)	(r).x.dx
-		#define conioxlib_rdi(r)	(r).x.di
-		#define conioxlib_rcflag(r)	(r).x.cflag
-		#define conioxlib_getdisk()		getdisk()
-		#define conioxlib_setdisk(d)	setdisk(d)
-		#define conioxlib_getcwd(p, n)	getcwd(p, n)
+		#define _conioxlib_rax(r)	(r).x.ax
+		#define _conioxlib_rbx(r)	(r).x.bx
+		#define _conioxlib_rcx(r)	(r).x.cx
+		#define _conioxlib_rdx(r)	(r).x.dx
+		#define _conioxlib_rdi(r)	(r).x.di
+		#define _conioxlib_rcflag(r)	(r).x.cflag
+		#define _conioxlib_getdisk()		getdisk()
+		#define _conioxlib_setdisk(d)	setdisk(d)
+		#define _conioxlib_getcwd(p, n)	getcwd(p, n)
 	#endif
-	#define conioxlib_chdir(p)	chdir(p)
+	#define _conioxlib_chdir(p)	chdir(p)
 	#if defined(__WATCOMC__)
-		#define conioxlib_ffblk			struct find_t
-		#define conioxlib_findfirst(n, b)	_dos_findfirst(n, _A_NORMAL | _A_RDONLY | _A_HIDDEN | _A_SYSTEM | _A_SUBDIR | _A_ARCH, b)
-		#define conioxlib_findnext(b)		_dos_findnext(b)
-		#define conioxlib_ffname(b)		((b).name)
-		#define conioxlib_ffattrib(b)		((b).attrib)
-		#define conioxlib_ffsize(b)		((b).size)
-		#define conioxlib_ffdate(b)		((b).wr_date)
-		#define conioxlib_fftime(b)		((b).wr_time)
+		#define _conioxlib_ffblk			struct find_t
+		#define _conioxlib_findfirst(n, b)	_dos_findfirst(n, _A_NORMAL | _A_RDONLY | _A_HIDDEN | _A_SYSTEM | _A_SUBDIR | _A_ARCH, b)
+		#define _conioxlib_findnext(b)		_dos_findnext(b)
+		#define _conioxlib_ffname(b)		((b).name)
+		#define _conioxlib_ffattrib(b)		((b).attrib)
+		#define _conioxlib_ffsize(b)		((b).size)
+		#define _conioxlib_ffdate(b)		((b).wr_date)
+		#define _conioxlib_fftime(b)		((b).wr_time)
 	#else
-		#define conioxlib_ffblk			struct ffblk
-		#define conioxlib_findfirst(n, b)	findfirst(n, b, FA_RDONLY | FA_HIDDEN | FA_SYSTEM | FA_DIREC | FA_ARCH)
-		#define conioxlib_findnext(b)		findnext(b)
-		#define conioxlib_ffname(b)		((b).ff_name)
-		#define conioxlib_ffattrib(b)		((b).ff_attrib)
-		#define conioxlib_ffsize(b)		((b).ff_fsize)
-		#define conioxlib_ffdate(b)		((b).ff_fdate)
-		#define conioxlib_fftime(b)		((b).ff_ftime)
+		#define _conioxlib_ffblk			struct ffblk
+		#define _conioxlib_findfirst(n, b)	findfirst(n, b, FA_RDONLY | FA_HIDDEN | FA_SYSTEM | FA_DIREC | FA_ARCH)
+		#define _conioxlib_findnext(b)		findnext(b)
+		#define _conioxlib_ffname(b)		((b).ff_name)
+		#define _conioxlib_ffattrib(b)		((b).ff_attrib)
+		#define _conioxlib_ffsize(b)		((b).ff_fsize)
+		#define _conioxlib_ffdate(b)		((b).ff_fdate)
+		#define _conioxlib_fftime(b)		((b).ff_ftime)
 	#endif
 #endif
 
 #if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32)
-	#define conioxlib_getdisk()		(_getdrive() - 1)
-	#define conioxlib_setdisk(d)	_chdrive((d) + 1)
-	#define conioxlib_chdir(p)		_chdir(p)
-	#define conioxlib_getcwd(p, n)	_getcwd(p, n)
+	#define _conioxlib_getdisk()		(_getdrive() - 1)
+	#define _conioxlib_setdisk(d)	_chdrive((d) + 1)
+	#define _conioxlib_chdir(p)		_chdir(p)
+	#define _conioxlib_getcwd(p, n)	_getcwd(p, n)
 #endif
 
 struct conioxlib_smousestatus conioxlib_mousestatus = {0};
 
 /* Active theme: kept near the top of the file because clock()/blocks()/status()
-   and the conioxlib_hint() macro use it from the very first moment */
-static struct conioxlib_stheme conioxlib_curtheme = {
+   and the _conioxlib_hint() macro use it from the very first moment */
+static struct conioxlib_stheme _conioxlib_curtheme = {
 	CONIOXLIB_ATTR(WHITE, BLUE),
 	CONIOXLIB_ATTR(BLACK, GREEN),
 	CONIOXLIB_ATTR(CYAN, LIGHTGRAY),
@@ -105,19 +105,42 @@ static struct conioxlib_stheme conioxlib_curtheme = {
 	"Borland C++ 3.1"
 };
 
-/* Pending key captured by conioxlib_pollmouse() under Windows */
-static int conioxlib_pendingkey = 0;
+/* Keys captured by conioxlib_pollmouse() under Windows: a small FIFO keeps
+   every key of a batch read; the old single slot dropped all but the first */
+#define CONIOXLIB_KEYQUEUE	16
+static int _conioxlib_keyqueue[CONIOXLIB_KEYQUEUE];
+static unsigned char _conioxlib_keyqhead = 0;
+static unsigned char _conioxlib_keyqtail = 0;
 
-static int conioxlib_filemultiselector_sort(const void *a, const void *b);
-static void conioxlib_filemultiselector_format(char *res, long int n);
+static int _conioxlib_filemultiselector_sort(const void *a, const void *b);
+static void _conioxlib_filemultiselector_format(char *res, long int n);
 
-/* Reads a portable key: extended keys are returned as (scan << 8) and the rest as their ASCII code */
-#define conioxlib_readkey(t)	{ if (conioxlib_pendingkey) { t = conioxlib_pendingkey; conioxlib_pendingkey = 0; } else { int conioxlib_k = getch(); if (conioxlib_k == 0) { t = ((int) getch()) << 8; } else { t = conioxlib_k; } } }
-#define conioxlib_keyhit()		(conioxlib_pendingkey || kbhit())
+/* Darkens every attribute byte of a rectangle to 8 (dark gray) via gettext/puttext.
+   Used by box() shadows so the two shadow arms share one loop and one temp buffer. */
+static void _conioxlib_darken(unsigned short x1, unsigned short y1, unsigned short x2, unsigned short y2, char *tmp)
+{
+	unsigned int c1, c2;
+
+	if ((x1 > x2) || (y1 > y2))
+	{
+		return;
+	}
+	gettext(x1, y1, x2, y2, tmp);
+	c2 = (unsigned int) (((x2 - x1 + 1) * (y2 - y1 + 1)) << 1);
+	for (c1 = 1; c1 <= c2; c1 += 2)
+	{
+		tmp[c1] = 8;
+	}
+	puttext(x1, y1, x2, y2, tmp);
+}
+
+/* Reads a portable key: extended keys are returned as (scan << 8) and the rest as their ASCII code; the FIFO drained first holds the keys read by conioxlib_pollmouse() */
+#define _conioxlib_readkey(t)	{ if (_conioxlib_keyqhead != _conioxlib_keyqtail) { t = _conioxlib_keyqueue[_conioxlib_keyqhead]; _conioxlib_keyqhead = (unsigned char) ((_conioxlib_keyqhead + 1) & (CONIOXLIB_KEYQUEUE - 1)); } else { int _conioxlib_k = getch(); if (_conioxlib_k == 0) { t = ((int) getch()) << 8; } else { t = _conioxlib_k; } } }
+#define _conioxlib_keyhit()		((_conioxlib_keyqhead != _conioxlib_keyqtail) || kbhit())
 
 /* Writes a help description on the status line (columns 1-59) with
    the color of the active theme; used by menu/menubar/buttons/option/property */
-#define conioxlib_hint(d)	do { textattr(conioxlib_curtheme.atrstatus); _wscroll = 0; gotoxy(1, 25); cprintf("%-59.59s", (d)); } while (0)
+#define _conioxlib_hint(d)	do { int _conioxlib_oldwscroll = _wscroll; textattr(_conioxlib_curtheme.atrstatus); _wscroll = 0; gotoxy(1, 25); cprintf("%-59.59s", (d)); _wscroll = _conioxlib_oldwscroll; } while (0)
 
 /* ------------------------- Checks for a pending key --------------------- */
 /* kbhit:
@@ -125,13 +148,13 @@ static void conioxlib_filemultiselector_format(char *res, long int n);
    int conioxlib_kbhit(void);
    Returns nonzero when a key is waiting.
    Parameters: none.
-   It sees both the keyboard buffer and the pending key kept
+   It sees both the keyboard buffer and the pending keys kept
    by conioxlib_pollmouse() under Windows, so it is the safe
    replacement for the raw kbhit().
    */
 int conioxlib_kbhit(void)
 {
-	return(conioxlib_keyhit());
+	return(_conioxlib_keyhit());
 }
 
 /* ---------------------------- Reads a key ------------------------------ */
@@ -142,13 +165,13 @@ int conioxlib_kbhit(void)
    Parameters: none.
    Plain keys arrive as their ASCII code and extended keys as
    (scan code << 8), so the KBD_ constants can be compared
-   directly. It also drains the pending key captured by
+   directly. It also drains the pending keys captured by
    conioxlib_pollmouse() under Windows.
    */
 unsigned int conioxlib_getkey(void)
 {
 	unsigned int t;
-	conioxlib_readkey(t);
+	_conioxlib_readkey(t);
 	return(t);
 }
 
@@ -156,7 +179,7 @@ unsigned int conioxlib_getkey(void)
 /* ------------------- Finds the accelerator key of a text --------------- */
 /* Accelerator: an ampersand before X marks X as the accelerator key and is never
    drawn; with no ampersand, the first letter A-Z/a-z is the accelerator key. */
-static char conioxlib_hotchar(const char *s)
+static char _conioxlib_hotchar(const char *s)
 {
 	int i;
 
@@ -205,8 +228,9 @@ void conioxlib_cputs_hot(unsigned short x, unsigned short y, unsigned char atr, 
 	}
 	/* atrhot supplies only the FG of the accelerator; BG comes from the current item attr (normal or selected) */
 	hotatr = (unsigned char) ((atr & 0xF0) | (atrhot & 0x0F));
-	h = conioxlib_hotchar(s);
+	h = _conioxlib_hotchar(s);
 	gotoxy(x, y);
+	textattr(atr);
 	for (i = 0; s[i] != 0; i++)
 	{
 		if (s[i] == '&')
@@ -222,7 +246,6 @@ void conioxlib_cputs_hot(unsigned short x, unsigned short y, unsigned char atr, 
 		}
 		else
 		{
-			textattr(atr);
 			putch(s[i]);
 		}
 	}
@@ -231,7 +254,7 @@ void conioxlib_cputs_hot(unsigned short x, unsigned short y, unsigned char atr, 
 /* ---------------- Checks whether a key triggers an option --------------- */
 /* Accepts a plain letter and Alt+letter (BIOS scan << 8). The Alt A-Z map is
    the standard US/ES QWERTY keyboard layout. */
-static int conioxlib_hotmatch(const char *s, unsigned int key)
+static int _conioxlib_hotmatch(const char *s, unsigned int key)
 {
 	static const unsigned char altscan[26] = {
 		0x1E, 0x30, 0x2E, 0x20, 0x12, 0x21, 0x22, 0x23, 0x17, 0x24,
@@ -243,7 +266,7 @@ static int conioxlib_hotmatch(const char *s, unsigned int key)
 	unsigned int scan;
 	int i;
 
-	h = conioxlib_hotchar(s);
+	h = _conioxlib_hotchar(s);
 	if (h == 0)
 	{
 		return(0);
@@ -318,7 +341,6 @@ void conioxlib_cputsc (unsigned short x1, unsigned short x2, unsigned short y, c
 void conioxlib_box (unsigned short x1, unsigned short y1, unsigned short x2, unsigned short y2, unsigned int atr, const char *frame, const char *title, unsigned int flags)
 {
 	unsigned int x, y;
-	unsigned int c1, c2;
 	unsigned short sx1, sx2, sy1, sy2;
 	char l1[82], l2[82], l3[82], tmp[330];
 
@@ -343,13 +365,7 @@ void conioxlib_box (unsigned short x1, unsigned short y1, unsigned short x2, uns
 			}
 			if (sx1 <= sx2)
 			{
-				gettext(sx1, y2 + 1, sx2, y2 + 1, tmp);
-				c2 = (unsigned int) ((sx2 - sx1 + 1) << 1);
-				for (c1 = 1; c1 <= c2; c1 += 2)
-				{
-					tmp[c1] = 8;
-				}
-				puttext(sx1, y2 + 1, sx2, y2 + 1, tmp);
+				_conioxlib_darken(sx1, (unsigned short) (y2 + 1), sx2, (unsigned short) (y2 + 1), tmp);
 			}
 		}
 		if (x2 < 80)
@@ -368,13 +384,7 @@ void conioxlib_box (unsigned short x1, unsigned short y1, unsigned short x2, uns
 			}
 			if ((sx1 <= sx2) && (sy1 <= sy2))
 			{
-				gettext(sx1, sy1, sx2, sy2, tmp);
-				c2 = (unsigned int) (((sx2 - sx1 + 1) * (sy2 - sy1 + 1)) << 1);
-				for (c1 = 1; c1 <= c2; c1 += 2)
-				{
-					tmp[c1] = 8;
-				}
-				puttext(sx1, sy1, sx2, sy2, tmp);
+				_conioxlib_darken(sx1, sy1, sx2, sy2, tmp);
 			}
 		}
 	}
@@ -386,10 +396,10 @@ void conioxlib_box (unsigned short x1, unsigned short y1, unsigned short x2, uns
 		{
 			x = (unsigned int) (sizeof(l1) - 2);
 		}
-		memset(&l1, 0, x + 2);
-		memset(&l2, 0, x + 2);
-		memset(&l3, 0, x + 2);
+		/* Build the three frame lines in one pass of the width */
 		l1[0] = frame[0];
+		l2[0] = frame[4];
+		l3[0] = frame[5];
 		if (x > 0)
 		{
 			memset(&l1[1], frame[2], x - 1);
@@ -397,10 +407,11 @@ void conioxlib_box (unsigned short x1, unsigned short y1, unsigned short x2, uns
 			memset(&l3[1], frame[3], x - 1);
 		}
 		l1[x] = frame[1];
-		l2[0] = frame[4];
 		l2[x] = frame[4];
-		l3[0] = frame[5];
 		l3[x] = frame[6];
+		l1[x + 1] = 0;
+		l2[x + 1] = 0;
+		l3[x + 1] = 0;
 		textattr(atr);
 		gotoxy(x1, y1);
 		cputs(l1);
@@ -413,7 +424,7 @@ void conioxlib_box (unsigned short x1, unsigned short y1, unsigned short x2, uns
 		if (flags & 2)
 		{
 			gotoxy(x1 + 2, y1);
-			cputs("[þ]");
+			cputs("[\xFE]");
 		}
 		for (y = y1 + 1; y != y2; y++)
 		{
@@ -430,7 +441,7 @@ void conioxlib_box (unsigned short x1, unsigned short y1, unsigned short x2, uns
 /* Writes the time in columns 76 to 80 with the status color of the active
    theme straight through puttext(), so neither the window nor the cursor
    move; conioxlib_clock() and conioxlib_background() share it. */
-static void conioxlib_paintclock (struct tm *t)
+static void _conioxlib_paintclock (struct tm *t)
 {
 	char clk[8];
 	unsigned short cells[5];
@@ -439,7 +450,7 @@ static void conioxlib_paintclock (struct tm *t)
 
 	/* Clock in columns 76-80; the lock indicators occupy 60-74 and status() 1-59 */
 	sprintf(clk, "%2u:%02u", (unsigned int) t->tm_hour, (unsigned int) t->tm_min);
-	cellattr = (unsigned short) ((unsigned int) conioxlib_curtheme.atrstatus << 8);
+	cellattr = (unsigned short) ((unsigned int) _conioxlib_curtheme.atrstatus << 8);
 	for (ci = 0; ci < 5; ci++)
 	{
 		cells[ci] = (unsigned short) (cellattr | (unsigned char) clk[ci]);
@@ -471,8 +482,22 @@ void conioxlib_clock (void)
 	if (oldmin != (unsigned int) ti->tm_min)
 	{
 		oldmin = (unsigned int) ti->tm_min;
-		conioxlib_paintclock(ti);
+		_conioxlib_paintclock(ti);
 	}
+}
+
+
+/* ------------------- Refreshes clock, locks and mouse ------------------ */
+/* poll:
+   Internal (Private)
+   Runs the conioxlib_clock() plus conioxlib_pollmouse() pair every
+   dialog wait loop needs to keep the clock, the lock indicators
+   and the mouse status up to date.
+   */
+static void _conioxlib_poll (void)
+{
+	conioxlib_clock();
+	conioxlib_pollmouse();
 }
 
 
@@ -499,13 +524,12 @@ HWND WINAPI GetConsoleWindow(void);
 SHORT WINAPI GetAsyncKeyState(int vKey);
 BOOL WINAPI GetCurrentConsoleFont(HANDLE hConsoleOutput, BOOL bMaximumWindow, PCONSOLE_FONT_INFO lpConsoleCurrentFont);
 
-static int conioxlib_mousemode = 0;
 /* Button edges for asynchronous polling (Windows Terminal does not deliver
    mouse events through ReadConsoleInput); GetDoubleClickTime sets the double click */
-static int conioxlib_oldlbtn = 0;
-static int conioxlib_oldrbtn = 0;
-static DWORD conioxlib_lastlclick = 0;
-static DWORD conioxlib_lastrclick = 0;
+static int _conioxlib_oldlbtn = 0;
+static int _conioxlib_oldrbtn = 0;
+static DWORD _conioxlib_lastlclick = 0;
+static DWORD _conioxlib_lastrclick = 0;
 
 /* --------------------------- Reads the mouse state -------------------- */
 /* pollmouse:
@@ -547,7 +571,6 @@ void conioxlib_pollmouse (void)
 	{
 		SetConsoleMode(hStdInput, (mode & ~(DWORD) (ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_QUICK_EDIT_MODE | ENABLE_INSERT_MODE)) | ENABLE_EXTENDED_FLAGS | ENABLE_MOUSE_INPUT | ENABLE_PROCESSED_INPUT);
 	}
-	conioxlib_mousemode = 1;
 	orgx = 0;
 	orgy = 0;
 	if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &info))
@@ -638,10 +661,13 @@ void conioxlib_pollmouse (void)
 					{
 						ch = ((int) ir[i].Event.KeyEvent.wVirtualScanCode) << 8;
 					}
-					if (conioxlib_pendingkey == 0)
-					{
-						conioxlib_pendingkey = ch;
-					}
+									/* Queue every key of the batch: a single slot dropped the rest */
+									_conioxlib_keyqueue[_conioxlib_keyqtail] = ch;
+									_conioxlib_keyqtail = (unsigned char) ((_conioxlib_keyqtail + 1) & (CONIOXLIB_KEYQUEUE - 1));
+									if (_conioxlib_keyqtail == _conioxlib_keyqhead)
+									{
+										_conioxlib_keyqhead = (unsigned char) ((_conioxlib_keyqhead + 1) & (CONIOXLIB_KEYQUEUE - 1));
+									}
 				}
 			}
 		}
@@ -663,29 +689,29 @@ void conioxlib_pollmouse (void)
 		{
 			if ((GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0)
 			{
-				if (conioxlib_oldlbtn == 0)
+				if (_conioxlib_oldlbtn == 0)
 				{
-					conioxlib_mousestatus.lclick = ((GetTickCount() - conioxlib_lastlclick) <= GetDoubleClickTime()) ? 2 : 1;
-					conioxlib_lastlclick = GetTickCount();
+					conioxlib_mousestatus.lclick = ((GetTickCount() - _conioxlib_lastlclick) <= GetDoubleClickTime()) ? 2 : 1;
+					_conioxlib_lastlclick = GetTickCount();
 				}
-				conioxlib_oldlbtn = 1;
+				_conioxlib_oldlbtn = 1;
 			}
 			else
 			{
-				conioxlib_oldlbtn = 0;
+				_conioxlib_oldlbtn = 0;
 			}
 			if ((GetAsyncKeyState(VK_RBUTTON) & 0x8000) != 0)
 			{
-				if (conioxlib_oldrbtn == 0)
+				if (_conioxlib_oldrbtn == 0)
 				{
-					conioxlib_mousestatus.rclick = ((GetTickCount() - conioxlib_lastrclick) <= GetDoubleClickTime()) ? 2 : 1;
-					conioxlib_lastrclick = GetTickCount();
+					conioxlib_mousestatus.rclick = ((GetTickCount() - _conioxlib_lastrclick) <= GetDoubleClickTime()) ? 2 : 1;
+					_conioxlib_lastrclick = GetTickCount();
 				}
-				conioxlib_oldrbtn = 1;
+				_conioxlib_oldrbtn = 1;
 			}
 			else
 			{
-				conioxlib_oldrbtn = 0;
+				_conioxlib_oldrbtn = 0;
 			}
 		}
 	}
@@ -697,35 +723,35 @@ void conioxlib_pollmouse (void)
 
 #if ((__DOS__) || (__MSDOS__))
 
-static int conioxlib_ismouse = -1;
+static int _conioxlib_ismouse = -1;
 
 /* Library-drawn pointer under DOS: with conioxlib_vgaremap(1) the driver
    pointer is hidden and glyph 0x01 is drawn with its attribute nibbles swapped;
-   conioxlib_ptrcell keeps the original cell to restore it on every move */
-static int conioxlib_mouseptr = 0;
-static int conioxlib_ptrx = -1;
-static int conioxlib_ptry = -1;
-static unsigned short conioxlib_ptrcell = 0;
+   _conioxlib_ptrcell keeps the original cell to restore it on every move */
+static int _conioxlib_mouseptr = 0;
+static int _conioxlib_ptrx = -1;
+static int _conioxlib_ptry = -1;
+static unsigned short _conioxlib_ptrcell = 0;
 
 /* --------------------------- Initializes the mouse ------------------------ */
 static void _conioxlib_mouseinit (void)
 {
 	union REGS r;
 
-	if (conioxlib_ismouse == -1)
+	if (_conioxlib_ismouse == -1)
 	{
-		conioxlib_rax(r) = 0;
-		coniox_int86(0x33, &r, &r);
-		if (conioxlib_rax(r) == 0xFFFF)
+		_conioxlib_rax(r) = 0;
+		_coniox_int86(0x33, &r, &r);
+		if (_conioxlib_rax(r) == 0xFFFF)
 		{
-			conioxlib_ismouse = conioxlib_rbx(r);
+			_conioxlib_ismouse = _conioxlib_rbx(r);
 			/* Show mouse */
-			conioxlib_rax(r) = 1;
-			coniox_int86(0x33, &r, &r);
+			_conioxlib_rax(r) = 1;
+			_coniox_int86(0x33, &r, &r);
 		}
 		else
 		{
-			conioxlib_ismouse = 0;
+			_conioxlib_ismouse = 0;
 		}
 	}
 }
@@ -735,7 +761,7 @@ static void _conioxlib_mouseinit (void)
 void conioxlib_pollmouse (void)
 {
 	union REGS r;
-	static int conioxlib_haswheel = -1;
+	static int _conioxlib_haswheel = -1;
 	unsigned int bx;
 	signed char wheel;
 
@@ -744,77 +770,77 @@ void conioxlib_pollmouse (void)
 	conioxlib_mousestatus.wheelx = 0;
 	conioxlib_mousestatus.wheely = 0;
 	_conioxlib_mouseinit();
-	if (conioxlib_ismouse > 0)
+	if (_conioxlib_ismouse > 0)
 	{
 		/* CuteMouse and compatible: AX=0011h returns AX=574Dh ('MW') when the wheel API is present */
-		if (conioxlib_haswheel < 0)
+		if (_conioxlib_haswheel < 0)
 		{
-			conioxlib_rax(r) = 0x11;
-			coniox_int86(0x33, &r, &r);
-			conioxlib_haswheel = (conioxlib_rax(r) == 0x574D) ? 1 : 0;
+			_conioxlib_rax(r) = 0x11;
+			_coniox_int86(0x33, &r, &r);
+			_conioxlib_haswheel = (_conioxlib_rax(r) == 0x574D) ? 1 : 0;
 		}
-		conioxlib_rax(r) = 3;
-		coniox_int86(0x33, &r, &r);
-		bx = conioxlib_rbx(r);
-		conioxlib_mousestatus.x = (conioxlib_rcx(r) >> 3) + 1;
-		conioxlib_mousestatus.y = (conioxlib_rdx(r) >> 3) + 1;
+		_conioxlib_rax(r) = 3;
+		_coniox_int86(0x33, &r, &r);
+		bx = _conioxlib_rbx(r);
+		conioxlib_mousestatus.x = (_conioxlib_rcx(r) >> 3) + 1;
+		conioxlib_mousestatus.y = (_conioxlib_rdx(r) >> 3) + 1;
 		conioxlib_mousestatus.lclick = (unsigned int) (bx & 1);
 		conioxlib_mousestatus.rclick = (unsigned int) ((bx & 2) >> 1);
-		if (conioxlib_haswheel)
+		if (_conioxlib_haswheel)
 		{
 			/* BH = vertical wheel delta since last call (signed). Prefer BX high byte: portable on Watcom/Borland. */
 			wheel = (signed char) ((bx >> 8) & 0xFF);
 			conioxlib_mousestatus.wheely = (int) wheel;
 			/* Horizontal wheel when present is returned by AX=0048h (CuteMouse extension) */
-			conioxlib_rax(r) = 0x48;
-			coniox_int86(0x33, &r, &r);
-			if (conioxlib_rax(r) == 0x48)
+			_conioxlib_rax(r) = 0x48;
+			_coniox_int86(0x33, &r, &r);
+			if (_conioxlib_rax(r) == 0x48)
 			{
-				conioxlib_mousestatus.wheelx = (int) (signed char) ((conioxlib_rbx(r) >> 8) & 0xFF);
+				conioxlib_mousestatus.wheelx = (int) (signed char) ((_conioxlib_rbx(r) >> 8) & 0xFF);
 				if (conioxlib_mousestatus.wheely == 0)
 				{
-					conioxlib_mousestatus.wheely = (int) (signed char) (conioxlib_rbx(r) & 0xFF);
+					conioxlib_mousestatus.wheely = (int) (signed char) (_conioxlib_rbx(r) & 0xFF);
 				}
 			}
 		}
 		/* Library pointer: erase the previous cell if nobody painted over it and
 		   draw the glyph at the current position */
-		if (conioxlib_mouseptr != 0)
+		if (_conioxlib_mouseptr != 0)
 		{
-			unsigned short conioxlib_cells[2];
-			unsigned char conioxlib_attr;
-			unsigned char conioxlib_sattr;
+			unsigned short _conioxlib_cells[2];
+			unsigned char _conioxlib_attr;
+			unsigned char _conioxlib_sattr;
 
-			if ((conioxlib_ptrx >= 1) && (conioxlib_ptry >= 1))
+			if ((_conioxlib_ptrx >= 1) && (_conioxlib_ptry >= 1))
 			{
-				if (gettext((unsigned short) conioxlib_ptrx, (unsigned short) conioxlib_ptry, (unsigned short) conioxlib_ptrx, (unsigned short) conioxlib_ptry, (void *) conioxlib_cells) != 0)
+				if (gettext((unsigned short) _conioxlib_ptrx, (unsigned short) _conioxlib_ptry, (unsigned short) _conioxlib_ptrx, (unsigned short) _conioxlib_ptry, (void *) _conioxlib_cells) != 0)
 				{
-					conioxlib_attr = (unsigned char) ((conioxlib_ptrcell >> 8) & 0xFF);
-					conioxlib_sattr = (unsigned char) (((conioxlib_attr & 0x0F) << 4) | (conioxlib_attr >> 4));
-					if (conioxlib_cells[0] == (unsigned short) (0x01 | ((unsigned short) conioxlib_sattr << 8)))
+					_conioxlib_attr = (unsigned char) ((_conioxlib_ptrcell >> 8) & 0xFF);
+					_conioxlib_sattr = (unsigned char) (((_conioxlib_attr & 0x0F) << 4) | (_conioxlib_attr >> 4));
+					if (_conioxlib_cells[0] == (unsigned short) (0x01 | ((unsigned short) _conioxlib_sattr << 8)))
 					{
-						conioxlib_cells[0] = conioxlib_ptrcell;
-						puttext((unsigned short) conioxlib_ptrx, (unsigned short) conioxlib_ptry, (unsigned short) conioxlib_ptrx, (unsigned short) conioxlib_ptry, conioxlib_cells);
+						_conioxlib_cells[0] = _conioxlib_ptrcell;
+						puttext((unsigned short) _conioxlib_ptrx, (unsigned short) _conioxlib_ptry, (unsigned short) _conioxlib_ptrx, (unsigned short) _conioxlib_ptry, _conioxlib_cells);
 					}
 				}
 			}
 			if ((conioxlib_mousestatus.x >= 1) && (conioxlib_mousestatus.x <= 80) && (conioxlib_mousestatus.y >= 1) && (conioxlib_mousestatus.y <= 25))
 			{
-				conioxlib_ptrx = (int) conioxlib_mousestatus.x;
-				conioxlib_ptry = (int) conioxlib_mousestatus.y;
-				if (gettext((unsigned short) conioxlib_ptrx, (unsigned short) conioxlib_ptry, (unsigned short) conioxlib_ptrx, (unsigned short) conioxlib_ptry, (void *) conioxlib_cells) != 0)
+				_conioxlib_ptrx = (int) conioxlib_mousestatus.x;
+				_conioxlib_ptry = (int) conioxlib_mousestatus.y;
+				if (gettext((unsigned short) _conioxlib_ptrx, (unsigned short) _conioxlib_ptry, (unsigned short) _conioxlib_ptrx, (unsigned short) _conioxlib_ptry, (void *) _conioxlib_cells) != 0)
 				{
-					conioxlib_ptrcell = conioxlib_cells[0];
-					conioxlib_attr = (unsigned char) ((conioxlib_ptrcell >> 8) & 0xFF);
-					conioxlib_sattr = (unsigned char) (((conioxlib_attr & 0x0F) << 4) | (conioxlib_attr >> 4));
-					conioxlib_cells[0] = (unsigned short) (0x01 | ((unsigned short) conioxlib_sattr << 8));
-					puttext((unsigned short) conioxlib_ptrx, (unsigned short) conioxlib_ptry, (unsigned short) conioxlib_ptrx, (unsigned short) conioxlib_ptry, conioxlib_cells);
+					_conioxlib_ptrcell = _conioxlib_cells[0];
+					_conioxlib_attr = (unsigned char) ((_conioxlib_ptrcell >> 8) & 0xFF);
+					_conioxlib_sattr = (unsigned char) (((_conioxlib_attr & 0x0F) << 4) | (_conioxlib_attr >> 4));
+					_conioxlib_cells[0] = (unsigned short) (0x01 | ((unsigned short) _conioxlib_sattr << 8));
+					puttext((unsigned short) _conioxlib_ptrx, (unsigned short) _conioxlib_ptry, (unsigned short) _conioxlib_ptrx, (unsigned short) _conioxlib_ptry, _conioxlib_cells);
 				}
 			}
 			else
 			{
-				conioxlib_ptrx = -1;
-				conioxlib_ptry = -1;
+				_conioxlib_ptrx = -1;
+				_conioxlib_ptry = -1;
 			}
 		}
 	}
@@ -883,7 +909,7 @@ void conioxlib_blocks (void)
 	/* Always repaint: background() clears line 25 and a stale cache would skip the redraw */
 	/* puttext avoids window/gotoxy trouble on Win32 buffered consoles; the status
 	   line is a fixed 80x25 area: status() writes 1-59, the lock indicators 60-74 */
-	cellattr = (unsigned short) ((unsigned int) conioxlib_curtheme.atrstatus << 8);
+	cellattr = (unsigned short) ((unsigned int) _conioxlib_curtheme.atrstatus << 8);
 	for (i = 0; i < 15; i++)
 	{
 		cells[i] = (unsigned short) (cellattr | (unsigned char) status[i]);
@@ -946,8 +972,8 @@ void conioxlib_getcountry (struct conioxlib_scountry *sc)
 
 	memset(&r, 0, sizeof(r));
 	/* Allocate real-mode memory through DPMI (int 31h AX=0100) */
-	conioxlib_rax(r) = 0x0100;
-	conioxlib_rbx(r) = 4;
+	_conioxlib_rax(r) = 0x0100;
+	_conioxlib_rbx(r) = 4;
 	int386(0x31, &r, &r);
 	if (r.w.cflag)
 	{
@@ -957,26 +983,26 @@ void conioxlib_getcountry (struct conioxlib_scountry *sc)
 	seg = r.w.dx;
 	memset((void *) ((unsigned long) seg << 4), 0, 34);
 	memset(&s, 0, sizeof(s));
-	conioxlib_rax(r) = 0x3800;
+	_conioxlib_rax(r) = 0x3800;
 	s.ds = (unsigned short) seg;
-	conioxlib_rdx(r) = 0;
+	_conioxlib_rdx(r) = 0;
 	int386x(0x21, &r, &r, &s);
 	memcpy(sc, (void *) ((unsigned long) seg << 4), 34);
 	sc->code = r.w.bx;
 	/* Free the allocated memory */
-	conioxlib_rax(r) = 0x0101;
-	conioxlib_rdx(r) = sel;
+	_conioxlib_rax(r) = 0x0101;
+	_conioxlib_rdx(r) = sel;
 	int386(0x31, &r, &r);
 	#else
 	union REGS r;
 	struct SREGS s;
 
 	memset(sc, 0, sizeof(struct conioxlib_scountry));
-	conioxlib_rax(r) = 0x3800;
-	conioxlib_rdx(r) = FP_OFF(sc);
+	_conioxlib_rax(r) = 0x3800;
+	_conioxlib_rdx(r) = FP_OFF(sc);
 	s.ds = FP_SEG(sc);
-	coniox_int86x(0x21, &r, &r, &s);
-	sc->code = conioxlib_rbx(r);
+	_coniox_int86x(0x21, &r, &r, &s);
+	sc->code = _conioxlib_rbx(r);
 	#endif
 #endif
 }
@@ -1045,7 +1071,7 @@ unsigned char conioxlib_getdiskfree_ext (unsigned char drive, struct conioxlib_s
 	memset(df, 0, sizeof(struct conioxlib_sdiskfree));
 	if (drive == 0)
 	{
-		drv = (unsigned char) conioxlib_getdisk();
+		drv = (unsigned char) _conioxlib_getdisk();
 	}
 	else
 	{
@@ -1100,49 +1126,49 @@ unsigned char conioxlib_getdiskfree_ext (unsigned char drive, struct conioxlib_s
 		memset(&r, 0, sizeof(r));
 		/* Allocate real-mode memory through DPMI (int 31h AX=0100) as in getcountry():
 		   "X:\" in paragraph 0 and the structure in paragraph 2 */
-		conioxlib_rax(r) = 0x0100;
-		conioxlib_rbx(r) = 4;
+		_conioxlib_rax(r) = 0x0100;
+		_conioxlib_rbx(r) = 4;
 		int386(0x31, &r, &r);
-		if (conioxlib_rcflag(r))
+		if (_conioxlib_rcflag(r))
 		{
 			return(1);
 		}
-		sel = conioxlib_rbx(r);
-		seg = conioxlib_rdx(r);
+		sel = _conioxlib_rbx(r);
+		seg = _conioxlib_rdx(r);
 		low = (unsigned char *) ((unsigned long) seg << 4);
 		memcpy(low, path, 4);
 		memcpy(low + 32, df, sizeof(struct conioxlib_sdiskfree));
 		memset(&s, 0, sizeof(s));
-		conioxlib_rax(r) = 0x7303;
-		conioxlib_rcx(r) = (unsigned short) sizeof(struct conioxlib_sdiskfree);
+		_conioxlib_rax(r) = 0x7303;
+		_conioxlib_rcx(r) = (unsigned short) sizeof(struct conioxlib_sdiskfree);
 		s.ds = (unsigned short) seg;
-		conioxlib_rdx(r) = 0;
+		_conioxlib_rdx(r) = 0;
 		s.es = (unsigned short) (seg + 2);
-		conioxlib_rdi(r) = 0;
+		_conioxlib_rdi(r) = 0;
 		int386x(0x21, &r, &r, &s);
 		/* Capture the 7303h result before freeing: the int 31h AX=0101h call below overwrites r */
 		{
-			int conioxlib_fat32_fail = (conioxlib_rcflag(r) || (conioxlib_rax(r) == 0x7300));
+			int _conioxlib_fat32_fail = (_conioxlib_rcflag(r) || (_conioxlib_rax(r) == 0x7300));
 
 			memcpy(df, low + 32, sizeof(struct conioxlib_sdiskfree));
 			/* Free the allocated memory */
-			conioxlib_rax(r) = 0x0101;
-			conioxlib_rdx(r) = sel;
+			_conioxlib_rax(r) = 0x0101;
+			_conioxlib_rdx(r) = sel;
 			int386(0x31, &r, &r);
-			if (conioxlib_fat32_fail)
+			if (_conioxlib_fat32_fail)
 			{
 				memset(&r, 0, sizeof(r));
-				conioxlib_rax(r) = 0x3600;
-				conioxlib_rdx(r) = (unsigned short) (drv + 1);
+				_conioxlib_rax(r) = 0x3600;
+				_conioxlib_rdx(r) = (unsigned short) (drv + 1);
 				int386(0x21, &r, &r);
-				if (conioxlib_rax(r) == 0xFFFF)
+				if (_conioxlib_rax(r) == 0xFFFF)
 				{
 					return(1);
 				}
-				df->sectors_per_cluster = (unsigned long int) conioxlib_rax(r);
-				df->bytes_per_sector = (unsigned long int) conioxlib_rcx(r);
-				df->avail_clusters = (unsigned long int) conioxlib_rbx(r);
-				df->total_clusters = (unsigned long int) conioxlib_rdx(r);
+				df->sectors_per_cluster = (unsigned long int) _conioxlib_rax(r);
+				df->bytes_per_sector = (unsigned long int) _conioxlib_rcx(r);
+				df->avail_clusters = (unsigned long int) _conioxlib_rbx(r);
+				df->total_clusters = (unsigned long int) _conioxlib_rdx(r);
 			}
 		}
 		return(0);
@@ -1154,27 +1180,27 @@ unsigned char conioxlib_getdiskfree_ext (unsigned char drive, struct conioxlib_s
 
 		memset(&r, 0, sizeof(r));
 		memset(&s, 0, sizeof(s));
-		conioxlib_rax(r) = 0x7303;
-		conioxlib_rcx(r) = (unsigned short) sizeof(struct conioxlib_sdiskfree);
+		_conioxlib_rax(r) = 0x7303;
+		_conioxlib_rcx(r) = (unsigned short) sizeof(struct conioxlib_sdiskfree);
 		s.ds = FP_SEG(path);
-		conioxlib_rdx(r) = FP_OFF(path);
+		_conioxlib_rdx(r) = FP_OFF(path);
 		s.es = FP_SEG(df);
-		conioxlib_rdi(r) = FP_OFF(df);
-		coniox_int86x(0x21, &r, &r, &s);
-		if ((conioxlib_rcflag(r)) || (conioxlib_rax(r) == 0x7300))
+		_conioxlib_rdi(r) = FP_OFF(df);
+		_coniox_int86x(0x21, &r, &r, &s);
+		if ((_conioxlib_rcflag(r)) || (_conioxlib_rax(r) == 0x7300))
 		{
 			memset(&r, 0, sizeof(r));
-			conioxlib_rax(r) = 0x3600;
-			conioxlib_rdx(r) = (unsigned short) (drv + 1);
-			coniox_int86(0x21, &r, &r);
-			if (conioxlib_rax(r) == 0xFFFF)
+			_conioxlib_rax(r) = 0x3600;
+			_conioxlib_rdx(r) = (unsigned short) (drv + 1);
+			_coniox_int86(0x21, &r, &r);
+			if (_conioxlib_rax(r) == 0xFFFF)
 			{
 				return(1);
 			}
-			df->sectors_per_cluster = (unsigned long int) conioxlib_rax(r);
-			df->bytes_per_sector = (unsigned long int) conioxlib_rcx(r);
-			df->avail_clusters = (unsigned long int) conioxlib_rbx(r);
-			df->total_clusters = (unsigned long int) conioxlib_rdx(r);
+			df->sectors_per_cluster = (unsigned long int) _conioxlib_rax(r);
+			df->bytes_per_sector = (unsigned long int) _conioxlib_rcx(r);
+			df->avail_clusters = (unsigned long int) _conioxlib_rbx(r);
+			df->total_clusters = (unsigned long int) _conioxlib_rdx(r);
 		}
 		return(0);
 	}
@@ -1273,22 +1299,22 @@ void conioxlib_setpal (unsigned char e)
 		0x30, 0x30, 0x3F};/* 15 */
 
 	/* Keep bright backgrounds (bit7 = intensity), not blink */
-	conioxlib_rax(r) = 0x1003;
+	_conioxlib_rax(r) = 0x1003;
 	r.h.bl = 0;
-	coniox_int86(0x10, &r, &r);
+	_coniox_int86(0x10, &r, &r);
 	auxpal = (e == 0) ? defpal : newpal;
 	/* Program the DAC register used by each text-mode color (the dac table), not registers 0-15 */
 	for (i = 0; i <= 15; i++)
 	{
-		conioxlib_rax(r) = 0x1010;
-		conioxlib_rbx(r) = dac[i];
+		_conioxlib_rax(r) = 0x1010;
+		_conioxlib_rbx(r) = dac[i];
 		r.h.dh = *auxpal; /* Red */
 		auxpal++;
 		r.h.ch = *auxpal; /* Green */
 		auxpal++;
 		r.h.cl = *auxpal; /* Blue */
 		auxpal++;
-		coniox_int86(0x10, &r, &r);
+		_coniox_int86(0x10, &r, &r);
 	}
 #endif
 }
@@ -1315,24 +1341,24 @@ void conioxlib_vgaremap (unsigned char on)
 {
 #if ((__DOS__) || (__MSDOS__))
 #if defined(__TURBOC__) || defined(__DJGPP__)
-	static unsigned char conioxlib_glyphtab[5][16] = {
+	static unsigned char _conioxlib_glyphtab[5][16] = {
 		{0x80, 0xC0, 0xE0, 0xF0, 0xF8, 0xFC, 0xFE, 0xFF, 0xBC, 0x98, 0x88, 0x80, 0x00, 0x00, 0x00, 0x00},
 		{0x00, 0x00, 0x00, 0x80, 0xC0, 0xE0, 0xF0, 0xF8, 0xF8, 0xF0, 0xE0, 0xC0, 0x80, 0x00, 0x00, 0x00},
 		{0x00, 0x00, 0x00, 0x01, 0x03, 0x07, 0x0F, 0x1F, 0x1F, 0x0F, 0x07, 0x03, 0x01, 0x00, 0x00, 0x00},
 		{0x00, 0x00, 0x18, 0x3C, 0x7E, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x00, 0x00, 0x00},
 		{0x00, 0x00, 0x00, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x7E, 0x3C, 0x18, 0x00, 0x00}};
-	static unsigned char conioxlib_glyphchr[5] = {0x01, 0x10, 0x11, 0x18, 0x19};
+	static unsigned char _conioxlib_glyphchr[5] = {0x01, 0x10, 0x11, 0x18, 0x19};
 	unsigned int i;
 #endif
 	union REGS r;
 
 	/* Enable the library pointer and hide the driver one (or restore it) */
-	conioxlib_mouseptr = (on != 0);
+	_conioxlib_mouseptr = (on != 0);
 	_conioxlib_mouseinit();
-	if (conioxlib_ismouse > 0)
+	if (_conioxlib_ismouse > 0)
 	{
-		conioxlib_rax(r) = (on != 0) ? 2 : 1;
-		coniox_int86(0x33, &r, &r);
+		_conioxlib_rax(r) = (on != 0) ? 2 : 1;
+		_coniox_int86(0x33, &r, &r);
 	}
 	if (on == 0)
 	{
@@ -1347,9 +1373,9 @@ void conioxlib_vgaremap (unsigned char on)
 			rp.r_ax = 0x1110;
 			rp.r_bx = 0x0010;
 			rp.r_cx = 1;
-			rp.r_dx = conioxlib_glyphchr[i];
-			rp.r_es = FP_SEG(conioxlib_glyphtab[i]);
-			rp.r_bp = FP_OFF(conioxlib_glyphtab[i]);
+			rp.r_dx = _conioxlib_glyphchr[i];
+			rp.r_es = FP_SEG(_conioxlib_glyphtab[i]);
+			rp.r_bp = FP_OFF(_conioxlib_glyphtab[i]);
 			intr(0x10, &rp);
 		}
 	}
@@ -1359,12 +1385,12 @@ void conioxlib_vgaremap (unsigned char on)
 
 		for (i = 0; i < 5; i++)
 		{
-			dosmemput(conioxlib_glyphtab[i], 16, __tb);
+			dosmemput(_conioxlib_glyphtab[i], 16, __tb);
 			memset(&r2, 0, sizeof(r2));
 			r2.x.ax = 0x1110;
 			r2.x.bx = 0x0010;
 			r2.x.cx = 1;
-			r2.x.dx = conioxlib_glyphchr[i];
+			r2.x.dx = _conioxlib_glyphchr[i];
 			r2.x.es = (unsigned short) (__tb >> 4);
 			r2.x.bp = (unsigned short) (__tb & 0x0F);
 			__dpmi_int(0x10, &r2);
@@ -1393,15 +1419,14 @@ unsigned int conioxlib_ckey (void)
 	key = 0;
 	do
 	{
-		conioxlib_clock();
-		conioxlib_pollmouse();
-		if (!conioxlib_keyhit())
+		_conioxlib_poll();
+		if (!_conioxlib_keyhit())
 		{
 			delay(10);
 		}
 	}
-	while (!conioxlib_keyhit());
-	conioxlib_readkey(key);
+	while (!_conioxlib_keyhit());
+	_conioxlib_readkey(key);
 	return(key);
 }
 
@@ -1460,11 +1485,102 @@ void conioxlib_push (void)
 		gotoxy(65, 25);
 		cputs(l);
 		delay(50);
-		if (conioxlib_keyhit())
+		if (_conioxlib_keyhit())
 		{
 			break;
 		}
 	}
+}
+
+
+/* ---------------- Shared body of getstr() and getpw() ------------------- */
+/* getfield:
+   Internal (Private)
+   Reads a string at (x,y) editing a local copy of str. With
+   mask 0 the characters are echoed and str is also the initial
+   value shown; with any other character every key is drawn as
+   mask, the initial value is ignored and ESC clears str. ENTER
+   accepts the edit, BACKSPACE erases and ESC keeps str as it
+   was on entry.
+   */
+static void _conioxlib_getfield (unsigned short x, unsigned short y, unsigned char atr, char *str, char len, char mask)
+{
+	int i;
+	unsigned int tec;
+	char aux[80];
+	char field[80];
+
+	if ((str == 0) || (len < 1))
+	{
+		return;
+	}
+	/* Keep one byte for the terminator inside the local field buffer */
+	if (len > 78)
+	{
+		len = 78;
+	}
+	_conioxlib_hint((mask != 0) ? "Type password" : "Input a valid string");
+	_setcursortype((mask != 0) ? _NOCURSOR : _SOLIDCURSOR);
+	memset(field, 32, (size_t) len);
+	field[len] = 0;
+	textattr(atr);
+	gotoxy(x, y);
+	cputs(field);
+	if (mask != 0)
+	{
+		aux[0] = 0;
+	}
+	else
+	{
+		/* Bound the initial value: never copy past the field width */
+		strncpy(aux, str, (size_t) len);
+		aux[len] = 0;
+	}
+	i = (int) strlen(aux);
+	gotoxy(x, y);
+	cputs(aux);
+	do
+	{
+		_conioxlib_poll();
+		if (!_conioxlib_keyhit())
+		{
+			delay(10);
+		}
+		_conioxlib_readkey(tec);
+		textattr(atr);
+		if (tec == KBD_BACK)
+		{
+			if (i > 0)
+			{
+				cputs("\b \b");
+				i--;
+				aux[i] = 0;
+			}
+		}
+		else if ((tec == KBD_ENTER) || (tec == KBD_ESC))
+		{
+		}
+		else
+		{
+			if ((i < len) && (tec >= 32) && (tec <= 255))
+			{
+				putch((mask != 0) ? mask : (char) tec);
+				aux[i] = (char) tec;
+				i++;
+				aux[i] = 0;
+			}
+		}
+	}
+	while ((tec != KBD_ENTER) && (tec != KBD_ESC));
+	if (tec == KBD_ENTER)
+	{
+		strcpy(str, aux);
+	}
+	else if (mask != 0)
+	{
+		str[0] = 0;
+	}
+	_setcursortype(_NOCURSOR);
 }
 
 
@@ -1482,71 +1598,7 @@ void conioxlib_push (void)
    */
 void conioxlib_getstr (unsigned short x, unsigned short y, unsigned char atr, char *str, char len)
 {
-	int i;
-	unsigned int tec;
-	char aux[80];
-
-	if ((str == 0) || (len < 1))
-	{
-		return;
-	}
-	/* Keep one byte for the terminator inside the local field buffer */
-	if (len > 78)
-	{
-		len = 78;
-	}
-	conioxlib_hint("Input a valid string");
-	_setcursortype(_SOLIDCURSOR);
-	memset(aux, 32, (size_t) len);
-	aux[len] = 0;
-	textattr(atr);
-	gotoxy(x, y);
-	cputs(aux);
-	/* Bound the initial value: never strcpy past the field width */
-	strncpy(aux, str, (size_t) len);
-	aux[len] = 0;
-	i = (int) strlen(aux);
-	gotoxy(x, y);
-	cputs(aux);
-	do
-	{
-		blocks();
-		conioxlib_pollmouse();
-		if (!conioxlib_keyhit())
-		{
-			delay(10);
-		}
-		conioxlib_readkey(tec);
-		textattr(atr);
-		if (tec == KBD_BACK)
-		{
-			if (i > 0)
-			{
-				cputs(" ");
-				i--;
-				aux[i] = 0;
-			}
-		}
-		else if (tec == KBD_ESC)
-		{
-		}
-		else if (tec == KBD_ENTER)
-		{
-			strcpy(str, aux);
-		}
-		else
-		{
-			if ((i < len) && (tec >= 32) && (tec <= 255))
-			{
-				putch((char) tec);
-				aux[i] = (char) tec;
-				i++;
-				aux[i] = 0;
-			}
-		}
-	}
-	while ((tec != KBD_ENTER) && (tec != KBD_ESC));
-	_setcursortype(_NOCURSOR);
+	_conioxlib_getfield(x, y, atr, str, len, 0);
 }
 
 
@@ -1562,72 +1614,7 @@ void conioxlib_getstr (unsigned short x, unsigned short y, unsigned char atr, ch
    */
 void conioxlib_getpw (unsigned short x, unsigned short y, unsigned char atr, char *pass, char len)
 {
-	int i;
-	unsigned int tec;
-	char aux[80];
-	char mask[80];
-
-	if ((pass == 0) || (len < 1))
-	{
-		return;
-	}
-	if (len > 78)
-	{
-		len = 78;
-	}
-	conioxlib_hint("Type password");
-	_setcursortype(_NOCURSOR);
-	memset(mask, 32, (size_t) len);
-	mask[len] = 0;
-	textattr(atr);
-	gotoxy(x, y);
-	cputs(mask);
-	aux[0] = 0;
-	i = 0;
-	gotoxy(x, y);
-	do
-	{
-		blocks();
-		conioxlib_pollmouse();
-		if (!conioxlib_keyhit())
-		{
-			delay(10);
-		}
-		conioxlib_readkey(tec);
-		textattr(atr);
-		if (tec == KBD_BACK)
-		{
-			if (i > 0)
-			{
-				cputs(" ");
-				i--;
-				aux[i] = 0;
-			}
-		}
-		else if ((tec == KBD_ENTER) || (tec == KBD_ESC))
-		{
-		}
-		else
-		{
-			if ((i < len) && (tec >= 32) && (tec <= 255))
-			{
-				putch('*');
-				aux[i] = (char) tec;
-				i++;
-				aux[i] = 0;
-			}
-		}
-	}
-	while ((tec != KBD_ENTER) && (tec != KBD_ESC));
-	if (tec != KBD_ESC)
-	{
-		strcpy(pass, aux);
-	}
-	else
-	{
-		pass[0] = 0;
-	}
-	_setcursortype(_NOCURSOR);
+	_conioxlib_getfield(x, y, atr, pass, len, '*');
 }
 
 
@@ -1639,16 +1626,16 @@ void conioxlib_getpw (unsigned short x, unsigned short y, unsigned char atr, cha
    0xDF strip up to the last column, all with the shadow attribute 0x70 and
    no frame characters. The width of each button is the visible title
    length + 4; "separation" is the horizontal gap between buttons. Returns the
-   index of the pressed button, 255 when F1 (help) was pressed or 0 when
+   index of the pressed button, 254 when F1 (help) was pressed or 255 when
    cancelled with ESC. */
-#define conioxlib_drawbtn(b, c) \
+#define _conioxlib_drawbtn(b, c) \
 	do { \
-		int conioxlib_z; \
+		int _conioxlib_z; \
 		\
 		/* Face: row of spaces with the centered title */ \
 		textattr(c); \
 		gotoxy((unsigned short) pos[b], y1); \
-		for (conioxlib_z = 0; conioxlib_z < wide[b]; conioxlib_z++) \
+		for (_conioxlib_z = 0; _conioxlib_z < wide[b]; _conioxlib_z++) \
 		{ \
 			putch(' '); \
 		} \
@@ -1662,7 +1649,7 @@ void conioxlib_getpw (unsigned short x, unsigned short y, unsigned char atr, cha
 		textattr(0x70); \
 		putch(' '); \
 		putch(' '); \
-		for (conioxlib_z = 2; conioxlib_z < wide[b]; conioxlib_z++) \
+		for (_conioxlib_z = 2; _conioxlib_z < wide[b]; _conioxlib_z++) \
 		{ \
 			putch(0xDF); \
 		} \
@@ -1681,7 +1668,7 @@ void conioxlib_getpw (unsigned short x, unsigned short y, unsigned char atr, cha
    color, items the labels, desc the status line hints,
    noptions their number and separation the gap between
    buttons. Returns the index of the pressed button, 255
-   when F1 was pressed or 0 when cancelled with ESC.
+   when F1 was pressed or 255 when cancelled with ESC.
    */
 unsigned char conioxlib_buttons (unsigned short x1, unsigned short y1, unsigned char atr0, unsigned char atr1, unsigned char atrhot, char items[][11], char desc[][71], unsigned char noptions, unsigned char separation)
 {
@@ -1731,32 +1718,31 @@ unsigned char conioxlib_buttons (unsigned short x1, unsigned short y1, unsigned 
 		{
 			c = atr0;
 		}
-		conioxlib_drawbtn(i, c);
+		_conioxlib_drawbtn(i, c);
 	}
-	conioxlib_hint(desc[0]);
+	_conioxlib_hint(desc[0]);
 	x = 0;
 	do
 	{
 		key = 0;
 		do
 		{
-			conioxlib_clock();
-			conioxlib_pollmouse();
-			if (conioxlib_keyhit())
+			_conioxlib_poll();
+			if (_conioxlib_keyhit())
 			{
-				conioxlib_readkey(key);
+				_conioxlib_readkey(key);
 				if ((key >= 32) || ((key & 0xFF) == 0))
 				{
 					for (y = 0; y < (int) noptions; y++)
 					{
-						if (conioxlib_hotmatch(items[y], key))
+						if (_conioxlib_hotmatch(items[y], key))
 						{
 							if (y != x)
 							{
-								conioxlib_drawbtn(x, atr0);
+								_conioxlib_drawbtn(x, atr0);
 								x = y;
-								conioxlib_drawbtn(x, atr1);
-								conioxlib_hint(desc[x]);
+								_conioxlib_drawbtn(x, atr1);
+								_conioxlib_hint(desc[x]);
 							}
 							key = KBD_ENTER;
 							break;
@@ -1773,10 +1759,10 @@ unsigned char conioxlib_buttons (unsigned short x1, unsigned short y1, unsigned 
 					{
 						if (y != x)
 						{
-							conioxlib_drawbtn(x, atr0);
+							_conioxlib_drawbtn(x, atr0);
 							x = y;
-							conioxlib_drawbtn(x, atr1);
-							conioxlib_hint(desc[x]);
+							_conioxlib_drawbtn(x, atr1);
+							_conioxlib_hint(desc[x]);
 						}
 						key = KBD_ENTER;
 						break;
@@ -1805,12 +1791,12 @@ unsigned char conioxlib_buttons (unsigned short x1, unsigned short y1, unsigned 
 		while ((key != KBD_LEFT) && (key != KBD_RIGHT) && (key != KBD_ESC) && (key != KBD_ENTER) && (key != KBD_F1));
 		if (key == KBD_LEFT)
 		{
-			conioxlib_drawbtn(x, atr0);
+			_conioxlib_drawbtn(x, atr0);
 			x--;
 		}
 		else if (key == KBD_RIGHT)
 		{
-			conioxlib_drawbtn(x, atr0);
+			_conioxlib_drawbtn(x, atr0);
 			x++;
 		}
 		if (x > noptions - 1)
@@ -1821,8 +1807,8 @@ unsigned char conioxlib_buttons (unsigned short x1, unsigned short y1, unsigned 
 		{
 			x = noptions - 1;
 		}
-		conioxlib_drawbtn(x, atr1);
-		conioxlib_hint(desc[x]);
+		_conioxlib_drawbtn(x, atr1);
+		_conioxlib_hint(desc[x]);
 	}
 	while ((key != KBD_ENTER) && (key != KBD_ESC) && (key != KBD_F1));
 	if (key == KBD_ESC)
@@ -1837,9 +1823,9 @@ unsigned char conioxlib_buttons (unsigned short x1, unsigned short y1, unsigned 
 	else
 	{
 		/* Press feedback: flash the button inverted like the Turbo Vision dialogs */
-		conioxlib_drawbtn(x, (unsigned char) (((atr1 & 0x0F) << 4) | (atr1 >> 4)));
+		_conioxlib_drawbtn(x, (unsigned char) (((atr1 & 0x0F) << 4) | (atr1 >> 4)));
 		delay(120);
-		conioxlib_drawbtn(x, atr1);
+		_conioxlib_drawbtn(x, atr1);
 		return((unsigned char) x);
 	}
 }
@@ -1852,34 +1838,26 @@ unsigned char conioxlib_buttons (unsigned short x1, unsigned short y1, unsigned 
    between y1 and row 23 a scroll bar appears on the right (0x18/0x19 arrows
    and a 0xB2 thumb over the 0xB0 track) and the list pages with PGUP/PGDN,
    the wheel or a click on the bar. sel sets the initial item; the chosen index is returned. */
-#define conioxlib_menuline(idx, row, a) \
+/* vislen[] is filled once at menu entry; menuline only pads and draws. */
+#define _conioxlib_menuline(idx, row, a) \
 	do { \
-		int conioxlib_c; \
-		int conioxlib_v; \
+		int _conioxlib_c; \
 		\
 		if (items[idx][0] == '-') \
 		{ \
 			textattr(a); \
 			gotoxy(x1, (unsigned short) (y1 + (row) * separation)); \
-			for (conioxlib_c = 0; conioxlib_c < l; conioxlib_c++) \
+			for (_conioxlib_c = 0; _conioxlib_c < l; _conioxlib_c++) \
 			{ \
 				putch(0xC4); \
 			} \
 		} \
 		else \
 		{ \
-			conioxlib_v = 0; \
-			for (conioxlib_c = 0; items[idx][conioxlib_c] != 0; conioxlib_c++) \
-			{ \
-				if (items[idx][conioxlib_c] != '&') \
-				{ \
-					conioxlib_v++; \
-				} \
-			} \
 			conioxlib_cputs_hot(x1, (unsigned short) (y1 + (row) * separation), a, atrhot, items[idx]); \
 			textattr(a); \
-			gotoxy((unsigned short) (x1 + conioxlib_v), (unsigned short) (y1 + (row) * separation)); \
-			for (conioxlib_c = conioxlib_v; conioxlib_c < l; conioxlib_c++) \
+			gotoxy((unsigned short) (x1 + vislen[idx]), (unsigned short) (y1 + (row) * separation)); \
+			for (_conioxlib_c = vislen[idx]; _conioxlib_c < l; _conioxlib_c++) \
 			{ \
 				putch(' '); \
 			} \
@@ -1911,13 +1889,18 @@ unsigned char conioxlib_menu (unsigned short x1, unsigned short y1, unsigned cha
 	unsigned int key;
 	int x, l, i, n;
 	int top, nvis, row, redraw;
+	int vislen[32];
 
+	if (noptions > 32)
+	{
+		noptions = 32;
+	}
 	l = 1;
 	for (y = 0; y < (int) noptions; y++)
 	{
+		n = 0;
 		if (items[y][0] != '-')
 		{
-			n = 0;
 			for (x = 0; items[y][x] != 0; x++)
 			{
 				if (items[y][x] != '&')
@@ -1930,6 +1913,7 @@ unsigned char conioxlib_menu (unsigned short x1, unsigned short y1, unsigned cha
 				l = n;
 			}
 		}
+		vislen[y] = n;
 	}
 	if (l > 20)
 	{
@@ -1990,7 +1974,7 @@ unsigned char conioxlib_menu (unsigned short x1, unsigned short y1, unsigned cha
 				}
 				else
 				{
-					conioxlib_menuline(i, row, (i == y) ? atr1 : atr0);
+					_conioxlib_menuline(i, row, (i == y) ? atr1 : atr0);
 				}
 			}
 			/* Scroll bar in column x1+l */
@@ -2017,20 +2001,19 @@ unsigned char conioxlib_menu (unsigned short x1, unsigned short y1, unsigned cha
 			}
 			redraw = 0;
 		}
-		conioxlib_hint(desc[y]);
+		_conioxlib_hint(desc[y]);
 		key = 0;
 		do
 		{
-			conioxlib_clock();
-			conioxlib_pollmouse();
-			if (conioxlib_keyhit())
+			_conioxlib_poll();
+			if (_conioxlib_keyhit())
 			{
-				conioxlib_readkey(key);
+				_conioxlib_readkey(key);
 				if ((key >= 32) || ((key & 0xFF) == 0))
 				{
 					for (x = 0; x < (int) noptions; x++)
 					{
-						if ((items[x][0] != '-') && conioxlib_hotmatch(items[x], key))
+						if ((items[x][0] != '-') && _conioxlib_hotmatch(items[x], key))
 						{
 							prev = y;
 							y = x;
@@ -2069,7 +2052,8 @@ unsigned char conioxlib_menu (unsigned short x1, unsigned short y1, unsigned cha
 						}
 						else
 						{
-							top = ((row - 1) * ((int) noptions - nvis)) / (nvis - 3);
+							/* nvis == 3 leaves a single track row: divide by 1 instead of by zero */
+							top = ((row - 1) * ((int) noptions - nvis)) / ((nvis > 3) ? (nvis - 3) : 1);
 						}
 						if (y < top)
 						{
@@ -2154,7 +2138,15 @@ unsigned char conioxlib_menu (unsigned short x1, unsigned short y1, unsigned cha
 				}
 				while (items[y][0] == '-')
 				{
-					y--;
+					/* Wrap like UP/DOWN so the page keys never leave the list */
+					if (y > 0)
+					{
+						y--;
+					}
+					else
+					{
+						y = (int) noptions - 1;
+					}
 				}
 			}
 			else if (key == KBD_ORG)
@@ -2190,8 +2182,8 @@ unsigned char conioxlib_menu (unsigned short x1, unsigned short y1, unsigned cha
 		if ((redraw == 0) && (key != KBD_ENTER) && (key != KBD_ESC) && (key != KBD_F1) && (key != KBD_LEFT) && (key != KBD_RIGHT))
 		{
 			/* Only the highlight changed: repaint the previous row and the new one */
-			conioxlib_menuline(prev, prev - top, atr0);
-			conioxlib_menuline(y, y - top, atr1);
+			_conioxlib_menuline(prev, prev - top, atr0);
+			_conioxlib_menuline(y, y - top, atr1);
 		}
 		if (key == KBD_ESC)
 		{
@@ -2309,22 +2301,21 @@ unsigned char conioxlib_menubar (unsigned short y, unsigned char atr0, unsigned 
 	conioxlib_cputs_hot((unsigned short) (start[sel] + 1), y, atr1, atrhot, items[sel]);
 	textattr(atr1);
 	putch(' ');
-	conioxlib_hint(desc[sel]);
+	_conioxlib_hint(desc[sel]);
 	do
 	{
 		key = 0;
 		do
 		{
-			conioxlib_clock();
-			conioxlib_pollmouse();
-			if (conioxlib_keyhit())
+			_conioxlib_poll();
+			if (_conioxlib_keyhit())
 			{
-				conioxlib_readkey(key);
+				_conioxlib_readkey(key);
 				if ((key >= 32) || ((key & 0xFF) == 0))
 				{
 					for (i = 0; i < (int) noptions; i++)
 					{
-						if (conioxlib_hotmatch(items[i], key))
+						if (_conioxlib_hotmatch(items[i], key))
 						{
 							sel = i;
 							key = KBD_ENTER;
@@ -2406,7 +2397,7 @@ unsigned char conioxlib_menubar (unsigned short y, unsigned char atr0, unsigned 
 		conioxlib_cputs_hot((unsigned short) (start[sel] + 1), y, atr1, atrhot, items[sel]);
 		textattr(atr1);
 		putch(' ');
-		conioxlib_hint(desc[sel]);
+		_conioxlib_hint(desc[sel]);
 	}
 	while ((key != KBD_ENTER) && (key != KBD_DOWN) && (key != KBD_ESC) && (key != KBD_F1));
 	window((int) oldwl, (int) oldwt, (int) oldwr, (int) oldwb);
@@ -2422,6 +2413,150 @@ unsigned char conioxlib_menubar (unsigned short y, unsigned char atr0, unsigned 
 	else
 	{
 		return((unsigned char) sel);
+	}
+}
+
+
+/* ---------------- Shared body of option() and property() ---------------- */
+/* checklist:
+   Internal (Private)
+   Runs the check box list of option() when radio is 0 and the
+   radio button list of property() when it is not: markopen and
+   markclose draw the marks, radio keeps a single entry marked
+   and the check boxes advance after every toggle.
+   */
+static unsigned char _conioxlib_checklist (unsigned short x1, unsigned short y1, unsigned char atr0, unsigned char atr1, unsigned char atrhot, char items[][21], char desc[][71], char *sel, unsigned char noptions, unsigned char separation, unsigned char enabled, char markopen, char markclose, unsigned char radio)
+{
+	int y;
+	unsigned int key;
+	int x;
+
+	textattr(atr0);
+	for (y = 0; y != noptions; y++)
+	{
+		gotoxy(x1, y1 + y * separation);
+		cprintf("%c%c%c ", markopen, sel[y], markclose);
+		conioxlib_cputs_hot((unsigned short) (x1 + 4), (unsigned short) (y1 + y * separation), atr0, atrhot, items[y]);
+	}
+	if (enabled == 0)
+	{
+		return(0);
+	}
+	textattr(atr1);
+	gotoxy(x1, y1);
+	cprintf("%c%c%c ", markopen, sel[0], markclose);
+	conioxlib_cputs_hot((unsigned short) (x1 + 4), y1, atr1, atrhot, items[0]);
+	_conioxlib_hint(desc[0]);
+	y = 0;
+	do
+	{
+		key = 0;
+		do
+		{
+			_conioxlib_poll();
+			if (_conioxlib_keyhit())
+			{
+				_conioxlib_readkey(key);
+				if ((key >= 32) || ((key & 0xFF) == 0))
+				{
+					for (x = 0; x < (int) noptions; x++)
+					{
+						if (_conioxlib_hotmatch(items[x], key))
+						{
+							y = x;
+							key = KBD_INS;
+							break;
+						}
+					}
+				}
+			}
+			/* Left button */
+			if ((conioxlib_mousestatus.lclick != 0) && (conioxlib_mousestatus.x >= x1) && (conioxlib_mousestatus.x <= (x1 + 20)))
+			{
+				x = ((int) conioxlib_mousestatus.y - (int) y1) / separation;
+				if ((x >= 0) && (x < noptions))
+				{
+					y = x;
+					key = KBD_INS;
+				}
+			}
+			/* Right button */
+			else if (conioxlib_mousestatus.rclick != 0)
+			{
+				key = KBD_F1;
+			}
+			/* Wheel: moves the selection up or down */
+			else if (conioxlib_mousestatus.wheely < 0)
+			{
+				key = KBD_DOWN;
+			}
+			else if (conioxlib_mousestatus.wheely > 0)
+			{
+				key = KBD_UP;
+			}
+			if (key == 0)
+			{
+				delay(10);
+			}
+		}
+		while ((key != KBD_STAB) && (key != KBD_TAB) && (key != KBD_UP) && (key != KBD_DOWN) && (key != KBD_SPACE) && (key != KBD_INS) && (key != KBD_ESC) && (key != KBD_ENTER) && (key != KBD_F1));
+		if ((key == KBD_STAB) || (key == KBD_UP))
+		{
+			y--;
+		}
+		else if ((key == KBD_TAB) || (key == KBD_DOWN))
+		{
+			y++;
+		}
+		else if ((key == KBD_SPACE) || (key == KBD_INS))
+		{
+			if (radio != 0)
+			{
+				memset(sel, ' ', noptions);
+				sel[y] = '\xFE';
+			}
+			else
+			{
+				if (sel[y] == '\xFE')
+				{
+					sel[y] = ' ';
+				}
+				else
+				{
+					sel[y] = '\xFE';
+				}
+				y++;
+			}
+		}
+		if (y > noptions - 1)
+		{
+			y = 0;
+		}
+		else if (y < 0)
+		{
+			y = noptions - 1;
+		}
+		textattr(atr0);
+		for (x = 0; x != noptions; x++)
+		{
+			gotoxy(x1, y1 + x * separation);
+			cprintf("%c%c%c ", markopen, sel[x], markclose);
+			conioxlib_cputs_hot((unsigned short) (x1 + 4), (unsigned short) (y1 + x * separation), atr0, atrhot, items[x]);
+		}
+		textattr(atr1);
+		gotoxy(x1, y1 + y * separation);
+		cprintf("%c%c%c ", markopen, sel[y], markclose);
+		conioxlib_cputs_hot((unsigned short) (x1 + 4), (unsigned short) (y1 + y * separation), atr1, atrhot, items[y]);
+		_conioxlib_hint(desc[y]);
+	}
+	while ((key != KBD_ENTER) && (key != KBD_ESC) && (key != KBD_F1));
+	if (key == KBD_F1)
+	{
+		return(255);
+	}
+	else
+	{
+		return(0);
 	}
 }
 
@@ -2446,130 +2581,7 @@ unsigned char conioxlib_menubar (unsigned short y, unsigned char atr0, unsigned 
    */
 unsigned char conioxlib_option (unsigned short x1, unsigned short y1, unsigned char atr0, unsigned char atr1, unsigned char atrhot, char items[][21], char desc[][71], char *sel, unsigned char noptions, unsigned char separation, unsigned char enabled)
 {
-	int y;
-	unsigned int key;
-	int x;
-
-	textattr(atr0);
-	for (y = 0; y != noptions; y++)
-	{
-		gotoxy(x1, y1 + y * separation);
-		cprintf("[%c] ", sel[y]);
-		conioxlib_cputs_hot((unsigned short) (x1 + 4), (unsigned short) (y1 + y * separation), atr0, atrhot, items[y]);
-	}
-	if (enabled == 0)
-	{
-		return(0);
-	}
-	textattr(atr1);
-	gotoxy(x1, y1);
-	cprintf("[%c] ", sel[0]);
-	conioxlib_cputs_hot((unsigned short) (x1 + 4), y1, atr1, atrhot, items[0]);
-	conioxlib_hint(desc[0]);
-	y = 0;
-	do
-	{
-		key = 0;
-		do
-		{
-			conioxlib_clock();
-			conioxlib_pollmouse();
-			if (conioxlib_keyhit())
-			{
-				conioxlib_readkey(key);
-				if ((key >= 32) || ((key & 0xFF) == 0))
-				{
-					for (x = 0; x < (int) noptions; x++)
-					{
-						if (conioxlib_hotmatch(items[x], key))
-						{
-							y = x;
-							key = KBD_INS;
-							break;
-						}
-					}
-				}
-			}
-			/* Left button */
-			if ((conioxlib_mousestatus.lclick != 0) && (conioxlib_mousestatus.x >= x1) && (conioxlib_mousestatus.x <= (x1 + 20)))
-			{
-				x = ((int) conioxlib_mousestatus.y - (int) y1) / separation;
-				if ((x >= 0) && (x < noptions))
-				{
-					y = x;
-					key = KBD_INS;
-				}
-			}
-			/* Right button */
-			else if (conioxlib_mousestatus.rclick != 0)
-			{
-				key = KBD_F1;
-			}
-			/* Wheel: moves the selection up or down */
-			else if (conioxlib_mousestatus.wheely < 0)
-			{
-				key = KBD_DOWN;
-			}
-			else if (conioxlib_mousestatus.wheely > 0)
-			{
-				key = KBD_UP;
-			}
-			if (key == 0)
-			{
-				delay(10);
-			}
-		}
-		while ((key != KBD_STAB) && (key != KBD_TAB) && (key != KBD_UP) && (key != KBD_DOWN) && (key != KBD_SPACE) && (key != KBD_INS) && (key != KBD_ESC) && (key != KBD_ENTER) && (key != KBD_F1));
-		if ((key == KBD_STAB) || (key == KBD_UP))
-		{
-			y--;
-		}
-		else if ((key == KBD_TAB) || (key == KBD_DOWN))
-		{
-			y++;
-		}
-		else if ((key == KBD_SPACE) || (key == KBD_INS))
-		{
-			if (sel[y] == '\xFE')
-			{
-				sel[y] = ' ';
-			}
-			else
-			{
-				sel[y] = '\xFE';
-			}
-			y++;
-		}
-		if (y > noptions - 1)
-		{
-			y = 0;
-		}
-		else if (y < 0)
-		{
-			y = noptions - 1;
-		}
-		textattr(atr0);
-		for (x = 0; x != noptions; x++)
-		{
-			gotoxy(x1, y1 + x * separation);
-			cprintf("[%c] ", sel[x]);
-			conioxlib_cputs_hot((unsigned short) (x1 + 4), (unsigned short) (y1 + x * separation), atr0, atrhot, items[x]);
-		}
-		textattr(atr1);
-		gotoxy(x1, y1 + y * separation);
-		cprintf("[%c] ", sel[y]);
-		conioxlib_cputs_hot((unsigned short) (x1 + 4), (unsigned short) (y1 + y * separation), atr1, atrhot, items[y]);
-		conioxlib_hint(desc[y]);
-	}
-	while ((key != KBD_ENTER) && (key != KBD_ESC) && (key != KBD_F1));
-	if (key == KBD_F1)
-	{
-		return(255);
-	}
-	else
-	{
-		return(0);
-	}
+	return(_conioxlib_checklist(x1, y1, atr0, atr1, atrhot, items, desc, sel, noptions, separation, enabled, '[', ']', 0));
 }
 
 
@@ -2591,128 +2603,13 @@ unsigned char conioxlib_option (unsigned short x1, unsigned short y1, unsigned c
    */
 unsigned char conioxlib_property (unsigned short x1, unsigned short y1, unsigned char atr0, unsigned char atr1, unsigned char atrhot, char items[][21], char desc[][71], char *sel, unsigned char noptions, unsigned char separation, unsigned char enabled)
 {
-	int y;
-	unsigned int key;
-	int x;
-
-	textattr(atr0);
-	for (y = 0; y != noptions; y++)
-	{
-		gotoxy(x1, y1 + y * separation);
-		cprintf("(%c) ", sel[y]);
-		conioxlib_cputs_hot((unsigned short) (x1 + 4), (unsigned short) (y1 + y * separation), atr0, atrhot, items[y]);
-	}
-	if (enabled == 0)
-	{
-		return(0);
-	}
-	textattr(atr1);
-	gotoxy(x1, y1);
-	cprintf("(%c) ", sel[0]);
-	conioxlib_cputs_hot((unsigned short) (x1 + 4), y1, atr1, atrhot, items[0]);
-	conioxlib_hint(desc[0]);
-	y = 0;
-	do
-	{
-		key = 0;
-		do
-		{
-			conioxlib_clock();
-			conioxlib_pollmouse();
-			if (conioxlib_keyhit())
-			{
-				conioxlib_readkey(key);
-				if ((key >= 32) || ((key & 0xFF) == 0))
-				{
-					for (x = 0; x < (int) noptions; x++)
-					{
-						if (conioxlib_hotmatch(items[x], key))
-						{
-							y = x;
-							key = KBD_INS;
-							break;
-						}
-					}
-				}
-			}
-			/* Left button */
-			if ((conioxlib_mousestatus.lclick != 0) && (conioxlib_mousestatus.x >= x1) && (conioxlib_mousestatus.x <= (x1 + 20)))
-			{
-				x = ((int) conioxlib_mousestatus.y - (int) y1) / separation;
-				if ((x >= 0) && (x < noptions))
-				{
-					y = x;
-					key = KBD_INS;
-				}
-			}
-			/* Right button */
-			else if (conioxlib_mousestatus.rclick != 0)
-			{
-				key = KBD_F1;
-			}
-			/* Wheel: moves the selection up or down */
-			else if (conioxlib_mousestatus.wheely < 0)
-			{
-				key = KBD_DOWN;
-			}
-			else if (conioxlib_mousestatus.wheely > 0)
-			{
-				key = KBD_UP;
-			}
-			if (key == 0)
-			{
-				delay(10);
-			}
-		}
-		while ((key != KBD_STAB) && (key != KBD_TAB) && (key != KBD_UP) && (key != KBD_DOWN) && (key != KBD_SPACE) && (key != KBD_INS) && (key != KBD_ESC) && (key != KBD_ENTER) && (key != KBD_F1));
-		if ((key == KBD_STAB) || (key == KBD_UP))
-		{
-			y--;
-		}
-		else if ((key == KBD_TAB) || (key == KBD_DOWN))
-		{
-			y++;
-		}
-		else if ((key == KBD_SPACE) || (key == KBD_INS))
-		{
-			memset(sel, ' ', noptions);
-			sel[y] = '\xFE';
-		}
-		if (y > noptions - 1)
-		{
-			y = 0;
-		}
-		else if (y < 0)
-		{
-			y = noptions - 1;
-		}
-		textattr(atr0);
-		for (x = 0; x != noptions; x++)
-		{
-			gotoxy(x1, y1 + x * separation);
-			cprintf("(%c) ", sel[x]);
-			conioxlib_cputs_hot((unsigned short) (x1 + 4), (unsigned short) (y1 + x * separation), atr0, atrhot, items[x]);
-		}
-		textattr(atr1);
-		gotoxy(x1, y1 + y * separation);
-		cprintf("(%c) ", sel[y]);
-		conioxlib_cputs_hot((unsigned short) (x1 + 4), (unsigned short) (y1 + y * separation), atr1, atrhot, items[y]);
-		conioxlib_hint(desc[y]);
-	}
-	while ((key != KBD_ENTER) && (key != KBD_ESC) && (key != KBD_F1));
-	if (key == KBD_F1)
-	{
-		return(255);
-	}
-	else
-	{
-		return(0);
-	}
+	return(_conioxlib_checklist(x1, y1, atr0, atr1, atrhot, items, desc, sel, noptions, separation, enabled, '(', ')', 1));
 }
 
 
 #if ((__DOS__) || (__MSDOS__)) && defined(__TURBOC__)
 
+#pragma warn -par
 /* ------------------- Error control routine ----------------------- */
 /* error:
    Prototype (Turbo C DOS builds only):
@@ -2817,7 +2714,6 @@ void interrupt error (unsigned int bp, unsigned int di, unsigned int si, unsigne
 	{
 		ax = 2;
 	}
-#pragma warn -par
 }
 #pragma warn .par
 
@@ -2856,11 +2752,7 @@ unsigned char conioxlib_view (unsigned short x1, unsigned short y1, unsigned sho
 	}
 	oldx = wherex();
 	oldy = wherey();
-	for (f = last; (f != last + y2 - y1) && (f < 256); f++)
-	{
-		buffer[f][0] = 0;
-	}
-	conioxlib_hint("ENTER / ESC close; arrows and pages move");
+	_conioxlib_hint("ENTER / ESC close; arrows and pages move");
 	box(x1, y1, x2, y2, atr0, A_DOUBLE, title, 3);
 	gotoxy(x2, y1 + 1);
 	putch('\x18');
@@ -2883,9 +2775,13 @@ unsigned char conioxlib_view (unsigned short x1, unsigned short y1, unsigned sho
 		textattr(atr1);
 		for (f = ini; f != ini + y2 - y1 - 1; f++)
 		{
-			memset(tmp, 0, 61);
 			memset(tmp, 32, 60);
-			memcpy (tmp, buffer[f], strlen(buffer[f]));
+			tmp[60] = 0;
+			/* Rows past the content are painted blank without touching the caller buffer */
+			if (f < (int) last)
+			{
+				memcpy(tmp, buffer[f], strlen(buffer[f]));
+			}
 			gotoxy(x1 + 2, c);
 			cputs(tmp);
 			c++;
@@ -2893,11 +2789,10 @@ unsigned char conioxlib_view (unsigned short x1, unsigned short y1, unsigned sho
 		key = 0;
 		do
 		{
-			conioxlib_clock();
-			conioxlib_pollmouse();
-			if (conioxlib_keyhit())
+			_conioxlib_poll();
+			if (_conioxlib_keyhit())
 			{
-				conioxlib_readkey(key);
+				_conioxlib_readkey(key);
 			}
 			/* Left button */
 			if (conioxlib_mousestatus.lclick != 0)
@@ -3003,7 +2898,7 @@ unsigned char conioxlib_view (unsigned short x1, unsigned short y1, unsigned sho
    terminated malloc block, size receiving its length; returns 0 when it
    cannot be opened or read, is empty or too big for one allocation.
    help() and helpindex() share it. */
-static char *conioxlib_readblock (const char *name, unsigned long int *size)
+static char *_conioxlib_readblock (const char *name, unsigned long int *size)
 {
 	FILE *f;
 	long int len;
@@ -3041,7 +2936,7 @@ static char *conioxlib_readblock (const char *name, unsigned long int *size)
 /* Terminates the next line of the block in place at \r or \n, swallowing the
    CRLF pair, and advances *pp past it; returns the start of the line or 0
    past the last one. help() and helpindex() share it. */
-static char *conioxlib_nextline (char **pp, char *end)
+static char *_conioxlib_nextline (char **pp, char *end)
 {
 	char *p;
 	char *q;
@@ -3095,10 +2990,10 @@ unsigned char conioxlib_help (unsigned short x1, unsigned short y1, unsigned sho
 	char key[50], title[80], tmp[256];
 	unsigned int len;
 
-	conioxlib_hint("Loading help...");
+	_conioxlib_hint("Loading help...");
 	strcpy(title, topic);
 	sprintf(key, "@%s", topic);
-	buf = conioxlib_readblock(name, &size);
+	buf = _conioxlib_readblock(name, &size);
 	if (buf == 0)
 	{
 		strcpy(&buffer[0][0], "Help is not available.");
@@ -3109,7 +3004,7 @@ unsigned char conioxlib_help (unsigned short x1, unsigned short y1, unsigned sho
 	/* Find the topic */
 	p = buf;
 	line = 0;
-	while ((line = conioxlib_nextline(&p, end)) != 0)
+	while ((line = _conioxlib_nextline(&p, end)) != 0)
 	{
 		if (strcmp(key, line) == 0)
 		{
@@ -3120,14 +3015,14 @@ unsigned char conioxlib_help (unsigned short x1, unsigned short y1, unsigned sho
 	if (line != 0)
 	{
 		last = 0;
-		while ((line = conioxlib_nextline(&p, end)) != 0)
+		while ((line = _conioxlib_nextline(&p, end)) != 0)
 		{
 			if (line[0] == '@')
 			{
 				break;
 			}
-			/* conioxlib_view() touches buffer rows up to last + (y2 - y1): the limit keeps them inside buffer[256][61] */
-			if (last < 255 - (y2 - y1))
+			/* The work area holds 256 rows of 61 bytes: keep the line count inside it */
+			if (last < 255)
 			{
 				memset(&buffer[last][0], 0, 61);
 				len = strlen(line);
@@ -3193,7 +3088,7 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 		unsigned year: 7;
 	} ff_fdate;
 	union REGS r;
-	conioxlib_ffblk ffblk;
+	_conioxlib_ffblk ffblk;
 #endif
 #if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32)
 	WIN32_FIND_DATA ffd;
@@ -3263,7 +3158,7 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 	{
 		r.h.ah = 8;
 		r.h.dl = j;
-		coniox_int86(0x13, &r, &r);
+		_coniox_int86(0x13, &r, &r);
 		sprintf(files[i].name, "\x10%c\x11", i + 'A');
 		strcpy(files[i].size, "\xF0   DRIVE   \xF0");
 		files[i].date[0] = 0;
@@ -3302,9 +3197,9 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 		i++;
 	}
 #endif
-	olddrive = conioxlib_getdisk();
+	olddrive = _conioxlib_getdisk();
 #if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32) || defined(__WATCOMC__)
-	conioxlib_getcwd(olddir, 79);
+	_conioxlib_getcwd(olddir, 79);
 #else
 	getcurdir(0, tmp2);
 	sprintf(olddir, "\\%s", tmp2);
@@ -3312,15 +3207,15 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 	ndisks = i - 1;
 	textattr(CONIOXLIB_ATTR(BLACK, CYAN));
 	strcpy(mask, "*.*");
-	conioxlib_hint("ESC close; ENTER accept; SPACE/INS mark; arrows move");
+	_conioxlib_hint("ESC close; ENTER accept; SPACE/INS mark; arrows move");
 	select_1:
-	for (i = 0; i != 220; i++)
+	for (i = 0; i != CONIOXLIB_MAXFILES; i++)
 	{
 		files[i].selected = 0;
 	}
-	disk = conioxlib_getdisk() + 'A';
+	disk = _conioxlib_getdisk() + 'A';
 #if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32) || defined(__WATCOMC__)
-	conioxlib_getcwd(tmp2, 79);
+	_conioxlib_getcwd(tmp2, 79);
 	if (tmp2[3] == 0)
 	{
 		sprintf(dir, "\\");
@@ -3342,8 +3237,8 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 	strcpy(dir, tmp2);
 #endif
 	/* Ensure we are on the selected drive/dir so relative find and DESCRIPT.ION work on DOS and Windows */
-	conioxlib_setdisk(disk - 'A');
-	conioxlib_chdir(dir[0] == '\\' && dir[1] == 0 ? "\\" : dir);
+	_conioxlib_setdisk(disk - 'A');
+	_conioxlib_chdir(dir[0] == '\\' && dir[1] == 0 ? "\\" : dir);
 	sprintf(tmp2, "%c:%sDESCRIPT.ION", disk, dir);
 	f = fopen(tmp2, "rb");
 	if (f == 0)
@@ -3360,7 +3255,7 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 	done = (h == INVALID_HANDLE_VALUE);
 #else
 	/* Relative mask after chdir is more reliable on DOS (Watcom/Borland/DJGPP) */
-	done = conioxlib_findfirst(mask, &ffblk);
+	done = _conioxlib_findfirst(mask, &ffblk);
 #endif
 	while (!done)
 	{
@@ -3369,9 +3264,9 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 		strncpy(files[i].name, ffd.cFileName, 12);
 		if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 #else
-		memcpy(files[i].name, conioxlib_ffname(ffblk), 12);
+		memcpy(files[i].name, _conioxlib_ffname(ffblk), 12);
 		files[i].name[12] = 0;
-		if (conioxlib_ffattrib(ffblk) & 0x10)
+		if (_conioxlib_ffattrib(ffblk) & 0x10)
 #endif
 		{
 			if (strcmp(files[i].name, ".") == 0)
@@ -3393,9 +3288,9 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 		{
 			memset(files[i].comment, 0, 34);
 #if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32)
-			conioxlib_filemultiselector_format(files[i].size, (long) ffd.nFileSizeLow);
+			_conioxlib_filemultiselector_format(files[i].size, (long) ffd.nFileSizeLow);
 #else
-			conioxlib_filemultiselector_format(files[i].size, conioxlib_ffsize(ffblk));
+			_conioxlib_filemultiselector_format(files[i].size, _conioxlib_ffsize(ffblk));
 #endif
 			strlwr(files[i].name);
 		}
@@ -3405,7 +3300,7 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 		sprintf(files[i].date, "%02u-%02u-%02u", st.wDay, st.wMonth, st.wYear % 100);
 		sprintf(files[i].time, "%02u:%02u", st.wHour, st.wMinute);
 #else
-		memcpy(&ff_fdate, &conioxlib_ffdate(ffblk), 2);
+		memcpy(&ff_fdate, &_conioxlib_ffdate(ffblk), 2);
 		if (ff_fdate.year < 20)
 		{
 			sprintf(files[i].date, "%02u-%02u-%02u", ff_fdate.day, ff_fdate.mon, ff_fdate.year + 80);
@@ -3418,7 +3313,7 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 		{
 			sprintf(files[i].date, "%02u-%02u-XX", ff_fdate.day, ff_fdate.mon);
 		}
-		memcpy(&ff_ftime, &conioxlib_fftime(ffblk), 2);
+		memcpy(&ff_ftime, &_conioxlib_fftime(ffblk), 2);
 		sprintf(files[i].time, "%02u:%02u", ff_ftime.hour, ff_ftime.min);
 #endif
 		if (f != 0)
@@ -3484,7 +3379,7 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 			done = 1;
 		}
 #else
-		done = conioxlib_findnext(&ffblk);
+		done = _conioxlib_findnext(&ffblk);
 #endif
 		i++;
 		if (i > 200)
@@ -3503,7 +3398,7 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 		fclose(f);
 	}
 	last = i - 1;
-	for (i = last + 1; i != 220; i++)
+	for (i = last + 1; i != CONIOXLIB_MAXFILES; i++)
 	{
 		files[i].selected = 0;
 		files[i].name[0] = 0;
@@ -3512,7 +3407,7 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 		files[i].time[0] = 0;
 		files[i].comment[0] = 0;
 	}
-	qsort((void *) files, last + 1, sizeof(files[0]), conioxlib_filemultiselector_sort);
+	qsort((void *) files, last + 1, sizeof(files[0]), _conioxlib_filemultiselector_sort);
 	box(2, 2, 78, 23, 0, A_NONE, "", 5);
 	textattr(CONIOXLIB_ATTR(BLACK, CYAN));
 	memset(tmp1, 0xCD, 77);
@@ -3591,11 +3486,10 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 		key = 0;
 		do
 		{
-			conioxlib_clock();
-			conioxlib_pollmouse();
-			if (conioxlib_keyhit())
+			_conioxlib_poll();
+			if (_conioxlib_keyhit())
 			{
-				conioxlib_readkey(key);
+				_conioxlib_readkey(key);
 			}
 			/* Left button */
 			if (conioxlib_mousestatus.lclick != 0)
@@ -3668,12 +3562,12 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 		{
 			if (strncmp(files[j].size, "\xF0   DRIVE   \xF0", 15) == 0)
 			{
-				conioxlib_setdisk(files[j].name[1] - 'A');
+				_conioxlib_setdisk(files[j].name[1] - 'A');
 				goto select_1;
 			}
 			else if (strncmp(files[j].size, "\xF0 DIRECTORY \xF0", 15) == 0)
 			{
-				conioxlib_chdir(files[j].name);
+				_conioxlib_chdir(files[j].name);
 				goto select_1;
 			}
 		}
@@ -3826,7 +3720,7 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 	while ((key != KBD_ENTER) && (key != KBD_ESC) && (key != KBD_F1));
 	if (key == KBD_ESC)
 	{
-		for (i = 0; i != 220; i++)
+		for (i = 0; i != CONIOXLIB_MAXFILES; i++)
 		{
 			files[i].selected = 0;
 		}
@@ -3847,10 +3741,12 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 		}
 	}
 	*sdisk = disk;
-	memcpy (sdir, dir, strlen(dir) - 1);
-	sdir[strlen(dir) - 1] = 0;
-	conioxlib_setdisk(olddrive);
-	conioxlib_chdir(olddir);
+	/* Keep the trailing backslash of the \sub\ form, the same shape
+	   conioxlib_fileselector() returns, so callers build X:\sub\name.ext
+	   paths by plain concatenation */
+	strcpy(sdir, dir);
+	_conioxlib_setdisk(olddrive);
+	_conioxlib_chdir(olddir);
 	conioxlib_restorescr(1, 2, 80, 24, oldb);
 	gotoxy(oldx, oldy);
 	if (key == KBD_F1)
@@ -3865,7 +3761,7 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 
 
 /* -------------------- Sorts the select ---------------------------------- */
-static int conioxlib_filemultiselector_sort (const void *a, const void *b)
+static int _conioxlib_filemultiselector_sort (const void *a, const void *b)
 {
 	/* Sort by name: the selected byte of the structure must not alter the order */
 	return(strcmp(((struct conioxlib_sfiles *) a)->name, ((struct conioxlib_sfiles *) b)->name));
@@ -3873,7 +3769,7 @@ static int conioxlib_filemultiselector_sort (const void *a, const void *b)
 
 
 /* ------------------------- Formats a long with thousand separators ------------------------------- */
-static void conioxlib_filemultiselector_format (char *res, long int n)
+static void _conioxlib_filemultiselector_format (char *res, long int n)
 {
 	unsigned int i, j, k, len;
 	char tmp[15];
@@ -3927,7 +3823,7 @@ unsigned char conioxlib_fileselector (unsigned char *sdisk, char *sdir, char *na
 #if ((__DOS__) || (__MSDOS__))
 	int j;
 	unsigned int key;
-	conioxlib_ffblk ffblk;
+	_conioxlib_ffblk ffblk;
 #endif
 #if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32)
 	WIN32_FIND_DATA ffd;
@@ -3943,18 +3839,18 @@ unsigned char conioxlib_fileselector (unsigned char *sdisk, char *sdir, char *na
 	{
 		return(0);
 	}
-	olddrive = conioxlib_getdisk();
+	olddrive = _conioxlib_getdisk();
 #if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32) || defined(__WATCOMC__)
-	conioxlib_getcwd(olddir, 79);
+	_conioxlib_getcwd(olddir, 79);
 #else
 	getcurdir(0, tmp);
 	sprintf(olddir, "\\%s", tmp);
 #endif
 	fileselector_1:
-	disk = conioxlib_getdisk() + 'A';
+	disk = _conioxlib_getdisk() + 'A';
 	/* Build the current directory in the "\sub\dir\" form used by the rest of the library */
 #if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32) || defined(__WATCOMC__)
-	conioxlib_getcwd(tmp, 79);
+	_conioxlib_getcwd(tmp, 79);
 	if (tmp[3] == 0)
 	{
 		sprintf(dir, "\\");
@@ -3976,8 +3872,8 @@ unsigned char conioxlib_fileselector (unsigned char *sdisk, char *sdir, char *na
 	strcpy(dir, tmp);
 #endif
 	/* Ensure we are on the selected drive and directory so the relative scan works everywhere */
-	conioxlib_setdisk(disk - 'A');
-	conioxlib_chdir(dir[0] == '\\' && dir[1] == 0 ? "\\" : dir);
+	_conioxlib_setdisk(disk - 'A');
+	_conioxlib_chdir(dir[0] == '\\' && dir[1] == 0 ? "\\" : dir);
 	/* Enumerate the drives the same way the filemultiselector does */
 	i = 0;
 #if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32)
@@ -4015,21 +3911,21 @@ unsigned char conioxlib_fileselector (unsigned char *sdisk, char *sdir, char *na
 	h = (void *) FindFirstFileA("*.*", &ffd);
 	done = (h == INVALID_HANDLE_VALUE);
 #else
-	done = conioxlib_findfirst("*.*", &ffblk);
+	done = _conioxlib_findfirst("*.*", &ffblk);
 #endif
 	while (!done)
 	{
 #if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32)
 		strcpy(tmp, ffd.cFileName);
 #else
-		strcpy(tmp, conioxlib_ffname(ffblk));
+		strcpy(tmp, _conioxlib_ffname(ffblk));
 #endif
 		if ((strcmp(tmp, ".") != 0) && (strcmp(tmp, "..") != 0) && (i < 200))
 		{
 #if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32)
 			if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 #else
-			if (conioxlib_ffattrib(ffblk) & 0x10)
+			if (_conioxlib_ffattrib(ffblk) & 0x10)
 #endif
 			{
 				strncpy(items[i], "[", 40);
@@ -4049,7 +3945,7 @@ unsigned char conioxlib_fileselector (unsigned char *sdisk, char *sdir, char *na
 #if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32)
 		done = (FindNextFileA(h, &ffd) == 0);
 #else
-		done = conioxlib_findnext(&ffblk);
+		done = _conioxlib_findnext(&ffblk);
 #endif
 	}
 #if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32)
@@ -4063,24 +3959,24 @@ unsigned char conioxlib_fileselector (unsigned char *sdisk, char *sdir, char *na
 	{
 		sprintf(tmp, "...%s", &tmp[strlen(tmp) - 53]);
 	}
-	res = conioxlib_listbox(10, 4, 68, 21, conioxlib_curtheme.atrdialog, conioxlib_curtheme.atr1, items, (unsigned char) i, tmp);
+	res = conioxlib_listbox(10, 4, 68, 21, _conioxlib_curtheme.atrdialog, _conioxlib_curtheme.atr1, items, (unsigned char) i, tmp);
 	if (res == 255)
 	{
-		conioxlib_setdisk(olddrive);
-		conioxlib_chdir(olddir);
+		_conioxlib_setdisk(olddrive);
+		_conioxlib_chdir(olddir);
 		conioxlib_restorescr(1, 1, 80, 25, oldb);
 		return(0);
 	}
 	if (items[res][0] == '\x10')
 	{
 		/* Drive: switch to it and rescan */
-		conioxlib_setdisk(items[res][1] - 'A');
+		_conioxlib_setdisk(items[res][1] - 'A');
 		goto fileselector_1;
 	}
 	if (strcmp(items[res], "..") == 0)
 	{
 		/* Directory: go one level up and rescan */
-		conioxlib_chdir("..");
+		_conioxlib_chdir("..");
 		goto fileselector_1;
 	}
 	if (items[res][0] == '[')
@@ -4088,15 +3984,15 @@ unsigned char conioxlib_fileselector (unsigned char *sdisk, char *sdir, char *na
 		/* Directory: enter it and rescan */
 		strcpy(tmp, &items[res][1]);
 		tmp[strlen(tmp) - 1] = 0;
-		conioxlib_chdir(tmp);
+		_conioxlib_chdir(tmp);
 		goto fileselector_1;
 	}
 	/* Plain file: accept it */
 	strcpy(name, items[res]);
 	*sdisk = disk;
 	strcpy(sdir, dir);
-	conioxlib_setdisk(olddrive);
-	conioxlib_chdir(olddir);
+	_conioxlib_setdisk(olddrive);
+	_conioxlib_chdir(olddir);
 	conioxlib_restorescr(1, 1, 80, 25, oldb);
 	return(1);
 }
@@ -4142,7 +4038,8 @@ void conioxlib_hello (char *name, unsigned char commercial)
 			SetConsoleMode(hIn, (mode & ~(DWORD) (ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT)) | ENABLE_EXTENDED_FLAGS | ENABLE_MOUSE_INPUT);
 		}
 	}
-	conioxlib_pendingkey = 0;
+	_conioxlib_keyqhead = 0;
+	_conioxlib_keyqtail = 0;
 #endif
 	gettext(1, 1, 80, 25, oldb);
 	oldx = wherex();
@@ -4292,7 +4189,7 @@ void conioxlib_background (unsigned char msg[])
 		olda++;
 	}
 	puttext(1, 2, 80, 24, oldb);
-	status = (unsigned short) (((unsigned int) conioxlib_curtheme.atrstatus << 8) | 0x20);
+	status = (unsigned short) (((unsigned int) _conioxlib_curtheme.atrstatus << 8) | 0x20);
 	olda = oldb;
 	for (i = 0; i != 80; i++)
 	{
@@ -4308,7 +4205,7 @@ void conioxlib_background (unsigned char msg[])
 	}
 	time(&t);
 	ti = localtime(&t);
-	conioxlib_paintclock(ti);
+	_conioxlib_paintclock(ti);
 	/* Invalidate blocks cache: line 25 was just cleared to spaces */
 	conioxlib_blocks();
 	free(oldb);
@@ -4341,7 +4238,7 @@ void conioxlib_about (unsigned char commercial)
 	_setcursortype(_NOCURSOR);
 	window(1, 1, 80, 25);
 	_wscroll = 0;
-	conioxlib_hint("ENTER / ESC close about");
+	_conioxlib_hint("ENTER / ESC close about");
 	box (x1, y1, x2, y2, CONIOXLIB_ATTR(WHITE, LIGHTGRAY), A_DOUBLE, "About", 3);
 	textattr(CONIOXLIB_ATTR(BLACK, LIGHTGRAY));
 	cputsc(x1, x2, y1 + 1, "CONXLIB for DOS and Windows");
@@ -4361,11 +4258,10 @@ void conioxlib_about (unsigned char commercial)
 	key = 0;
 	do
 	{
-		conioxlib_clock();
-		conioxlib_pollmouse();
-		if (conioxlib_keyhit())
+		_conioxlib_poll();
+		if (_conioxlib_keyhit())
 		{
-			conioxlib_readkey(key);
+			_conioxlib_readkey(key);
 		}
 		/* Left button on the close button */
 		if ((conioxlib_mousestatus.lclick != 0) && (conioxlib_mousestatus.y == (unsigned int) y1) && (conioxlib_mousestatus.x == (unsigned int) x1 + 3))
@@ -4385,7 +4281,8 @@ void conioxlib_about (unsigned char commercial)
 		{
 			FlushConsoleInputBuffer(hIn);
 		}
-		conioxlib_pendingkey = 0;
+		_conioxlib_keyqhead = 0;
+		_conioxlib_keyqtail = 0;
 	}
 #endif
 	gotoxy(oldx, oldy);
@@ -4428,9 +4325,15 @@ void conioxlib_screensaver (void)
 	memset(&rep, 0, sizeof(rep));
 	for (k = 0; k != 40; k++)
 	{
-		if (conioxlib_keyhit())
+		if (_conioxlib_keyhit())
 		{
-			conioxlib_readkey(key);
+			_conioxlib_readkey(key);
+			goto done;
+		}
+		/* A click or a wheel movement wakes the saver up too */
+		conioxlib_pollmouse();
+		if ((conioxlib_mousestatus.lclick != 0) || (conioxlib_mousestatus.rclick != 0) || (conioxlib_mousestatus.wheelx != 0) || (conioxlib_mousestatus.wheely != 0))
+		{
 			goto done;
 		}
 		do
@@ -4450,9 +4353,15 @@ void conioxlib_screensaver (void)
 	memset(&rep, 0, sizeof(rep));
 	for (k = 0; k != 40; k++)
 	{
-		if (conioxlib_keyhit())
+		if (_conioxlib_keyhit())
 		{
-			conioxlib_readkey(key);
+			_conioxlib_readkey(key);
+			goto done;
+		}
+		/* A click or a wheel movement wakes the saver up too */
+		conioxlib_pollmouse();
+		if ((conioxlib_mousestatus.lclick != 0) || (conioxlib_mousestatus.rclick != 0) || (conioxlib_mousestatus.wheelx != 0) || (conioxlib_mousestatus.wheely != 0))
+		{
 			goto done;
 		}
 		do
@@ -4523,7 +4432,7 @@ void conioxlib_bounce (void)
 			{
 				puttext(1, (int) (i + 1), (int) sw, (int) sh, fb + (i * sw));
 			}
-			if (conioxlib_keyhit())
+			if (_conioxlib_keyhit())
 			{
 				done = 1;
 				break;
@@ -4536,7 +4445,7 @@ void conioxlib_bounce (void)
 			for (i = height; i != 0; i--)
 			{
 				puttext(1, (int) i, (int) sw, (int) sh, fb + ((i - 1) * sw));
-				if (conioxlib_keyhit())
+				if (_conioxlib_keyhit())
 				{
 					done = 1;
 					break;
@@ -4557,7 +4466,7 @@ void conioxlib_bounce (void)
 			{
 				puttext(1, (int) (i + 1), (int) sw, (int) sh, fb + (i * sw));
 			}
-			if (conioxlib_keyhit())
+			if (_conioxlib_keyhit())
 			{
 				break;
 			}
@@ -4606,7 +4515,7 @@ void conioxlib_wipe (void)
 			}
 		}
 		puttext(1, 1, (int) sw, (int) sh, fb);
-		if (conioxlib_keyhit())
+		if (_conioxlib_keyhit())
 		{
 			break;
 		}
@@ -4793,6 +4702,7 @@ void conioxlib_shell (unsigned short x1, unsigned short y1, unsigned short x2, u
 
 #if ((__DOS__) || (__MSDOS__)) && defined(__TURBOC__)
 
+#pragma warn -par
 /* ------------------- Exit routine of conioxlib_shell -------------------------- */
 /* conioxlib_shell_patch:
    Prototype (Turbo C DOS builds only):
@@ -4808,7 +4718,6 @@ void interrupt conioxlib_shell_patch (unsigned int bp, unsigned int di, unsigned
 
 	al = ax & 255;
 	putch(al);
-#pragma warn -par
 }
 #pragma warn .par
 
@@ -4907,7 +4816,7 @@ unsigned char conioxlib_calendar (unsigned short x, unsigned short y, unsigned c
 			prevdays = 29;
 		}
 		/* Keep status text in columns 1..59 so clock (76-80) and locks (60-74) never collide */
-		conioxlib_hint("ENTER accepts; ESC closes; arrows, PGUP/PGDN, HOME/END");
+		_conioxlib_hint("ENTER accepts; ESC closes; arrows, PGUP/PGDN, HOME/END");
 		/* atr0 = normal day cells, atr1 = selected day, atr2 = Sundays */
 		box(x, y, x + 38, y + 10, atr0, A_DOUBLE, "Calendar", SHADOW | CLOSE);
 		textattr(atr0);
@@ -4946,11 +4855,10 @@ unsigned char conioxlib_calendar (unsigned short x, unsigned short y, unsigned c
 		i = 0;
 		do
 		{
-			conioxlib_pollmouse();
-			conioxlib_clock();
-			if (conioxlib_keyhit())
+			_conioxlib_poll();
+			if (_conioxlib_keyhit())
 			{
-				conioxlib_readkey(key);
+				_conioxlib_readkey(key);
 			}
 			/* Left button on the close button */
 			if ((conioxlib_mousestatus.lclick != 0) && (conioxlib_mousestatus.y == y) && (conioxlib_mousestatus.x == (unsigned int) x + 3))
@@ -5134,11 +5042,10 @@ unsigned char conioxlib_grid (unsigned short x1, unsigned short y1, unsigned cha
 		key = 0;
 		do
 		{
-			conioxlib_clock();
-			conioxlib_pollmouse();
-			if (conioxlib_keyhit())
+			_conioxlib_poll();
+			if (_conioxlib_keyhit())
 			{
-				conioxlib_readkey(key);
+				_conioxlib_readkey(key);
 			}
 			/* Left button */
 			if ((conioxlib_mousestatus.lclick != 0) && (conioxlib_mousestatus.x >= x1) && (conioxlib_mousestatus.x <= (x1 + 60)) && (conioxlib_mousestatus.y >= y1) && (conioxlib_mousestatus.y <= (y1 + ((noptions + 3) >> 2) - 1)))
@@ -5259,8 +5166,8 @@ unsigned char conioxlib_helpindex (unsigned short x1, unsigned short y1, unsigne
 	}
 	oldx = wherex();
 	oldy = wherey();
-	conioxlib_hint("Loading help...");
-	buf = conioxlib_readblock(name, &size);
+	_conioxlib_hint("Loading help...");
+	buf = _conioxlib_readblock(name, &size);
 	if (buf == 0)
 	{
 		strcpy(&helpbuf[0][0], "Help is not available.");
@@ -5272,7 +5179,7 @@ unsigned char conioxlib_helpindex (unsigned short x1, unsigned short y1, unsigne
 	end = buf + size;
 	last = 0;
 	p = buf;
-	while ((line = conioxlib_nextline(&p, end)) != 0)
+	while ((line = _conioxlib_nextline(&p, end)) != 0)
 	{
 		if ((line[0] == '@') && (strlen(line) > 3))
 		{
@@ -5326,90 +5233,90 @@ void conioxlib_theme (unsigned char id)
 	switch (id)
 	{
 		case 1: /* Turbo C 2.0: blue desktop, yellow text and cyan menus */
-			conioxlib_curtheme.atr0 = CONIOXLIB_ATTR(YELLOW, BLUE);
-			conioxlib_curtheme.atr1 = CONIOXLIB_ATTR(BLACK, CYAN);
-			conioxlib_curtheme.atrhot = CONIOXLIB_ATTR(YELLOW, BLUE);
-			conioxlib_curtheme.atrstatus = CONIOXLIB_ATTR(BLACK, CYAN);
-			conioxlib_curtheme.atrdialog = CONIOXLIB_ATTR(BLACK, CYAN);
-			conioxlib_curtheme.frame = CONIOXLIB_BOX_A_DOUBLE;
-			strcpy(conioxlib_curtheme.name, "Turbo C 2.0");
+			_conioxlib_curtheme.atr0 = CONIOXLIB_ATTR(YELLOW, BLUE);
+			_conioxlib_curtheme.atr1 = CONIOXLIB_ATTR(BLACK, CYAN);
+			_conioxlib_curtheme.atrhot = CONIOXLIB_ATTR(YELLOW, BLUE);
+			_conioxlib_curtheme.atrstatus = CONIOXLIB_ATTR(BLACK, CYAN);
+			_conioxlib_curtheme.atrdialog = CONIOXLIB_ATTR(BLACK, CYAN);
+			_conioxlib_curtheme.frame = CONIOXLIB_BOX_A_DOUBLE;
+			strcpy(_conioxlib_curtheme.name, "Turbo C 2.0");
 			break;
 		case 2: /* Turbo C 1.x */
-			conioxlib_curtheme.atr0 = CONIOXLIB_ATTR(LIGHTGRAY, BLACK);
-			conioxlib_curtheme.atr1 = CONIOXLIB_ATTR(BLACK, LIGHTGRAY);
-			conioxlib_curtheme.atrhot = CONIOXLIB_ATTR(YELLOW, BLACK);
-			conioxlib_curtheme.atrstatus = CONIOXLIB_ATTR(BLACK, LIGHTGRAY);
-			conioxlib_curtheme.atrdialog = CONIOXLIB_ATTR(WHITE, BLACK);
-			conioxlib_curtheme.frame = CONIOXLIB_BOX_A_SINGLE;
-			strcpy(conioxlib_curtheme.name, "Turbo C 1.x");
+			_conioxlib_curtheme.atr0 = CONIOXLIB_ATTR(LIGHTGRAY, BLACK);
+			_conioxlib_curtheme.atr1 = CONIOXLIB_ATTR(BLACK, LIGHTGRAY);
+			_conioxlib_curtheme.atrhot = CONIOXLIB_ATTR(YELLOW, BLACK);
+			_conioxlib_curtheme.atrstatus = CONIOXLIB_ATTR(BLACK, LIGHTGRAY);
+			_conioxlib_curtheme.atrdialog = CONIOXLIB_ATTR(WHITE, BLACK);
+			_conioxlib_curtheme.frame = CONIOXLIB_BOX_A_SINGLE;
+			strcpy(_conioxlib_curtheme.name, "Turbo C 1.x");
 			break;
 		case 3: /* Norton Utilities 9: blue with cyan frames and yellow accents */
-			conioxlib_curtheme.atr0 = CONIOXLIB_ATTR(WHITE, BLUE);
-			conioxlib_curtheme.atr1 = CONIOXLIB_ATTR(BLACK, CYAN);
-			conioxlib_curtheme.atrhot = CONIOXLIB_ATTR(YELLOW, BLUE);
-			conioxlib_curtheme.atrstatus = CONIOXLIB_ATTR(WHITE, BLUE);
-			conioxlib_curtheme.atrdialog = CONIOXLIB_ATTR(CYAN, BLUE);
-			conioxlib_curtheme.frame = CONIOXLIB_BOX_A_DOUBLE;
-			strcpy(conioxlib_curtheme.name, "Norton Utilities 9");
+			_conioxlib_curtheme.atr0 = CONIOXLIB_ATTR(WHITE, BLUE);
+			_conioxlib_curtheme.atr1 = CONIOXLIB_ATTR(BLACK, CYAN);
+			_conioxlib_curtheme.atrhot = CONIOXLIB_ATTR(YELLOW, BLUE);
+			_conioxlib_curtheme.atrstatus = CONIOXLIB_ATTR(WHITE, BLUE);
+			_conioxlib_curtheme.atrdialog = CONIOXLIB_ATTR(CYAN, BLUE);
+			_conioxlib_curtheme.frame = CONIOXLIB_BOX_A_DOUBLE;
+			strcpy(_conioxlib_curtheme.name, "Norton Utilities 9");
 			break;
 		case 4: /* PC Tools */
-			conioxlib_curtheme.atr0 = CONIOXLIB_ATTR(WHITE, CYAN);
-			conioxlib_curtheme.atr1 = CONIOXLIB_ATTR(BLACK, LIGHTGRAY);
-			conioxlib_curtheme.atrhot = CONIOXLIB_ATTR(YELLOW, CYAN);
-			conioxlib_curtheme.atrstatus = CONIOXLIB_ATTR(BLACK, LIGHTGRAY);
-			conioxlib_curtheme.atrdialog = CONIOXLIB_ATTR(WHITE, BLUE);
-			conioxlib_curtheme.frame = CONIOXLIB_BOX_A_DOUBLE;
-			strcpy(conioxlib_curtheme.name, "PC Tools");
+			_conioxlib_curtheme.atr0 = CONIOXLIB_ATTR(WHITE, CYAN);
+			_conioxlib_curtheme.atr1 = CONIOXLIB_ATTR(BLACK, LIGHTGRAY);
+			_conioxlib_curtheme.atrhot = CONIOXLIB_ATTR(YELLOW, CYAN);
+			_conioxlib_curtheme.atrstatus = CONIOXLIB_ATTR(BLACK, LIGHTGRAY);
+			_conioxlib_curtheme.atrdialog = CONIOXLIB_ATTR(WHITE, BLUE);
+			_conioxlib_curtheme.frame = CONIOXLIB_BOX_A_DOUBLE;
+			strcpy(_conioxlib_curtheme.name, "PC Tools");
 			break;
 		case 5: /* Turbo Pascal 7.0: Turbo Vision 2.0 desktop (blue), gray dialogs,
 			   green selection and the black-on-cyan status line of the real IDE;
 			   identical to the Borland C++ 3.1 theme (default): both IDEs use
 			   the same Turbo Vision 2.0 palette */
-			conioxlib_curtheme.atr0 = CONIOXLIB_ATTR(WHITE, BLUE);
-			conioxlib_curtheme.atr1 = CONIOXLIB_ATTR(BLACK, GREEN);
-			conioxlib_curtheme.atrhot = CONIOXLIB_ATTR(CYAN, LIGHTGRAY);
-			conioxlib_curtheme.atrstatus = CONIOXLIB_ATTR(BLACK, CYAN);
-			conioxlib_curtheme.atrdialog = CONIOXLIB_ATTR(BLACK, LIGHTGRAY);
-			conioxlib_curtheme.frame = CONIOXLIB_BOX_A_DOUBLE;
-			strcpy(conioxlib_curtheme.name, "Turbo Pascal 7.0");
+			_conioxlib_curtheme.atr0 = CONIOXLIB_ATTR(WHITE, BLUE);
+			_conioxlib_curtheme.atr1 = CONIOXLIB_ATTR(BLACK, GREEN);
+			_conioxlib_curtheme.atrhot = CONIOXLIB_ATTR(CYAN, LIGHTGRAY);
+			_conioxlib_curtheme.atrstatus = CONIOXLIB_ATTR(BLACK, CYAN);
+			_conioxlib_curtheme.atrdialog = CONIOXLIB_ATTR(BLACK, LIGHTGRAY);
+			_conioxlib_curtheme.frame = CONIOXLIB_BOX_A_DOUBLE;
+			strcpy(_conioxlib_curtheme.name, "Turbo Pascal 7.0");
 			break;
 		case 6: /* Norton Commander: blue panels and cyan menus with black focus */
-			conioxlib_curtheme.atr0 = CONIOXLIB_ATTR(BLACK, CYAN);
-			conioxlib_curtheme.atr1 = CONIOXLIB_ATTR(WHITE, BLACK);
-			conioxlib_curtheme.atrhot = CONIOXLIB_ATTR(YELLOW, CYAN);
-			conioxlib_curtheme.atrstatus = CONIOXLIB_ATTR(BLACK, CYAN);
-			conioxlib_curtheme.atrdialog = CONIOXLIB_ATTR(CYAN, BLUE);
-			conioxlib_curtheme.frame = CONIOXLIB_BOX_A_DOUBLE;
-			strcpy(conioxlib_curtheme.name, "Norton Commander");
+			_conioxlib_curtheme.atr0 = CONIOXLIB_ATTR(BLACK, CYAN);
+			_conioxlib_curtheme.atr1 = CONIOXLIB_ATTR(WHITE, BLACK);
+			_conioxlib_curtheme.atrhot = CONIOXLIB_ATTR(YELLOW, CYAN);
+			_conioxlib_curtheme.atrstatus = CONIOXLIB_ATTR(BLACK, CYAN);
+			_conioxlib_curtheme.atrdialog = CONIOXLIB_ATTR(CYAN, BLUE);
+			_conioxlib_curtheme.frame = CONIOXLIB_BOX_A_DOUBLE;
+			strcpy(_conioxlib_curtheme.name, "Norton Commander");
 			break;
 		case 7: /* MS-DOS Edit: blue screen with single-line cyan frames */
-			conioxlib_curtheme.atr0 = CONIOXLIB_ATTR(WHITE, BLUE);
-			conioxlib_curtheme.atr1 = CONIOXLIB_ATTR(BLACK, CYAN);
-			conioxlib_curtheme.atrhot = CONIOXLIB_ATTR(YELLOW, BLUE);
-			conioxlib_curtheme.atrstatus = CONIOXLIB_ATTR(BLACK, CYAN);
-			conioxlib_curtheme.atrdialog = CONIOXLIB_ATTR(CYAN, BLUE);
-			conioxlib_curtheme.frame = CONIOXLIB_BOX_A_SINGLE;
-			strcpy(conioxlib_curtheme.name, "MS-DOS Edit");
+			_conioxlib_curtheme.atr0 = CONIOXLIB_ATTR(WHITE, BLUE);
+			_conioxlib_curtheme.atr1 = CONIOXLIB_ATTR(BLACK, CYAN);
+			_conioxlib_curtheme.atrhot = CONIOXLIB_ATTR(YELLOW, BLUE);
+			_conioxlib_curtheme.atrstatus = CONIOXLIB_ATTR(BLACK, CYAN);
+			_conioxlib_curtheme.atrdialog = CONIOXLIB_ATTR(CYAN, BLUE);
+			_conioxlib_curtheme.frame = CONIOXLIB_BOX_A_SINGLE;
+			strcpy(_conioxlib_curtheme.name, "MS-DOS Edit");
 			break;
 		case 8: /* Lotus 1-2-3: black and white with inverse selection */
-			conioxlib_curtheme.atr0 = CONIOXLIB_ATTR(WHITE, BLACK);
-			conioxlib_curtheme.atr1 = CONIOXLIB_ATTR(BLACK, WHITE);
-			conioxlib_curtheme.atrhot = CONIOXLIB_ATTR(YELLOW, BLACK);
-			conioxlib_curtheme.atrstatus = CONIOXLIB_ATTR(WHITE, BLACK);
-			conioxlib_curtheme.atrdialog = CONIOXLIB_ATTR(WHITE, BLACK);
-			conioxlib_curtheme.frame = CONIOXLIB_BOX_A_SINGLE;
-			strcpy(conioxlib_curtheme.name, "Lotus 1-2-3");
+			_conioxlib_curtheme.atr0 = CONIOXLIB_ATTR(WHITE, BLACK);
+			_conioxlib_curtheme.atr1 = CONIOXLIB_ATTR(BLACK, WHITE);
+			_conioxlib_curtheme.atrhot = CONIOXLIB_ATTR(YELLOW, BLACK);
+			_conioxlib_curtheme.atrstatus = CONIOXLIB_ATTR(WHITE, BLACK);
+			_conioxlib_curtheme.atrdialog = CONIOXLIB_ATTR(WHITE, BLACK);
+			_conioxlib_curtheme.frame = CONIOXLIB_BOX_A_SINGLE;
+			strcpy(_conioxlib_curtheme.name, "Lotus 1-2-3");
 			break;
 		default: /* Borland C++ 3.1: same Turbo Vision 2.0 palette as Turbo
 			      Pascal 7.0 (case 5): blue desktop, gray dialogs, green
 			      selection and black-on-cyan status line */
-			conioxlib_curtheme.atr0 = CONIOXLIB_ATTR(WHITE, BLUE);
-			conioxlib_curtheme.atr1 = CONIOXLIB_ATTR(BLACK, GREEN);
-			conioxlib_curtheme.atrhot = CONIOXLIB_ATTR(CYAN, LIGHTGRAY);
-			conioxlib_curtheme.atrstatus = CONIOXLIB_ATTR(BLACK, CYAN);
-			conioxlib_curtheme.atrdialog = CONIOXLIB_ATTR(BLACK, LIGHTGRAY);
-			conioxlib_curtheme.frame = CONIOXLIB_BOX_A_DOUBLE;
-			strcpy(conioxlib_curtheme.name, "Borland C++ 3.1");
+			_conioxlib_curtheme.atr0 = CONIOXLIB_ATTR(WHITE, BLUE);
+			_conioxlib_curtheme.atr1 = CONIOXLIB_ATTR(BLACK, GREEN);
+			_conioxlib_curtheme.atrhot = CONIOXLIB_ATTR(CYAN, LIGHTGRAY);
+			_conioxlib_curtheme.atrstatus = CONIOXLIB_ATTR(BLACK, CYAN);
+			_conioxlib_curtheme.atrdialog = CONIOXLIB_ATTR(BLACK, LIGHTGRAY);
+			_conioxlib_curtheme.frame = CONIOXLIB_BOX_A_DOUBLE;
+			strcpy(_conioxlib_curtheme.name, "Borland C++ 3.1");
 			break;
 	}
 }
@@ -5426,7 +5333,7 @@ void conioxlib_gettheme (struct conioxlib_stheme *t)
 {
 	if (t != 0)
 	{
-		*t = conioxlib_curtheme;
+		*t = _conioxlib_curtheme;
 	}
 }
 
@@ -5487,27 +5394,25 @@ void conioxlib_restorescr (unsigned short x1, unsigned short y1, unsigned short 
    */
 void conioxlib_status (const char *msg)
 {
-	char line[60];
 	unsigned short cells[59];
 	unsigned short cellattr;
-	unsigned int i;
-	unsigned int len;
+	unsigned int i, len;
+	const char *p;
 
-	memset(line, 32, 59);
-	line[59] = 0;
-	if (msg != 0)
+	cellattr = (unsigned short) ((unsigned int) _conioxlib_curtheme.atrstatus << 8);
+	p = (msg != 0) ? msg : "";
+	len = (unsigned int) strlen(p);
+	if (len > 59)
 	{
-		len = (unsigned int) strlen(msg);
-		if (len > 59)
-		{
-			len = 59;
-		}
-		memcpy(line, msg, len);
+		len = 59;
 	}
-	cellattr = (unsigned short) ((unsigned int) conioxlib_curtheme.atrstatus << 8);
-	for (i = 0; i < 59; i++)
+	for (i = 0; i < len; i++)
 	{
-		cells[i] = (unsigned short) (cellattr | (unsigned char) line[i]);
+		cells[i] = (unsigned short) (cellattr | (unsigned char) p[i]);
+	}
+	for (; i < 59; i++)
+	{
+		cells[i] = (unsigned short) (cellattr | ' ');
 	}
 	puttext(1, 25, 59, 25, cells);
 }
@@ -5535,15 +5440,17 @@ void conioxlib_tooltip (unsigned short x, unsigned short y, const char *msg, uns
 	{
 		len = 40;
 	}
-	x2 = (unsigned short) (x + len + 1);
-	if (x2 > 80)
+	/* Keep the tip inside the line: it must end before column 80 so the console
+	   cannot wrap at the last cell and scroll the screen */
+	if (x > 78)
 	{
-		x2 = 80;
-		if (x + 2 > x2)
-		{
-			x = (unsigned short) (x2 - 2);
-		}
+		x = 78;
 	}
+	if (len > (unsigned int) (79 - x))
+	{
+		len = (unsigned int) (79 - x);
+	}
+	x2 = (unsigned short) (x + len + 1);
 	oldb = conioxlib_savescr(x, y, x2, y);
 	if (oldb == 0)
 	{
@@ -5577,10 +5484,7 @@ void conioxlib_tooltip (unsigned short x, unsigned short y, const char *msg, uns
    */
 void conioxlib_progressbar (unsigned short x, unsigned short y, unsigned short width, unsigned char atr, unsigned int value, unsigned int maxv)
 {
-	unsigned int filled;
-	unsigned int i;
-	unsigned int pct;
-	unsigned int barw;
+	unsigned int i, filled, barw;
 
 	if (width < 8)
 	{
@@ -5594,16 +5498,16 @@ void conioxlib_progressbar (unsigned short x, unsigned short y, unsigned short w
 	{
 		value = maxv;
 	}
-	pct = (value * 100) / maxv;
+	/* Multiply in unsigned long: values in bytes overflow 16 bit ints under DOS */
 	barw = (unsigned int) width - 5;
 	textattr(atr);
 	gotoxy(x, y);
-	filled = (value * barw) / maxv;
+	filled = (unsigned int) (((unsigned long int) value * barw) / maxv);
 	for (i = 0; i < barw; i++)
 	{
 		putch((i < filled) ? '\xDB' : '\xB0');
 	}
-	cprintf(" %3u%%", pct);
+	cprintf(" %3u%%", (unsigned int) (((unsigned long int) value * 100) / maxv));
 }
 
 /* ------------------- Progress in the status line -------------------- */
@@ -5632,7 +5536,7 @@ void conioxlib_progress (const char *title, unsigned int value, unsigned int max
 		value = maxv;
 	}
 	_wscroll = 0;
-	textattr(conioxlib_curtheme.atrstatus);
+	textattr(_conioxlib_curtheme.atrstatus);
 	gotoxy(1, 25);
 	if ((title != 0) && (title[0] != 0))
 	{
@@ -5642,7 +5546,7 @@ void conioxlib_progress (const char *title, unsigned int value, unsigned int max
 	{
 		cprintf("%*s", 28, "");
 	}
-	conioxlib_progressbar(30, 25, 20, conioxlib_curtheme.atrstatus, value, maxv);
+	conioxlib_progressbar(30, 25, 20, _conioxlib_curtheme.atrstatus, value, maxv);
 }
 
 /* --------------------------- Message box dialog -------------------------- */
@@ -5656,7 +5560,7 @@ void conioxlib_progress (const char *title, unsigned int value, unsigned int max
    the labels and nbuttons their number (1 to 3); passing 0
    as buttons uses the defaults OK and Cancel. Returns as
    conioxlib_buttons() does: the index of the pressed
-   button, 255 when F1 was pressed or 0 when cancelled.
+   button, 254 when F1 was pressed or 255 when cancelled with ESC.
    */
 unsigned char conioxlib_msgbox (const char *title, const char *msg, char buttons[][11], unsigned char nbuttons)
 {
@@ -5727,8 +5631,8 @@ unsigned char conioxlib_msgbox (const char *title, const char *msg, char buttons
    Parameters: title is the caption, label the text next to
    the field, buf receives the answer and is also the
    initial value, and len the maximum length. Returns 0
-   when accepted with ENTER, 1 when cancelled and 255 when
-   F1 was pressed.
+   when accepted with OK, 1 when cancelled, 254 when F1
+   was pressed and 255 when cancelled with ESC.
    */
 unsigned char conioxlib_inputbox (const char *title, const char *label, char *buf, char len)
 {
@@ -5775,7 +5679,7 @@ unsigned char conioxlib_inputbox (const char *title, const char *label, char *bu
 /* conioxlib_inputmask(): numeric field that refuses invalid characters as they
    are typed: only digits are accepted (BACK erases, ENTER accepts, ESC
    cancels, F1 asks for help) and after OK it checks that at least mindigits
-   digits were entered. Returns 0 (OK), 1 (Cancel) or 255 (help). */
+   digits were entered. Returns 0 (OK), 1 (Cancel) or 254 (help). */
 /* inputmask:
    Prototype:
    unsigned char conioxlib_inputmask(const char *title,
@@ -5786,7 +5690,7 @@ unsigned char conioxlib_inputbox (const char *title, const char *label, char *bu
    the OK button only accepts the answer when at least that
    many digits were typed. Invalid characters are ignored
    as they are pressed. Returns 0 when accepted, 1 when
-   cancelled and 255 when F1 was pressed.
+   cancelled and 254 when F1 was pressed.
    */
 unsigned char conioxlib_inputmask (const char *title, const char *label, char *buf, char len, char mindigits)
 {
@@ -5826,7 +5730,7 @@ unsigned char conioxlib_inputmask (const char *title, const char *label, char *b
 		textattr(CONIOXLIB_ATTR(BLACK, LIGHTGRAY));
 		gotoxy(x1 + 2, y1 + 1);
 		cputs((label != 0) ? (char *) label : "Number:");
-		conioxlib_hint("Only digits; BACK deletes, ENTER accepts");
+		_conioxlib_hint("Only digits; BACK deletes, ENTER accepts");
 		_setcursortype(_SOLIDCURSOR);
 		/* Input: any key that is not a digit is ignored the very moment it is
 		   pressed, so invalid characters can never get in */
@@ -5839,11 +5743,10 @@ unsigned char conioxlib_inputmask (const char *title, const char *label, char *b
 			key = 0;
 			do
 			{
-				conioxlib_clock();
-				conioxlib_pollmouse();
-				if (conioxlib_keyhit())
+				_conioxlib_poll();
+				if (_conioxlib_keyhit())
 				{
-					conioxlib_readkey(key);
+					_conioxlib_readkey(key);
 				}
 				if (key == 0)
 				{
@@ -5879,7 +5782,8 @@ unsigned char conioxlib_inputmask (const char *title, const char *label, char *b
 		}
 		else if (key == KBD_F1)
 		{
-			r = 255;
+			/* Same contract as buttons(): 254 tells the caller to show help */
+			r = 254;
 		}
 		else
 		{
@@ -5953,66 +5857,59 @@ unsigned char conioxlib_listbox (unsigned short x1, unsigned short y1, unsigned 
 	top = 0;
 	sel = 0;
 	repaint = 1;
-	box(x1, y1, x2, y2, atr0, A_DOUBLE, (title != 0) ? title : "List", SHADOW | CLOSE);
-	do
 	{
-		if (repaint != 0)
+		int itemw = (int) (x2 - x1 - 2);
+		box(x1, y1, x2, y2, atr0, A_DOUBLE, (title != 0) ? title : "List", SHADOW | CLOSE);
+		do
 		{
-			/* Item rows leave the last interior column free for the bar */
-			textattr(atr0);
-			for (row = 0; row < vis; row++)
+			if (repaint != 0)
 			{
-				gotoxy(x1 + 1, y1 + 1 + row);
-				if (top + row < (int) nitems)
+				/* Item rows leave the last interior column free for the bar */
+				for (row = 0; row < vis; row++)
 				{
-					if (top + row == sel)
+					gotoxy(x1 + 1, y1 + 1 + row);
+					if (top + row < (int) nitems)
 					{
-						textattr(atr1);
+						textattr((top + row == sel) ? atr1 : atr0);
+						cprintf("%-*.*s", itemw, itemw, items[top + row]);
 					}
 					else
 					{
 						textattr(atr0);
+						cprintf("%*s", itemw, "");
 					}
-					cprintf("%-*.*s", (int) (x2 - x1 - 2), (int) (x2 - x1 - 2), items[top + row]);
 				}
-				else
+				/* Scroll bar in the last interior column when the list overflows */
+				if (((int) nitems > vis) && (vis >= 3))
 				{
 					textattr(atr0);
-					cprintf("%*s", (int) (x2 - x1 - 2), "");
+					gotoxy((unsigned short) (x2 - 1), (unsigned short) (y1 + 1));
+					putch(0x18);
+					for (row = 2; row < vis; row++)
+					{
+						gotoxy((unsigned short) (x2 - 1), (unsigned short) (y1 + row));
+						putch(0xB0);
+					}
+					gotoxy((unsigned short) (x2 - 1), (unsigned short) (y1 + vis));
+					putch(0x19);
+					/* Thumb at the position of top inside the bar */
+					row = 1 + (top * (vis - 3)) / ((int) nitems - vis);
+					if (row > vis - 2)
+					{
+						row = vis - 2;
+					}
+					gotoxy((unsigned short) (x2 - 1), (unsigned short) (y1 + 1 + row));
+					putch(0xB2);
 				}
+				repaint = 0;
 			}
-			/* Scroll bar in the last interior column when the list overflows */
-			if (((int) nitems > vis) && (vis >= 3))
-			{
-				textattr(atr0);
-				gotoxy((unsigned short) (x2 - 1), (unsigned short) (y1 + 1));
-				putch(0x18);
-				for (row = 2; row < vis; row++)
-				{
-					gotoxy((unsigned short) (x2 - 1), (unsigned short) (y1 + row));
-					putch(0xB0);
-				}
-				gotoxy((unsigned short) (x2 - 1), (unsigned short) (y1 + vis));
-				putch(0x19);
-				/* Thumb at the position of top inside the bar */
-				row = 1 + (top * (vis - 3)) / ((int) nitems - vis);
-				if (row > vis - 2)
-				{
-					row = vis - 2;
-				}
-				gotoxy((unsigned short) (x2 - 1), (unsigned short) (y1 + 1 + row));
-				putch(0xB2);
-			}
-			repaint = 0;
-		}
-		key = 0;
+			key = 0;
 		do
 		{
-			conioxlib_clock();
-			conioxlib_pollmouse();
-			if (conioxlib_keyhit())
+			_conioxlib_poll();
+			if (_conioxlib_keyhit())
 			{
-				conioxlib_readkey(key);
+				_conioxlib_readkey(key);
 			}
 			if (conioxlib_mousestatus.lclick != 0)
 			{
@@ -6036,7 +5933,8 @@ unsigned char conioxlib_listbox (unsigned short x1, unsigned short y1, unsigned 
 						}
 						else
 						{
-							top = ((row - 1) * ((int) nitems - vis)) / (vis - 3);
+							/* vis == 3 leaves a single track row: divide by 1 instead of by zero */
+							top = ((row - 1) * ((int) nitems - vis)) / ((vis > 3) ? (vis - 3) : 1);
 						}
 						if (sel < top)
 						{
@@ -6122,6 +6020,7 @@ unsigned char conioxlib_listbox (unsigned short x1, unsigned short y1, unsigned 
 		repaint = 1;
 	}
 	while ((key != KBD_ENTER) && (key != KBD_ESC));
+	}
 	conioxlib_restorescr(x1, y1, x2 + 2, y2 + 1, oldb);
 	gotoxy(oldx, oldy);
 	if (key == KBD_ESC)

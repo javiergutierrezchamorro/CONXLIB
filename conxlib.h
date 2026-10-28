@@ -77,6 +77,9 @@ struct conioxlib_smousestatus
 };
 
 
+/* Entries of the files table expected by conioxlib_filemultiselector() */
+#define CONIOXLIB_MAXFILES	220
+
 struct conioxlib_sfiles
 {
 	unsigned char selected;
@@ -119,7 +122,7 @@ struct conioxlib_sdiskfree
 
 extern struct conioxlib_smousestatus conioxlib_mousestatus;
 
-/* After pollmouse(), keyboard may sit in pendingkey; use these instead of raw kbhit/getch. */
+/* After pollmouse(), keys may sit in the internal queue; use these instead of raw kbhit/getch. */
 unsigned int conioxlib_getkey(void);
 int conioxlib_kbhit(void);
 

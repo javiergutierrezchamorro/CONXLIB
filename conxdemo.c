@@ -4,7 +4,7 @@
 #include <string.h>
 #include <time.h>
 #if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32)
-	#include <windows.h>	/* demo_edit_shift() polls GetAsyncKeyState() */
+	#include <windows.h>	/* _demo_edit_shift() polls GetAsyncKeyState() */
 #endif
 #include "coniox.h"
 #include "conxlib.h"
@@ -13,7 +13,7 @@
 #define DEMO_TITLE	"CONXLIB DEMO 2.0               (c) Copyright 1997-2026 Javier Gutierrez Chamorro"
 #define DEMO_HELP	"CONXDEMO.HLP"
 #define DEMO_HOT	CONIOXLIB_ATTR(RED, LIGHTGRAY)
-#define DEMO_FILES	220
+#define DEMO_FILES	CONIOXLIB_MAXFILES
 #define DEMO_HELPBUF	(256 * 61)
 #if ((__DOS__) || (__MSDOS__)) && !defined(__DJGPP__)
 	#if defined(__TURBOC__)
@@ -22,7 +22,7 @@
 		unsigned __stack = 16384U;
 	#endif
 #endif
-static const char *demooptions[DEMO_OPTIONS] = {	"&Exit",
+static const char *_demooptions[DEMO_OPTIONS] = {	"&Exit",
 											"&Windows",
 											"&Mouse info",
 											"&Text input",
@@ -50,7 +50,7 @@ static const char *demooptions[DEMO_OPTIONS] = {	"&Exit",
 											"&Editor",
 											"S&tatus/tooltip",
 											"&Tetris"};
-static const char *demohints[DEMO_OPTIONS] = {	"Leave the demo: conioxlib_exittodos() confirms and bye restores       ",
+static const char *_demohints[DEMO_OPTIONS] = {	"Leave the demo: conioxlib_exittodos() confirms and bye restores       ",
 											"All box() frame styles: double, single, rounded, solid                ",
 											"Live conioxlib_mousestatus: position, buttons and wheel               ",
 											"conioxlib_getstr() and getpw(): field editors with cursor keys        ",
@@ -75,20 +75,20 @@ static const char *demohints[DEMO_OPTIONS] = {	"Leave the demo: conioxlib_exitto
 											"conioxlib_listbox(): scrollable list with wheel support               ",
 											"conioxlib_progress / progressbar animated demo                        ",
 											"conioxlib_theme(): Borland, Norton, PC Tools, Edit, Lotus             ",
-											"demo_edit(): Borland-style editor moved from the library              ",
+											"_demo_edit(): Borland-style editor moved from the library              ",
 											"conioxlib_status and tooltip without touching clock/locks             ",
-											"demo_tetris(): falling blocks game in a boxed window                  "};
-static char optmenu[5][21] = {	"&Icons",
+											"_demo_tetris(): falling blocks game in a boxed window                  "};
+static char _optmenu[5][21] = {	"&Icons",
 								"&Sound",
 								"&Colors",
 								"&Mouse",
 								"&Keys"};
-static char optdesc[5][71] = {	"Toggle it with Space or Ins, Enter returns                ",
+static char _optdesc[5][71] = {	"Toggle it with Space or Ins, Enter returns                ",
 								"Use TAB, arrows or hotkeys to move along items            ",
 								"Left click marks the item under the cursor                ",
 								"F1 opens help; ESC returns without changes                ",
 								"Radio buttons keep a single active option                 "};
-static char tabmenu[12][16] = {	"File",
+static char _tabmenu[12][16] = {	"File",
 								"Edit",
 								"Search",
 								"Run",
@@ -100,15 +100,15 @@ static char tabmenu[12][16] = {	"File",
 								"Help",
 								"Tools",
 								"Track"};
-static char btnmenu[4][11] = {	"OK",
+static char _btnmenu[4][11] = {	"OK",
 								"Cancel",
 								"Help",
 								"Apply"};
-static char btndesc[4][71] = {	"Accept the current selection and close                   ",
+static char _btndesc[4][71] = {	"Accept the current selection and close                   ",
 								"Discard changes and return                               ",
 								"Open context help for this dialog                        ",
 								"Apply changes without closing the dialog                 "};
-static const char *demotext[] = {	"CONXLIB 2.0 - Retro console library over CONIOX 5.03",
+static const char *_demotext[] = {	"CONXLIB 2.0 - Retro console library over CONIOX 5.03",
 							"",
 							"Accelerators: mark a letter with & in the item text.",
 							"Press that letter to activate the option. atrhot sets",
@@ -118,7 +118,7 @@ static const char *demotext[] = {	"CONXLIB 2.0 - Retro console library over CONI
 							"DJGPP, and Microsoft Visual C++ for Windows 32/64 bits.",
 							0};
 /* Allocates a rows*w items table on the heap copying the rows strings of list */
-static char *demo_newtable(const char **list, unsigned int rows, unsigned int w)
+static char *_demo_newtable(const char **list, unsigned int rows, unsigned int w)
 {
 	char *table;
 	unsigned int i;
@@ -135,7 +135,7 @@ static char *demo_newtable(const char **list, unsigned int rows, unsigned int w)
 	return(table);
 }
 /* Copies item into out skipping the & accelerator marks: returns out */
-static char *demo_plainitem(const char *item, char *out)
+static char *_demo_plainitem(const char *item, char *out)
 {
 	char *o = out;
 
@@ -151,7 +151,7 @@ static char *demo_plainitem(const char *item, char *out)
 	return(out);
 }
 /* ------------------ Clears the output window ------------------------- */
-static void demo_clear_output(void)
+static void _demo_clear_output(void)
 {
 	textattr(CONIOXLIB_ATTR(BLACK, LIGHTGRAY));
 	window(39, 4, 76, 22);
@@ -159,9 +159,8 @@ static void demo_clear_output(void)
 	window(1, 1, 80, 25);
 }
 /* --------------------- Shows the box() styles --------------------- */
-static void demo_windows(void)
+static void _demo_windows(void)
 {
-	unsigned int t;
 	box(39, 4, 76, 7, CONIOXLIB_ATTR(BLACK, MAGENTA), A_DOUBLE, "A_DOUBLE", SHADOW);
 	textattr(CONIOXLIB_ATTR(WHITE, MAGENTA));
 	cputsc(39, 76, 5, "Double line frame");
@@ -177,13 +176,11 @@ static void demo_windows(void)
 	box(39, 20, 76, 23, CONIOXLIB_ATTR(BLACK, BLUE), A_BLOCK, "A_BLOCK", SHADOW);
 	textattr(CONIOXLIB_ATTR(WHITE, BLUE));
 	cputsc(39, 76, 21, "Solid block frame");
-	t = conioxlib_ckey();
-	(void) t;
+	conioxlib_ckey();
 }
 /* ---------------- Live mouse state with pollmouse() --------------- */
-static void demo_mouse(void)
+static void _demo_mouse(void)
 {
-	unsigned int t;
 	box(39, 4, 76, 18, CONIOXLIB_ATTR(BLACK, LIGHTGRAY), A_DOUBLE, "Mouse", SHADOW);
 	window(41, 5, 74, 16);
 	textattr(CONIOXLIB_ATTR(BLACK, LIGHTGRAY));
@@ -208,16 +205,14 @@ static void demo_mouse(void)
 		}
 	}
 	while (!conioxlib_kbhit());
-	t = conioxlib_getkey();
-	(void) t;
+	conioxlib_getkey();
 	window(1, 1, 80, 25);
 }
 /* -------------- Text input with getstr() and getpw() ----------------- */
-static void demo_textinput(void)
+static void _demo_textinput(void)
 {
 	char str[80];
 	char pass[16];
-	unsigned int t;
 	box(39, 6, 76, 18, CONIOXLIB_ATTR(BLACK, LIGHTGRAY), A_DOUBLE, "Text input", SHADOW);
 	textattr(CONIOXLIB_ATTR(WHITE, LIGHTGRAY));
 	gotoxy(41, 8);
@@ -233,65 +228,57 @@ static void demo_textinput(void)
 	cprintf("String: [%s]", str);
 	gotoxy(41, 15);
 	cprintf("Password: [%s]", pass);
-	t = conioxlib_ckey();
-	(void) t;
+	conioxlib_ckey();
 }
 /* ------------------ Check boxes with option() --------------------- */
-static void demo_checkboxes(void)
+static void _demo_checkboxes(void)
 {
 	unsigned char sel[5];
-	unsigned int t;
 	box(39, 5, 76, 14, CONIOXLIB_ATTR(BLACK, LIGHTGRAY), A_DOUBLE, "option()", SHADOW);
 	memset(sel, ' ', 5);
-	conioxlib_option(41, 7, CONIOXLIB_ATTR(BLACK, LIGHTGRAY), CONIOXLIB_ATTR(WHITE, RED), DEMO_HOT, optmenu, optdesc, (char *) sel, 5, 1, 1);
+	conioxlib_option(41, 7, CONIOXLIB_ATTR(BLACK, LIGHTGRAY), CONIOXLIB_ATTR(WHITE, RED), DEMO_HOT, _optmenu, _optdesc, (char *) sel, 5, 1, 1);
 	textattr(CONIOXLIB_ATTR(WHITE, LIGHTGRAY));
 	gotoxy(41, 13);
 	cprintf("Marks: [%c] [%c] [%c] [%c] [%c]", sel[0], sel[1], sel[2], sel[3], sel[4]);
-	t = conioxlib_ckey();
-	(void) t;
+	conioxlib_ckey();
 }
 /* ------------------ Radio buttons with property() --------------------- */
-static void demo_radiobuttons(void)
+static void _demo_radiobuttons(void)
 {
 	unsigned char propsel[5];
 	char plain[21];
 	unsigned int i;
-	unsigned int t;
 	box(39, 5, 76, 14, CONIOXLIB_ATTR(BLACK, LIGHTGRAY), A_DOUBLE, "property()", SHADOW);
 	memset(propsel, ' ', 5);
 	propsel[0] = '\xFE';
-	conioxlib_property(41, 7, CONIOXLIB_ATTR(BLACK, LIGHTGRAY), CONIOXLIB_ATTR(WHITE, RED), DEMO_HOT, optmenu, optdesc, (char *) propsel, 5, 1, 1);
+	conioxlib_property(41, 7, CONIOXLIB_ATTR(BLACK, LIGHTGRAY), CONIOXLIB_ATTR(WHITE, RED), DEMO_HOT, _optmenu, _optdesc, (char *) propsel, 5, 1, 1);
 	for (i = 0; (i < 5) && (propsel[i] != '\xFE'); i++);
 	textattr(CONIOXLIB_ATTR(WHITE, LIGHTGRAY));
 	gotoxy(41, 13);
 	if (i < 5)
 	{
-		cprintf("Choice: %s", demo_plainitem(optmenu[i], plain));
+		cprintf("Choice: %s", _demo_plainitem(_optmenu[i], plain));
 	}
-	t = conioxlib_ckey();
-	(void) t;
+	conioxlib_ckey();
 }
 /* -------------------- Cell grid with grid() ------------------------- */
-static void demo_grid(void)
+static void _demo_grid(void)
 {
 	unsigned int i;
-	unsigned int t;
 	box(9, 6, 73, 14, CONIOXLIB_ATTR(BLACK, LIGHTGRAY), A_DOUBLE, "grid()", SHADOW);
-	i = conioxlib_grid(11, 8, CONIOXLIB_ATTR(BLACK, BROWN), CONIOXLIB_ATTR(WHITE, RED), tabmenu, 12);
+	i = conioxlib_grid(11, 8, CONIOXLIB_ATTR(BLACK, BROWN), CONIOXLIB_ATTR(WHITE, RED), _tabmenu, 12);
 	if (i != 255)
 	{
 		textattr(CONIOXLIB_ATTR(WHITE, BROWN));
-		cputsc(10, 72, 13, tabmenu[i]);
+		cputsc(10, 72, 13, _tabmenu[i]);
 	}
-	t = conioxlib_ckey();
-	(void) t;
+	conioxlib_ckey();
 }
 /* ---------------------- Calendar with calendar() ------------------------ */
-static void demo_calendar(void)
+static void _demo_calendar(void)
 {
 	unsigned char day, month;
 	unsigned int year;
-	unsigned char t;
 	day = 0;
 	month = 0;
 	year = 0;
@@ -303,19 +290,17 @@ static void demo_calendar(void)
 		cprintf("Selected: %02u-%02u-%04u", day, month, year);
 		gotoxy(33, 11);
 		cputs("Press a key to close");
-		t = conioxlib_ckey();
-		(void) t;
+		conioxlib_ckey();
 	}
 }
 /* ----------- File, drive and file size picker ------------- */
-static void demo_fileselector(void)
+static void _demo_fileselector(void)
 {
 	char dir[80];
 	/* str holds "X:\sub1\sub2\...\filename.ext" which can exceed 80 chars when dir is near its limit */
 	char str[96];
 	unsigned char disk;
 	unsigned int i;
-	unsigned int t;
 	struct conioxlib_sfiles *files;
 	struct conioxlib_sdiskfree df;
 	unsigned long int fsz;
@@ -375,18 +360,16 @@ static void demo_fileselector(void)
 		{
 			cputs("Size: <none>");
 		}
-		t = conioxlib_ckey();
-		(void) t;
+		conioxlib_ckey();
 	}
 	free(files);
 }
 /* ------------- Simple single file picker with fileselector() ------------- */
-static void demo_simplepicker(void)
+static void _demo_simplepicker(void)
 {
 	unsigned char disk;
 	char dir[80];
 	char name[41];
-	unsigned int t;
 
 	disk = 'C';
 	dir[0] = 0;
@@ -405,55 +388,53 @@ static void demo_simplepicker(void)
 		cprintf("File:  %s", name);
 		gotoxy(22, 13);
 		cputs("Press a key to close");
-		t = conioxlib_ckey();
-		(void) t;
+		conioxlib_ckey();
 	}
 }
 /* ------------------------ Text viewer with view() ---------------------- */
-static void demo_viewer(void)
+static void _demo_viewer(void)
 {
 	char (*helpbuf)[61];
 	unsigned int i;
 	unsigned int last;
 	i = 0;
-	while (demotext[i] != 0)
+	while (_demotext[i] != 0)
 	{
 		i++;
 	}
-	/* conioxlib_view() treats `last` as the count of lines (rows 0..last-1 hold content),
-	   and its clear loop writes up to row last + (y2 - y1) - 1, so the buffer must hold
-	   that many rows: allocate DEMO_HELPBUF (256*61) which is the same size helpindex uses */
+	/* conioxlib_view() reads only the rows 0..last-1 and paints the blank trailing
+	   rows by itself, so the buffer needs just the content lines:
+	   DEMO_HELPBUF (256*61) is the same work area size helpindex uses */
 	last = i;
 	helpbuf = (char (*)[61]) malloc((size_t) DEMO_HELPBUF);
 	if (helpbuf == 0)
 	{
 		return;
 	}
-	for (i = 0; demotext[i] != 0; i++)
+	for (i = 0; _demotext[i] != 0; i++)
 	{
 		memset(helpbuf[i], 0, 61);
-		strncpy(helpbuf[i], demotext[i], 60);
+		strncpy(helpbuf[i], _demotext[i], 60);
 	}
 	conioxlib_view(6, 3, 72, 21, CONIOXLIB_ATTR(WHITE, CYAN), CONIOXLIB_ATTR(BLACK, CYAN), helpbuf, (unsigned char) last, "CONXLIB overview");
 	free(helpbuf);
 }
 /* -------------------- Screen saver with screensaver() ------------------- */
-static void demo_screensaver(void)
+static void _demo_screensaver(void)
 {
 	conioxlib_screensaver();
 }
 /* -------------------- Push, bounce and wipe effects ------------------------ */
-static void demo_effects(void)
+static void _demo_effects(void)
 {
 	conioxlib_push();
 	conioxlib_bounce();
 	conioxlib_wipe();
 }
 /* ------------------- Button bar with buttons() ---------------------- */
-static void demo_buttons(void)
+static void _demo_buttons(void)
 {
 	unsigned int i;
-	unsigned int t;
 	box(39, 6, 76, 16, CONIOXLIB_ATTR(BLACK, LIGHTGRAY), A_DOUBLE, "buttons()", SHADOW);
 	textattr(CONIOXLIB_ATTR(WHITE, LIGHTGRAY));
 	gotoxy(41, 8);
@@ -462,29 +443,27 @@ static void demo_buttons(void)
 	cputs("Enter selects, ESC cancels.");
 	gotoxy(41, 10);
 	cputs("Borland Turbo Vision 2.0 style buttons.");
-	i = conioxlib_buttons(40, 12, CONIOXLIB_ATTR(BLACK, GREEN), CONIOXLIB_ATTR(WHITE, GREEN), CONIOXLIB_ATTR(YELLOW, GREEN), btnmenu, btndesc, 4, 1);
+	i = conioxlib_buttons(40, 12, CONIOXLIB_ATTR(BLACK, GREEN), CONIOXLIB_ATTR(WHITE, GREEN), CONIOXLIB_ATTR(YELLOW, GREEN), _btnmenu, _btndesc, 4, 1);
 	textattr(CONIOXLIB_ATTR(WHITE, LIGHTGRAY));
 	gotoxy(41, 14);
 	if (i < 4)
 	{
-		cprintf("Selected: %s", btnmenu[i]);
+		cprintf("Selected: %s", _btnmenu[i]);
 	}
 	else
 	{
 		cputs("Cancelled");
 	}
-	t = conioxlib_ckey();
-	(void) t;
+	conioxlib_ckey();
 }
 /* -------------------------- Exit to DOS with shell() ---------------------- */
-static void demo_shell(void)
+static void _demo_shell(void)
 {
 	conioxlib_shell(3, 2, 75, 22, "");
 }
 /* ---------------- VGA palette with setpal() and vgaremap() ------------------- */
-static void demo_palette(void)
+static void _demo_palette(void)
 {
-	unsigned int t;
 	box(39, 5, 76, 17, CONIOXLIB_ATTR(BLACK, LIGHTGRAY), A_DOUBLE, "setpal() / vgaremap()", SHADOW);
 	textattr(CONIOXLIB_ATTR(WHITE, LIGHTGRAY));
 	gotoxy(41, 7);
@@ -492,7 +471,7 @@ static void demo_palette(void)
 	conioxlib_setpal(1);
 	gotoxy(41, 8);
 	cputs("Press a key to restore default.");
-	t = conioxlib_ckey();
+	conioxlib_ckey();
 	conioxlib_setpal(0);
 	gotoxy(41, 10);
 	cputs("Default palette restored.");
@@ -508,15 +487,13 @@ static void demo_palette(void)
 	cputs("Mouse pointer glyph: \x01");
 	gotoxy(41, 16);
 	cputs("Press a key to restore the driver pointer.");
-	t = conioxlib_ckey();
+	conioxlib_ckey();
 	conioxlib_vgaremap(0);
-	(void) t;
 }
 /* --------------- All colors with CONIOXLIB_ATTR -------------------- */
-static void demo_colorattrs(void)
+static void _demo_colorattrs(void)
 {
 	int fg, bg;
-	unsigned int t;
 	char *names[8] = {"BLK","BLU","GRN","CYN","RED","MAG","BRN","GRY"};
 	box(39, 4, 76, 22, CONIOXLIB_ATTR(BLACK, LIGHTGRAY), A_DOUBLE, "CONIOXLIB_ATTR", SHADOW);
 	textattr(CONIOXLIB_ATTR(BLACK, LIGHTGRAY));
@@ -549,11 +526,10 @@ static void demo_colorattrs(void)
 	gotoxy(41, 19);
 	textattr(CONIOXLIB_ATTR(BLACK, LIGHTGRAY));
 	cputs("Use CONIOXLIB_ATTR(fg, bg) with COLORS.");
-	t = conioxlib_ckey();
-	(void) t;
+	conioxlib_ckey();
 }
 /* -------------- Menu bar and pull-downs IDE style ---------------- */
-static void demo_menubar(void)
+static void _demo_menubar(void)
 {
 	static const char *baritems_list[10] = {"&File", "&Edit", "&Search", "&Run", "&Compile", "&Debug", "&Project", "&Options", "&Window", "&Help"};
 	static const char *bardesc_list[10] = {
@@ -619,14 +595,13 @@ static void demo_menubar(void)
 	int cellpos[10];
 	int dropx1, dropy1, dropx2, dropy2;
 	unsigned int i;
-	unsigned int t;
 	struct conioxlib_stheme th;
-	baritems = (char (*)[21]) demo_newtable(baritems_list, 10, 21);
-	bardesc = (char (*)[71]) demo_newtable(bardesc_list, 10, 71);
-	fileitems = (char (*)[21]) demo_newtable(fileitems_list, 11, 21);
-	filedesc = (char (*)[71]) demo_newtable(filedesc_list, 11, 71);
-	edititems = (char (*)[21]) demo_newtable(edititems_list, 5, 21);
-	editdesc = (char (*)[71]) demo_newtable(editdesc_list, 5, 71);
+	baritems = (char (*)[21]) _demo_newtable(baritems_list, 10, 21);
+	bardesc = (char (*)[71]) _demo_newtable(bardesc_list, 10, 71);
+	fileitems = (char (*)[21]) _demo_newtable(fileitems_list, 11, 21);
+	filedesc = (char (*)[71]) _demo_newtable(filedesc_list, 11, 71);
+	edititems = (char (*)[21]) _demo_newtable(edititems_list, 5, 21);
+	editdesc = (char (*)[71]) _demo_newtable(editdesc_list, 5, 71);
 	if ((baritems == 0) || (bardesc == 0) || (fileitems == 0) || (filedesc == 0) || (edititems == 0) || (editdesc == 0))
 	{
 		free(baritems);
@@ -704,9 +679,8 @@ static void demo_menubar(void)
 			box(39, 6, 76, 12, CONIOXLIB_ATTR(BLACK, LIGHTGRAY), A_DOUBLE, "Menu bar", SHADOW);
 			textattr(CONIOXLIB_ATTR(BLACK, LIGHTGRAY));
 			gotoxy(41, 8);
-			cprintf("Selected: %s", demo_plainitem(baritems[bar], plain));
-			t = conioxlib_ckey();
-			(void) t;
+			cprintf("Selected: %s", _demo_plainitem(baritems[bar], plain));
+			conioxlib_ckey();
 			break;
 		}
 		window(1, 1, 80, 25);
@@ -769,14 +743,13 @@ static void demo_menubar(void)
 		}
 		else if (bar == 0)
 		{
-			cprintf("File / %s", demo_plainitem(fileitems[sub], plain));
+			cprintf("File / %s", _demo_plainitem(fileitems[sub], plain));
 		}
 		else if (bar == 1)
 		{
-			cprintf("Edit / %s", demo_plainitem(edititems[sub], plain));
+			cprintf("Edit / %s", _demo_plainitem(edititems[sub], plain));
 		}
-		t = conioxlib_ckey();
-		(void) t;
+		conioxlib_ckey();
 		donebar = 1;
 	}
 	if (((bar == CONIOXLIB_MENU_ESC) || (bar == CONIOXLIB_MENU_HELP)) && (oldscr != 0))
@@ -795,10 +768,9 @@ static void demo_menubar(void)
 	free(editdesc);
 }
 /* ------------- Environment and credits with getcountry() and about() ------------- */
-static void demo_about(void)
+static void _demo_about(void)
 {
 	struct conioxlib_scountry sc;
-	unsigned int t;
 	conioxlib_getcountry(&sc);
 	box(39, 4, 76, 22, CONIOXLIB_ATTR(BLACK, LIGHTGRAY), A_DOUBLE, "Environment", SHADOW);
 	textattr(CONIOXLIB_ATTR(BLACK, LIGHTGRAY));
@@ -814,16 +786,14 @@ static void demo_about(void)
 	cprintf("Decimal: [%s]  Date: %u  Time: %u", sc.dsep, sc.date, sc.time);
 	gotoxy(41, 13);
 	cputs("From conioxlib_getcountry()");
-	t = conioxlib_ckey();
-	(void) t;
+	conioxlib_ckey();
 	conioxlib_about(0);
 }
 /* -------------------- Message box with msgbox() ---------------------- */
-static void demo_msgbox(void)
+static void _demo_msgbox(void)
 {
 	char btns[3][11] = {"Yes", "No", "Cancel"};
 	unsigned char r;
-	unsigned int t;
 	r = conioxlib_msgbox("Confirm", "Apply these settings now?", btns, 3);
 	box(39, 8, 76, 12, CONIOXLIB_ATTR(BLACK, LIGHTGRAY), A_DOUBLE, "Result", SHADOW);
 	textattr(CONIOXLIB_ATTR(BLACK, LIGHTGRAY));
@@ -836,41 +806,36 @@ static void demo_msgbox(void)
 	{
 		cputs("Cancelled");
 	}
-	t = conioxlib_ckey();
-	(void) t;
+	conioxlib_ckey();
 }
 /* --------------------- Input box with inputbox() -------------------- */
-static void demo_inputbox(void)
+static void _demo_inputbox(void)
 {
 	char buf[40];
 	unsigned char r;
-	unsigned int t;
 	strcpy(buf, "CONXLIB");
 	r = conioxlib_inputbox("Name", "Enter name:", buf, 20);
 	box(39, 8, 76, 13, CONIOXLIB_ATTR(BLACK, LIGHTGRAY), A_DOUBLE, "Result", SHADOW);
 	textattr(CONIOXLIB_ATTR(BLACK, LIGHTGRAY));
 	gotoxy(41, 10);
 	cprintf("btn=%u  text=[%s]", (unsigned) r, buf);
-	t = conioxlib_ckey();
-	(void) t;
+	conioxlib_ckey();
 }
 /* -------------------- Numeric field with inputmask() --------------------- */
-static void demo_inputmask(void)
+static void _demo_inputmask(void)
 {
 	char buf[16];
 	unsigned char r;
-	unsigned int t;
 	strcpy(buf, "42");
 	r = conioxlib_inputmask("PIN", "Digits (min 2):", buf, 8, 2);
 	box(39, 8, 76, 13, CONIOXLIB_ATTR(BLACK, LIGHTGRAY), A_DOUBLE, "Result", SHADOW);
 	textattr(CONIOXLIB_ATTR(BLACK, LIGHTGRAY));
 	gotoxy(41, 10);
 	cprintf("btn=%u  text=[%s]", (unsigned) r, buf);
-	t = conioxlib_ckey();
-	(void) t;
+	conioxlib_ckey();
 }
 /* ------------------ Scrollable list with listbox() ----------------------- */
-static void demo_listbox(void)
+static void _demo_listbox(void)
 {
 	static const char *items_list[26] = {
 		"Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot",
@@ -881,8 +846,7 @@ static void demo_listbox(void)
 	};
 	char (*items)[41];
 	unsigned char r;
-	unsigned int t;
-	items = (char (*)[41]) demo_newtable(items_list, 26, 41);
+	items = (char (*)[41]) _demo_newtable(items_list, 26, 41);
 	if (items == 0)
 	{
 		return;
@@ -901,15 +865,13 @@ static void demo_listbox(void)
 	{
 		cputs("Cancelled");
 	}
-	t = conioxlib_ckey();
-	(void) t;
+	conioxlib_ckey();
 	free(items);
 }
 /* ---------------- Progress with progress() and progressbar() --------------- */
-static void demo_progress(void)
+static void _demo_progress(void)
 {
 	unsigned int i;
-	unsigned int t;
 	box(39, 6, 76, 14, CONIOXLIB_ATTR(BLACK, LIGHTGRAY), A_DOUBLE, "Progress", SHADOW);
 	textattr(CONIOXLIB_ATTR(BLACK, LIGHTGRAY));
 	gotoxy(41, 8);
@@ -922,27 +884,24 @@ static void demo_progress(void)
 	}
 	gotoxy(41, 12);
 	cputs("Done. Press a key.");
-	t = conioxlib_ckey();
-	(void) t;
+	conioxlib_ckey();
 }
 /* ------------------------- Visual themes ------------------------------- */
 /* Shows the nine themes as radio buttons with property(); choosing one
    applies it with conioxlib_theme() and the whole demo changes colors (the
    boxes and menus of main() already use gettheme()). */
-static void demo_themes(void)
+static void _demo_themes(void)
 {
-	static unsigned char demo_theme = 0;
+	static unsigned char _demo_theme = 0;
 	static const char *themenames_list[CONIOXLIB_THEMES] = {"Borland C++ 3.1", "Turbo C 2.0", "Turbo C 1.x", "Norton Utilities 9", "PC Tools", "Turbo Pascal 7.0", "Norton Commander", "MS-DOS Edit", "Lotus 1-2-3"};
 	static const char *themedesc_list[CONIOXLIB_THEMES] = {"Turbo Vision 2.0: blue desktop, gray dialogs    ", "Blue desktop, yellow text and cyan menus        ", "Monochrome with black background                 ", "Blue with cyan frames and yellow hotkeys         ", "White on cyan, PC Tools look                    ", "Same Turbo Vision 2.0 palette as Borland C++ 3.1", "Blue panels, cyan menus and black focus bars     ", "Blue screen with single cyan frames              ", "White on black with inverted selection           "};
 	char (*themenames)[21];
 	char (*themedesc)[71];
 	unsigned char sel[CONIOXLIB_THEMES];
 	unsigned int i;
-	unsigned int t;
-	unsigned char r;
 	struct conioxlib_stheme th;
-	themenames = (char (*)[21]) demo_newtable(themenames_list, CONIOXLIB_THEMES, 21);
-	themedesc = (char (*)[71]) demo_newtable(themedesc_list, CONIOXLIB_THEMES, 71);
+	themenames = (char (*)[21]) _demo_newtable(themenames_list, CONIOXLIB_THEMES, 21);
+	themedesc = (char (*)[71]) _demo_newtable(themedesc_list, CONIOXLIB_THEMES, 71);
 	if ((themenames == 0) || (themedesc == 0))
 	{
 		free(themenames);
@@ -952,31 +911,29 @@ static void demo_themes(void)
 	conioxlib_gettheme(&th);
 	box(39, 4, 76, 19, th.atrdialog, th.frame, "Themes", SHADOW);
 	memset(sel, ' ', CONIOXLIB_THEMES);
-	sel[demo_theme] = '\xFE';
-	r = conioxlib_property(41, 6, th.atr0, th.atr1, th.atrhot, themenames, themedesc, (char *) sel, CONIOXLIB_THEMES, 1, 1);
-	(void) r;
+	sel[_demo_theme] = '\xFE';
+	conioxlib_property(41, 6, th.atr0, th.atr1, th.atrhot, themenames, themedesc, (char *) sel, CONIOXLIB_THEMES, 1, 1);
 	for (i = 0; i < CONIOXLIB_THEMES; i++)
 	{
 		if (sel[i] == '\xFE')
 		{
-			demo_theme = (unsigned char) i;
+			_demo_theme = (unsigned char) i;
 			break;
 		}
 	}
-	conioxlib_theme(demo_theme);
+	conioxlib_theme(_demo_theme);
 	conioxlib_gettheme(&th);
 	textattr(th.atr0);
 	gotoxy(41, 16);
 	cprintf("Theme applied: %-18s", th.name);
 	gotoxy(41, 17);
 	cputs("Main menu and boxes follow it now.");
-	t = conioxlib_ckey();
-	(void) t;
+	conioxlib_ckey();
 	free(themenames);
 	free(themedesc);
 }
 /* --------------------------- Text editor ------------------------------- */
-/* demo_edit() moved here from the library (it was conioxlib_edit()): it
+/* _demo_edit() moved here from the library (it was conioxlib_edit()): it
    embeds a Borland-style editor in a rectangle (x1,y1)-(x2,y2) with a
    File/Edit/Search menu bar (F10 or click), atr0/atr1 colors and an
    optional title. It redraws only what is needed, highlights the active
@@ -986,7 +943,7 @@ static void demo_themes(void)
    conioxlib_fileselector(). Returns 0. */
 
 /* Returns whether a shift key is held: Windows polls the async key state and DOS reads the BIOS shift flags */
-static int demo_edit_shift (void)
+static int _demo_edit_shift (void)
 {
 #if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32)
 	return ((GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0);
@@ -995,10 +952,10 @@ static int demo_edit_shift (void)
 #endif
 }
 
-/* Editor undo stacks: demo_pushundo() pushes a full copy of the text onto
-   the stack (dst) and demo_clearundo() empties the opposite stack after a
-   change; they only expand inside demo_edit(). */
-#define demo_pushundo(dst, ndst) \
+/* Editor undo stacks: _demo_pushundo() pushes a full copy of the text onto
+   the stack (dst) and _demo_clearundo() empties the opposite stack after a
+   change; they only expand inside _demo_edit(). */
+#define _demo_pushundo(dst, ndst) \
 	do { \
 		if ((ndst) == 4) \
 		{ \
@@ -1008,7 +965,7 @@ static int demo_edit_shift (void)
 			(dst)[2] = (dst)[3]; \
 			(ndst) = 3; \
 		} \
-		(dst)[(ndst)] = (struct demo_seditundo *) malloc(sizeof(struct demo_seditundo)); \
+		(dst)[(ndst)] = (struct _demo_seditundo *) malloc(sizeof(struct _demo_seditundo)); \
 		if ((dst)[(ndst)] != 0) \
 		{ \
 			memcpy((dst)[(ndst)]->lines, lines, sizeof(lines)); \
@@ -1019,7 +976,7 @@ static int demo_edit_shift (void)
 		} \
 	} while (0)
 
-#define demo_clearundo(dst, ndst) \
+#define _demo_clearundo(dst, ndst) \
 	do { \
 		while ((ndst) > 0) \
 		{ \
@@ -1028,7 +985,7 @@ static int demo_edit_shift (void)
 		} \
 	} while (0)
 
-static unsigned char demo_edit (unsigned short x1, unsigned short y1, unsigned short x2, unsigned short y2, unsigned char atr0, unsigned char atr1, const char *title, const char *filename)
+static unsigned char _demo_edit (unsigned short x1, unsigned short y1, unsigned short x2, unsigned short y2, unsigned char atr0, unsigned char atr1, const char *title, const char *filename)
 {
 #define DEMO_EDIT_MAXL	250
 #define DEMO_EDIT_MAXC	76
@@ -1066,19 +1023,19 @@ static unsigned char demo_edit (unsigned short x1, unsigned short y1, unsigned s
 	unsigned int selatr;
 	unsigned char bar, sub;
 	struct conioxlib_stheme th;
-	struct demo_seditundo
+	struct _demo_seditundo
 	{
 		char lines[DEMO_EDIT_MAXL][DEMO_EDIT_MAXC];
 		int nlines;
 		int cur;
 		int col;
 	};
-	struct demo_seditundo *undo[4];
-	struct demo_seditundo *redo[4];
+	struct _demo_seditundo *undo[4];
+	struct _demo_seditundo *redo[4];
 	int nundo, nredo;
 
 	/* Expand tabs (stop every 4) into outln; returns visual length */
-#define demo_edit_expand(src, dst, maxw) \
+#define _demo_edit_expand(src, dst, maxw) \
 	do { \
 		int _si, _di, _ts; \
 		_di = 0; \
@@ -1101,15 +1058,15 @@ static unsigned char demo_edit (unsigned short x1, unsigned short y1, unsigned s
 	} while (0)
 
 	/* Compares two block selection corners: negative when the first comes before the second */
-#define demo_edit_selcmp(r1, c1, r2, c2)	(((r1) != (r2)) ? ((r1) - (r2)) : ((c1) - (c2)))
+#define _demo_edit_selcmp(r1, c1, r2, c2)	(((r1) != (r2)) ? ((r1) - (r2)) : ((c1) - (c2)))
 
 	/* Copies the active block selection, or the current line when none, to the multiline clipboard */
-#define demo_edit_selcopy() \
+#define _demo_edit_selcopy() \
 	do { \
 		int _r1, _c1, _r2, _c2, _k, _from, _len; \
 		if (selactive != 0) \
 		{ \
-			if (demo_edit_selcmp(selrow, selcol, cur, col) <= 0) \
+			if (_demo_edit_selcmp(selrow, selcol, cur, col) <= 0) \
 			{ \
 				_r1 = selrow; _c1 = selcol; _r2 = cur; _c2 = col; \
 			} \
@@ -1146,12 +1103,12 @@ static unsigned char demo_edit (unsigned short x1, unsigned short y1, unsigned s
 	} while (0)
 
 	/* Deletes the active block selection with undo; typing, ENTER and BACK call it before editing */
-#define demo_edit_delsel() \
+#define _demo_edit_delsel() \
 	do { \
 		int _r1, _c1, _r2, _c2, _k; \
 		if (selactive != 0) \
 		{ \
-			if (demo_edit_selcmp(selrow, selcol, cur, col) <= 0) \
+			if (_demo_edit_selcmp(selrow, selcol, cur, col) <= 0) \
 			{ \
 				_r1 = selrow; _c1 = selcol; _r2 = cur; _c2 = col; \
 			} \
@@ -1167,8 +1124,8 @@ static unsigned char demo_edit (unsigned short x1, unsigned short y1, unsigned s
 			{ \
 				_c1 = (int) strlen(lines[_r1]); \
 			} \
-			demo_pushundo(undo, nundo); \
-			demo_clearundo(redo, nredo); \
+			_demo_pushundo(undo, nundo); \
+			_demo_clearundo(redo, nredo); \
 			if (_r1 == _r2) \
 			{ \
 				memmove(&lines[_r1][_c1], &lines[_r1][_c2], (size_t) (strlen(&lines[_r1][_c2]) + 1)); \
@@ -1192,7 +1149,7 @@ static unsigned char demo_edit (unsigned short x1, unsigned short y1, unsigned s
 	} while (0)
 
 	/* Computes in res the widest visible item of a drop-down, skipping separators: the width every row shares */
-#define demo_edit_menuw(items, nitems, res) \
+#define _demo_edit_menuw(items, nitems, res) \
 	do { \
 		int _w, _c, _n; \
 		(res) = 1; \
@@ -1217,7 +1174,7 @@ static unsigned char demo_edit (unsigned short x1, unsigned short y1, unsigned s
 	} while (0)
 
 	/* Loads the whole file f into the lines buffer: nl receives the line count, never zero */
-#define demo_edit_load(f, nl) \
+#define _demo_edit_load(f, nl) \
 	do { \
 		int _ll; \
 		(nl) = 0; \
@@ -1292,7 +1249,7 @@ static unsigned char demo_edit (unsigned short x1, unsigned short y1, unsigned s
 		f = fopen(fname, "rb");
 		if (f != 0)
 		{
-			demo_edit_load(f, nlines);
+			_demo_edit_load(f, nlines);
 			fclose(f);
 		}
 	}
@@ -1348,7 +1305,7 @@ static unsigned char demo_edit (unsigned short x1, unsigned short y1, unsigned s
 			window((int) x1, (int) (y1 + 1), (int) x2, (int) (y2 - 1));
 			if (selactive != 0)
 			{
-				if (demo_edit_selcmp(selrow, selcol, cur, col) <= 0)
+				if (_demo_edit_selcmp(selrow, selcol, cur, col) <= 0)
 				{
 					r1 = selrow; c1 = selcol; r2 = cur; c2 = col;
 				}
@@ -1377,7 +1334,7 @@ static unsigned char demo_edit (unsigned short x1, unsigned short y1, unsigned s
 				}
 				ln = top + i;
 				gotoxy(1, i + 1);
-				demo_edit_expand(lines[ln], outln, width);
+				_demo_edit_expand(lines[ln], outln, width);
 				textattr((ln == cur) ? atr1 : atr0);
 				cprintf("%-*.*s", width, width, outln);
 				/* Overlay the selected segment of the line with inverted video */
@@ -1473,7 +1430,7 @@ static unsigned char demo_edit (unsigned short x1, unsigned short y1, unsigned s
 			if (conioxlib_kbhit())
 			{
 				key = conioxlib_getkey();
-				shiftpressed = demo_edit_shift();
+				shiftpressed = _demo_edit_shift();
 			}
 			else if (conioxlib_mousestatus.lclick != 0)
 			{
@@ -1559,7 +1516,7 @@ static unsigned char demo_edit (unsigned short x1, unsigned short y1, unsigned s
 				mbsel = (int) bar;
 				if (bar == 0)
 				{
-					demo_edit_menuw(fileitems, 5, l);
+					_demo_edit_menuw(fileitems, 5, l);
 					box(x1, (unsigned short) (y1 + 1), (unsigned short) (x1 + l + 2), (unsigned short) (y1 + 7), th.atrdialog, th.frame, "", SHADOW);
 					sub = conioxlib_menu((unsigned short) (x1 + 1), (unsigned short) (y1 + 2), atr0, atr1, th.atrhot, fileitems, filedesc, 5, 1, 0);
 					if (sub == 0)
@@ -1579,7 +1536,7 @@ static unsigned char demo_edit (unsigned short x1, unsigned short y1, unsigned s
 						{
 							strcpy(fname, outln);
 							memset(lines, 0, sizeof(lines));
-							demo_edit_load(f, nlines);
+							_demo_edit_load(f, nlines);
 							fclose(f);
 							cur = 0;
 							col = 0;
@@ -1613,20 +1570,20 @@ static unsigned char demo_edit (unsigned short x1, unsigned short y1, unsigned s
 				}
 				else if (bar == 1)
 				{
-					demo_edit_menuw(edititems, 7, l);
+					_demo_edit_menuw(edititems, 7, l);
 					box((unsigned short) (x1 + 6), (unsigned short) (y1 + 1), (unsigned short) (x1 + l + 8), (unsigned short) (y1 + 9), th.atrdialog, th.frame, "", SHADOW);
 					sub = conioxlib_menu((unsigned short) (x1 + 7), (unsigned short) (y1 + 2), atr0, atr1, th.atrhot, edititems, editdesc, 7, 1, 0);
 					if (sub == 0)
 					{
 						if (selactive != 0)
 						{
-							demo_edit_selcopy();
-							demo_edit_delsel();
+							_demo_edit_selcopy();
+							_demo_edit_delsel();
 						}
 						else
 						{
-							demo_pushundo(undo, nundo);
-							demo_clearundo(redo, nredo);
+							_demo_pushundo(undo, nundo);
+							_demo_clearundo(redo, nredo);
 							strcpy(clip[0], lines[cur]);
 							nclip = 1;
 							lines[cur][0] = 0;
@@ -1636,7 +1593,7 @@ static unsigned char demo_edit (unsigned short x1, unsigned short y1, unsigned s
 					}
 					else if (sub == 1)
 					{
-						demo_edit_selcopy();
+						_demo_edit_selcopy();
 					}
 					else if (sub == 2)
 					{
@@ -1644,12 +1601,12 @@ static unsigned char demo_edit (unsigned short x1, unsigned short y1, unsigned s
 						{
 							if (selactive != 0)
 							{
-								demo_edit_delsel();
+								_demo_edit_delsel();
 							}
 							else
 							{
-								demo_pushundo(undo, nundo);
-								demo_clearundo(redo, nredo);
+								_demo_pushundo(undo, nundo);
+								_demo_clearundo(redo, nredo);
 							}
 							if ((nclip == 1) && ((int) strlen(lines[cur]) + (int) strlen(clip[0]) < DEMO_EDIT_MAXC - 1))
 							{
@@ -1683,12 +1640,12 @@ static unsigned char demo_edit (unsigned short x1, unsigned short y1, unsigned s
 					{
 						if (selactive != 0)
 						{
-							demo_edit_delsel();
+							_demo_edit_delsel();
 						}
 						else
 						{
-							demo_pushundo(undo, nundo);
-							demo_clearundo(redo, nredo);
+							_demo_pushundo(undo, nundo);
+							_demo_clearundo(redo, nredo);
 							lines[cur][0] = 0;
 							col = 0;
 							drawline = 1;
@@ -1698,7 +1655,7 @@ static unsigned char demo_edit (unsigned short x1, unsigned short y1, unsigned s
 					{
 						if (nundo > 0)
 						{
-							demo_pushundo(redo, nredo);
+							_demo_pushundo(redo, nredo);
 							nundo--;
 							memcpy(lines, undo[nundo]->lines, sizeof(lines));
 							nlines = undo[nundo]->nlines;
@@ -1712,7 +1669,7 @@ static unsigned char demo_edit (unsigned short x1, unsigned short y1, unsigned s
 					{
 						if (nredo > 0)
 						{
-							demo_pushundo(undo, nundo);
+							_demo_pushundo(undo, nundo);
 							nredo--;
 							memcpy(lines, redo[nredo]->lines, sizeof(lines));
 							nlines = redo[nredo]->nlines;
@@ -1725,7 +1682,7 @@ static unsigned char demo_edit (unsigned short x1, unsigned short y1, unsigned s
 				}
 				else if (bar == 2)
 				{
-					demo_edit_menuw(searchitems, 3, l);
+					_demo_edit_menuw(searchitems, 3, l);
 					box((unsigned short) (x1 + 12), (unsigned short) (y1 + 1), (unsigned short) (x1 + l + 14), (unsigned short) (y1 + 5), th.atrdialog, th.frame, "", SHADOW);
 					sub = conioxlib_menu((unsigned short) (x1 + 13), (unsigned short) (y1 + 2), atr0, atr1, th.atrhot, searchitems, searchdesc, 3, 1, 0);
 					if (sub == 0)
@@ -1765,8 +1722,8 @@ static unsigned char demo_edit (unsigned short x1, unsigned short y1, unsigned s
 								lenrest = (int) strlen(&lines[i][off + lenfind]);
 								if (off + lenrep + lenrest < DEMO_EDIT_MAXC - 1)
 								{
-									demo_pushundo(undo, nundo);
-									demo_clearundo(redo, nredo);
+									_demo_pushundo(undo, nundo);
+									_demo_clearundo(redo, nredo);
 									memmove(&lines[i][off + lenrep], &lines[i][off + lenfind], (size_t) lenrest + 1);
 									memcpy(&lines[i][off], repstr, (size_t) lenrep);
 									cur = i;
@@ -1869,14 +1826,14 @@ static unsigned char demo_edit (unsigned short x1, unsigned short y1, unsigned s
 			j = (selactive != 0) ? 1 : 0;
 			if (selactive != 0)
 			{
-				demo_edit_delsel();
+				_demo_edit_delsel();
 			}
 			if (nlines < DEMO_EDIT_MAXL - 1)
 			{
 				if (j == 0)
 				{
-					demo_pushundo(undo, nundo);
-					demo_clearundo(redo, nredo);
+					_demo_pushundo(undo, nundo);
+					_demo_clearundo(redo, nredo);
 				}
 				for (j = nlines; j > cur + 1; j--)
 				{
@@ -1893,12 +1850,12 @@ static unsigned char demo_edit (unsigned short x1, unsigned short y1, unsigned s
 		{
 			if (selactive != 0)
 			{
-				demo_edit_delsel();
+				_demo_edit_delsel();
 			}
 			else if (col > 0)
 			{
-				demo_pushundo(undo, nundo);
-				demo_clearundo(redo, nredo);
+				_demo_pushundo(undo, nundo);
+				_demo_clearundo(redo, nredo);
 				for (i = col - 1; lines[cur][i] != 0; i++)
 				{
 					lines[cur][i] = lines[cur][i + 1];
@@ -1912,15 +1869,15 @@ static unsigned char demo_edit (unsigned short x1, unsigned short y1, unsigned s
 			j = (selactive != 0) ? 1 : 0;
 			if (selactive != 0)
 			{
-				demo_edit_delsel();
+				_demo_edit_delsel();
 			}
 			i = (int) strlen(lines[cur]);
 			if (i < DEMO_EDIT_MAXC - 2)
 			{
 				if (j == 0)
 				{
-					demo_pushundo(undo, nundo);
-					demo_clearundo(redo, nredo);
+					_demo_pushundo(undo, nundo);
+					_demo_clearundo(redo, nredo);
 				}
 				for (j = i; j >= col; j--)
 				{
@@ -1936,15 +1893,15 @@ static unsigned char demo_edit (unsigned short x1, unsigned short y1, unsigned s
 			j = (selactive != 0) ? 1 : 0;
 			if (selactive != 0)
 			{
-				demo_edit_delsel();
+				_demo_edit_delsel();
 			}
 			i = (int) strlen(lines[cur]);
 			if (i < DEMO_EDIT_MAXC - 2)
 			{
 				if (j == 0)
 				{
-					demo_pushundo(undo, nundo);
-					demo_clearundo(redo, nredo);
+					_demo_pushundo(undo, nundo);
+					_demo_clearundo(redo, nredo);
 				}
 				for (j = i; j >= col; j--)
 				{
@@ -1965,30 +1922,29 @@ static unsigned char demo_edit (unsigned short x1, unsigned short y1, unsigned s
 		}
 	}
 	_setcursortype(_NOCURSOR);
-	demo_clearundo(undo, nundo);
-	demo_clearundo(redo, nredo);
+	_demo_clearundo(undo, nundo);
+	_demo_clearundo(redo, nredo);
 	conioxlib_restorescr(x1, y1, x2, y2, oldb);
 	gotoxy(oldx, oldy);
 	return(0);
 #undef DEMO_EDIT_MAXL
 #undef DEMO_EDIT_MAXC
-#undef demo_edit_expand
-#undef demo_edit_load
-#undef demo_edit_menuw
-#undef demo_edit_selcmp
-#undef demo_edit_selcopy
-#undef demo_edit_delsel
+#undef _demo_edit_expand
+#undef _demo_edit_load
+#undef _demo_edit_menuw
+#undef _demo_edit_selcmp
+#undef _demo_edit_selcopy
+#undef _demo_edit_delsel
 }
 
-/* --------------------- Text editor with demo_edit() ------------------- */
-static void demo_editor(void)
+/* --------------------- Text editor with _demo_edit() ------------------- */
+static void _demo_editor(void)
 {
-	demo_edit(1, 1, 80, 25, CONIOXLIB_ATTR(BLACK, LIGHTGRAY), CONIOXLIB_ATTR(WHITE, GREEN), "Editor", "");
+	_demo_edit(1, 1, 80, 25, CONIOXLIB_ATTR(BLACK, LIGHTGRAY), CONIOXLIB_ATTR(WHITE, GREEN), "Editor", "");
 }
 /* --------------------- Status line and tooltip ------------------------- */
-static void demo_statustip(void)
+static void _demo_statustip(void)
 {
-	unsigned int t;
 	box(39, 6, 76, 14, CONIOXLIB_ATTR(BLACK, LIGHTGRAY), A_DOUBLE, "Status/Tooltip", SHADOW);
 	textattr(CONIOXLIB_ATTR(BLACK, LIGHTGRAY));
 	gotoxy(41, 8);
@@ -1999,19 +1955,18 @@ static void demo_statustip(void)
 	conioxlib_tooltip(50, 12, "Tooltip sample", 1500);
 	gotoxy(41, 12);
 	cputs("Press a key.");
-	t = conioxlib_ckey();
-	(void) t;
+	conioxlib_ckey();
 }
 /* ------------------------------- Tetris -------------------------------- */
-static const int tetrisshapes[7][4][2] = {	{{0, 0}, {1, 0}, {2, 0}, {3, 0}},
+static const int _tetrisshapes[7][4][2] = {	{{0, 0}, {1, 0}, {2, 0}, {3, 0}},
 					{{0, 0}, {1, 0}, {0, 1}, {1, 1}},
 					{{1, 0}, {0, 1}, {1, 1}, {2, 1}},
 					{{1, 0}, {2, 0}, {0, 1}, {1, 1}},
 					{{0, 0}, {1, 0}, {1, 1}, {2, 1}},
 					{{0, 0}, {0, 1}, {1, 1}, {2, 1}},
 					{{2, 0}, {0, 1}, {1, 1}, {2, 1}}};
-static const unsigned char tetrissize[7] = {4, 2, 3, 3, 3, 3, 3};
-static const unsigned char tetrisattrs[7] = {	CONIOXLIB_ATTR(CYAN, BLACK),
+static const unsigned char _tetrissize[7] = {4, 2, 3, 3, 3, 3, 3};
+static const unsigned char _tetrisattrs[7] = {	CONIOXLIB_ATTR(CYAN, BLACK),
 						CONIOXLIB_ATTR(YELLOW, BLACK),
 						CONIOXLIB_ATTR(MAGENTA, BLACK),
 						CONIOXLIB_ATTR(GREEN, BLACK),
@@ -2019,7 +1974,7 @@ static const unsigned char tetrisattrs[7] = {	CONIOXLIB_ATTR(CYAN, BLACK),
 						CONIOXLIB_ATTR(BLUE, BLACK),
 						CONIOXLIB_ATTR(BROWN, BLACK)};
 /* Checks if the piece cells fit at (px,py); rows above the well only test the columns */
-static int demo_tetris_fit(int px, int py, int cells[4][2], unsigned char board[20][10])
+static int _demo_tetris_fit(int px, int py, int cells[4][2], unsigned char board[20][10])
 {
 	int i;
 	int bx, by;
@@ -2039,7 +1994,7 @@ static int demo_tetris_fit(int px, int py, int cells[4][2], unsigned char board[
 	return(1);
 }
 /* Draws one well cell; val 0 erases and 1 to 7 draw the piece colors */
-static void demo_tetris_drawcell(int bx, int by, unsigned char val)
+static void _demo_tetris_drawcell(int bx, int by, unsigned char val)
 {
 	if ((bx < 0) || (bx > 9) || (by < 0) || (by > 19))
 	{
@@ -2048,7 +2003,7 @@ static void demo_tetris_drawcell(int bx, int by, unsigned char val)
 	gotoxy(35 + (bx << 1), 3 + by);
 	if (val != 0)
 	{
-		textattr(tetrisattrs[val - 1]);
+		textattr(_tetrisattrs[val - 1]);
 		cputs("\xDB\xDB");
 	}
 	else
@@ -2057,9 +2012,8 @@ static void demo_tetris_drawcell(int bx, int by, unsigned char val)
 		cputs("  ");
 	}
 }
-static void demo_tetris(void)
+static void _demo_tetris(void)
 {
-	unsigned char t;
 	int cur, next, px, py, key, i, j, k, n, speed, redraw;
 	long score;
 	int lines, level;
@@ -2092,7 +2046,7 @@ static void demo_tetris(void)
 	{
 		for (j = 0; j != 20; j++)
 		{
-			demo_tetris_drawcell(i, j, 0);
+			_demo_tetris_drawcell(i, j, 0);
 		}
 	}
 	box(57, 2, 77, 23, CONIOXLIB_ATTR(BLACK, LIGHTGRAY), A_DOUBLE, "Status", SHADOW);
@@ -2102,10 +2056,10 @@ static void demo_tetris(void)
 	/* Spawn the next piece at the top of the well */
 	cur = next;
 	next = rand() % 7;
-	px = (10 - tetrissize[cur]) >> 1;
+	px = (10 - _tetrissize[cur]) >> 1;
 	py = -2;
-	memcpy(cells, tetrisshapes[cur], sizeof(cells));
-	if (demo_tetris_fit(px, py, cells, board) == 0)
+	memcpy(cells, _tetrisshapes[cur], sizeof(cells));
+	if (_demo_tetris_fit(px, py, cells, board) == 0)
 	{
 		goto gameover_1;
 	}
@@ -2115,7 +2069,7 @@ static void demo_tetris(void)
 	{
 		for (i = 0; i != 4; i++)
 		{
-			demo_tetris_drawcell(px + cells[i][0], py + cells[i][1], (unsigned char) (cur + 1));
+			_demo_tetris_drawcell(px + cells[i][0], py + cells[i][1], (unsigned char) (cur + 1));
 		}
 		textattr(CONIOXLIB_ATTR(BLACK, LIGHTGRAY));
 		gotoxy(59, 5);
@@ -2136,8 +2090,8 @@ static void demo_tetris(void)
 		}
 		for (i = 0; i != 4; i++)
 		{
-			textattr(tetrisattrs[next]);
-			gotoxy(62 + (tetrisshapes[next][i][0] << 1), 15 + tetrisshapes[next][i][1]);
+			textattr(_tetrisattrs[next]);
+			gotoxy(62 + (_tetrisshapes[next][i][0] << 1), 15 + _tetrisshapes[next][i][1]);
 			cputs("\xDB\xDB");
 		}
 		redraw = 0;
@@ -2167,11 +2121,11 @@ static void demo_tetris(void)
 			}
 			else if (key == KBD_LEFT)
 			{
-				if (demo_tetris_fit(px - 1, py, cells, board))
+				if (_demo_tetris_fit(px - 1, py, cells, board))
 				{
 					for (j = 0; j != 4; j++)
 					{
-						demo_tetris_drawcell(px + cells[j][0], py + cells[j][1], 0);
+						_demo_tetris_drawcell(px + cells[j][0], py + cells[j][1], 0);
 					}
 					px--;
 					redraw = 1;
@@ -2179,11 +2133,11 @@ static void demo_tetris(void)
 			}
 			else if (key == KBD_RIGHT)
 			{
-				if (demo_tetris_fit(px + 1, py, cells, board))
+				if (_demo_tetris_fit(px + 1, py, cells, board))
 				{
 					for (j = 0; j != 4; j++)
 					{
-						demo_tetris_drawcell(px + cells[j][0], py + cells[j][1], 0);
+						_demo_tetris_drawcell(px + cells[j][0], py + cells[j][1], 0);
 					}
 					px++;
 					redraw = 1;
@@ -2196,13 +2150,13 @@ static void demo_tetris(void)
 				{
 					k = cells[j][0];
 					cells[j][0] = cells[j][1];
-					cells[j][1] = tetrissize[cur] - 1 - k;
+					cells[j][1] = _tetrissize[cur] - 1 - k;
 				}
-				if (demo_tetris_fit(px, py, cells, board))
+				if (_demo_tetris_fit(px, py, cells, board))
 				{
 					for (j = 0; j != 4; j++)
 					{
-						demo_tetris_drawcell(px + saved[j][0], py + saved[j][1], 0);
+						_demo_tetris_drawcell(px + saved[j][0], py + saved[j][1], 0);
 					}
 					redraw = 1;
 				}
@@ -2213,11 +2167,11 @@ static void demo_tetris(void)
 			}
 			else if (key == KBD_DOWN)
 			{
-				if (demo_tetris_fit(px, py + 1, cells, board))
+				if (_demo_tetris_fit(px, py + 1, cells, board))
 				{
 					for (j = 0; j != 4; j++)
 					{
-						demo_tetris_drawcell(px + cells[j][0], py + cells[j][1], 0);
+						_demo_tetris_drawcell(px + cells[j][0], py + cells[j][1], 0);
 					}
 					py++;
 					redraw = 1;
@@ -2228,9 +2182,9 @@ static void demo_tetris(void)
 			{
 				for (j = 0; j != 4; j++)
 				{
-					demo_tetris_drawcell(px + cells[j][0], py + cells[j][1], 0);
+					_demo_tetris_drawcell(px + cells[j][0], py + cells[j][1], 0);
 				}
-				while (demo_tetris_fit(px, py + 1, cells, board))
+				while (_demo_tetris_fit(px, py + 1, cells, board))
 				{
 					py++;
 				}
@@ -2244,11 +2198,11 @@ static void demo_tetris(void)
 		delay(20);
 	}
 	/* One gravity row */
-	if (demo_tetris_fit(px, py + 1, cells, board))
+	if (_demo_tetris_fit(px, py + 1, cells, board))
 	{
 		for (j = 0; j != 4; j++)
 		{
-			demo_tetris_drawcell(px + cells[j][0], py + cells[j][1], 0);
+			_demo_tetris_drawcell(px + cells[j][0], py + cells[j][1], 0);
 		}
 		py++;
 		redraw = 1;
@@ -2302,19 +2256,18 @@ static void demo_tetris(void)
 	{
 		for (j = 0; j != 20; j++)
 		{
-			demo_tetris_drawcell(i, j, board[j][i]);
+			_demo_tetris_drawcell(i, j, board[j][i]);
 		}
 	}
 	goto tetris_1;
 	gameover_1:
 	sprintf(str, "Game over. Score: %07ld", score);
-	t = conioxlib_msgbox("Tetris", str, btns, 1);
-	(void) t;
+	conioxlib_msgbox("Tetris", str, btns, 1);
 	exit_1:
 	;
 }
 /* --------------------------- Demo exit --------------------------- */
-static int demo_exit(void)
+static int _demo_exit(void)
 {
 	if (conioxlib_exittodos(DEMO_HELP) == 1)
 	{
@@ -2327,7 +2280,7 @@ static int demo_exit(void)
    dialogs. Every line must stay within 60 characters because conioxlib_help()
    truncates at 60, and topic names must stay within 15 characters because
    conioxlib_helpindex() truncates them at 15. */
-static const char CONIOXLIB_FARDATA helptext[] =
+static const char CONIOXLIB_FARDATA _helptext[] =
 	"@Main" "\r\n"
 	"Welcome to the CONXLIB 2.0 demonstration program." "\r\n"
 	"Pick an option with the arrow keys, hotkeys or the mouse." "\r\n"
@@ -2348,7 +2301,7 @@ static const char CONIOXLIB_FARDATA helptext[] =
 	"Parameters: none." "\r\n"
 	"Plain keys arrive as their ASCII code and extended keys as" "\r\n"
 	"(scan code << 8), so the KBD_ constants can be compared" "\r\n"
-	"directly. It also drains the pending key captured by" "\r\n"
+	"directly. It also drains the pending keys captured by" "\r\n"
 	"conioxlib_pollmouse() under Windows." "\r\n"
 	"Example:" "\r\n"
 	"  if (conioxlib_kbhit())" "\r\n"
@@ -2360,7 +2313,7 @@ static const char CONIOXLIB_FARDATA helptext[] =
 	"int conioxlib_kbhit(void);" "\r\n"
 	"Returns nonzero when a key is waiting." "\r\n"
 	"Parameters: none." "\r\n"
-	"It sees both the keyboard buffer and the pending key kept" "\r\n"
+	"It sees both the keyboard buffer and the pending keys kept" "\r\n"
 	"by conioxlib_pollmouse() under Windows, so it is the safe" "\r\n"
 	"replacement for the raw kbhit()." "\r\n"
 	"Example:" "\r\n"
@@ -2673,7 +2626,7 @@ static const char CONIOXLIB_FARDATA helptext[] =
 	"entry holds the character \\xFE mark at a time." "\r\n"
 	"Returns 255 when F1 was pressed or 0 on close." "\r\n"
 	"Example:" "\r\n"
-	"  sel[demo_theme] = '\\xFE';" "\r\n"
+	"  sel[_demo_theme] = '\\xFE';" "\r\n"
 	"  r = conioxlib_property(41, 6, atr0, atr1, atrhot," "\r\n"
 	"      names, desc, sel, 9, 1, 1);" "\r\n"
 	"@background" "\r\n"
@@ -2961,8 +2914,8 @@ static const char CONIOXLIB_FARDATA helptext[] =
 	"Parameters: title is the caption, label the text next to" "\r\n"
 	"the field, buf receives the answer and is also the" "\r\n"
 	"initial value, and len the maximum length. Returns 0" "\r\n"
-	"when accepted with ENTER, 1 when cancelled and 255 when" "\r\n"
-	"F1 was pressed." "\r\n"
+	"when accepted, 1 when cancelled, 254 when F1 was" "\r\n"
+	"pressed and 255 when cancelled with ESC." "\r\n"
 	"Example:" "\r\n"
 	"  r = conioxlib_inputbox(\"Open\", \"File:\", name, 60);" "\r\n"
 	"@inputmask" "\r\n"
@@ -2975,7 +2928,7 @@ static const char CONIOXLIB_FARDATA helptext[] =
 	"the OK button only accepts the answer when at least that" "\r\n"
 	"many digits were typed. Invalid characters are ignored" "\r\n"
 	"as they are pressed. Returns 0 when accepted, 1 when" "\r\n"
-	"cancelled and 255 when F1 was pressed." "\r\n"
+	"cancelled and 254 when F1 was pressed." "\r\n"
 	"Example:" "\r\n"
 	"  r = conioxlib_inputmask(\"Port\", \"Value:\", buf," "\r\n"
 	"      5, 2);" "\r\n"
@@ -3021,6 +2974,7 @@ static const char CONIOXLIB_FARDATA helptext[] =
 int main(void)
 {
 	unsigned char opt;
+	unsigned char sel;
 	struct conioxlib_stheme th;
 	char (*demomenu)[21];
 	char (*demodesc)[71];
@@ -3033,13 +2987,13 @@ int main(void)
 	f = fopen(DEMO_HELP, "wb");
 	if (f != 0)
 	{
-		fwrite(helptext, sizeof(helptext) - 1, 1, f);
+		fwrite(_helptext, sizeof(_helptext) - 1, 1, f);
 		fclose(f);
 	}
 	conioxlib_hello("CONXDEMO.TMP", 0);
 	/* The menu tables are copied once from the literals into heap buffers */
-	demomenu = (char (*)[21]) demo_newtable(demooptions, DEMO_OPTIONS, 21);
-	demodesc = (char (*)[71]) demo_newtable(demohints, DEMO_OPTIONS, 71);
+	demomenu = (char (*)[21]) _demo_newtable(_demooptions, DEMO_OPTIONS, 21);
+	demodesc = (char (*)[71]) _demo_newtable(_demohints, DEMO_OPTIONS, 71);
 	if ((demomenu == 0) || (demodesc == 0))
 	{
 		/* conioxlib_bye(name, e, ...) calls exit(e): pass the real error code */
@@ -3047,6 +3001,7 @@ int main(void)
 		return(1);
 	}
 	opt = 0;
+	sel = 0;
 	for (;;)
 	{
 		conioxlib_background((unsigned char *) DEMO_TITLE);
@@ -3056,7 +3011,12 @@ int main(void)
 		box(3, 3, 36, 23, th.atrdialog, th.frame, "CONXLIB 2.0", SHADOW | CLOSE);
 		box(38, 3, 77, 23, th.atrdialog, th.frame, "Output", SHADOW);
 		conioxlib_blocks();
-		opt = conioxlib_menu(5, 4, th.atr0, th.atr1, th.atrhot, demomenu, demodesc, DEMO_OPTIONS, 1, opt);
+		opt = conioxlib_menu(5, 4, th.atr0, th.atr1, th.atrhot, demomenu, demodesc, DEMO_OPTIONS, 1, sel);
+		if (opt < DEMO_OPTIONS)
+		{
+			/* Remember the item so F1 and LEFT/RIGHT come back to it */
+			sel = opt;
+		}
 		if (opt == CONIOXLIB_MENU_HELP)
 		{
 			/* The topic index reuses the same 256*61 work area size of the viewer pages */
@@ -3077,39 +3037,39 @@ int main(void)
 		{
 			continue;
 		}
-		demo_clear_output();
+		_demo_clear_output();
 		switch (opt)
 		{
-			case 1: demo_windows(); break;
-			case 2: demo_mouse(); break;
-			case 3: demo_textinput(); break;
-			case 4: demo_checkboxes(); break;
-			case 5: demo_radiobuttons(); break;
-			case 6: demo_grid(); break;
-			case 7: demo_calendar(); break;
-			case 8: demo_fileselector(); break;
-			case 9: demo_simplepicker(); break;
-			case 10: demo_viewer(); break;
-			case 11: demo_screensaver(); break;
-			case 12: demo_effects(); break;
-			case 13: demo_buttons(); break;
-			case 14: demo_shell(); break;
-			case 15: demo_palette(); break;
-			case 16: demo_colorattrs(); break;
-			case 17: demo_menubar(); break;
-			case 18: demo_about(); break;
-			case 19: demo_msgbox(); break;
-			case 20: demo_inputbox(); break;
-			case 21: demo_inputmask(); break;
-			case 22: demo_listbox(); break;
-			case 23: demo_progress(); break;
-			case 24: demo_themes(); break;
-			case 25: demo_editor(); break;
-			case 26: demo_statustip(); break;
-			case 27: demo_tetris(); break;
+			case 1: _demo_windows(); break;
+			case 2: _demo_mouse(); break;
+			case 3: _demo_textinput(); break;
+			case 4: _demo_checkboxes(); break;
+			case 5: _demo_radiobuttons(); break;
+			case 6: _demo_grid(); break;
+			case 7: _demo_calendar(); break;
+			case 8: _demo_fileselector(); break;
+			case 9: _demo_simplepicker(); break;
+			case 10: _demo_viewer(); break;
+			case 11: _demo_screensaver(); break;
+			case 12: _demo_effects(); break;
+			case 13: _demo_buttons(); break;
+			case 14: _demo_shell(); break;
+			case 15: _demo_palette(); break;
+			case 16: _demo_colorattrs(); break;
+			case 17: _demo_menubar(); break;
+			case 18: _demo_about(); break;
+			case 19: _demo_msgbox(); break;
+			case 20: _demo_inputbox(); break;
+			case 21: _demo_inputmask(); break;
+			case 22: _demo_listbox(); break;
+			case 23: _demo_progress(); break;
+			case 24: _demo_themes(); break;
+			case 25: _demo_editor(); break;
+			case 26: _demo_statustip(); break;
+			case 27: _demo_tetris(); break;
 			case 0:
 			default:
-				if (demo_exit())
+				if (_demo_exit())
 				{
 					done = 1;
 				}
