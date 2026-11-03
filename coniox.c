@@ -69,9 +69,9 @@ static unsigned short coniox_far *coniox_cell;
 	static coniox_inline void coniox_fmemsetw(void coniox_far *m, short val, size_t count);
 	static coniox_inline void coniox_fmemcpy(void coniox_far *dst, const void coniox_far *src, size_t count);
 	#if (defined(__FLAT__))
-		static coniox_inline void coniox_putrun(unsigned short *piDst, const char *piSrc, unsigned int piAttr, size_t piCount);
+		static coniox_inline unsigned int coniox_putrun(unsigned short *piDst, const char *piSrc, unsigned int piAttr, size_t piCount);
 	#else
-		static coniox_inline void coniox_putrun(unsigned short coniox_far *piDst, const char coniox_far *piSrc, unsigned int piAttr, size_t piCount);
+		static coniox_inline unsigned int coniox_putrun(unsigned short coniox_far *piDst, const char coniox_far *piSrc, unsigned int piAttr, size_t piCount);
 	#endif
 	#if (defined(__FLAT__))
 		/* parm [AX] only guarantees the low word: zero-extend it before building the duplicated cell word.
@@ -84,7 +84,7 @@ static unsigned short coniox_far *coniox_cell;
 			"cld" \
 			"test edi, 2" \
 			"jz short _fsal" \
-			"jecxz short _fsdone" \
+			"jecxz _fsdone" \
 			"stosw" \
 			"dec ecx" \
 			"_fsal:" \
@@ -97,28 +97,34 @@ static unsigned short coniox_far *coniox_cell;
 			"_fsdone:" \
 			parm [EDI][AX][ECX] \
 			modify exact [EDI EDX ECX EAX];
-		/* 386+: dword-aligned destination (leading single cell if needed), 4 chars per pass read with one dword load and written as two STOSD, then up to 3 trailing cells. */
+		/* Scans and writes the run in one pass; returns the number of cells written (it stops at the first NUL, BS, LF or CR, or after ECX chars).
+		   386+: with a dword aligned destination it moves 4 chars per pass: one dword load, a SWAR test for any byte < 14 (such a quad goes char by char), two STOSD.
+		   The dword load is skipped when it would cross a 4K page, because the string may end inside the quad and the next page may not be mapped. */
 		#pragma aux coniox_putrun = \
 			"and ebx, 0FF00h" \
 			"cld" \
-			"test edi, 2" \
-			"jz short _pral" \
-			"test ecx, ecx" \
-			"jz short _prdone" \
-			"movzx eax, byte ptr [esi]" \
-			"inc esi" \
-			"or eax, ebx" \
-			"stosw" \
-			"dec ecx" \
-			"_pral:" \
+			"push ecx" \
 			"mov edx, ebx" \
 			"shl ebx, 16" \
 			"or ebx, edx" \
-			"push ecx" \
-			"shr ecx, 2" \
-			"jz short _prtail" \
+			"test edi, 2" \
+			"jnz short _prsingle" \
+			"_prqcheck:" \
+			"cmp ecx, 4" \
+			"jb short _prsingle" \
 			"_prquad:" \
+			"mov eax, esi" \
+			"and eax, 0FFFh" \
+			"cmp eax, 0FFCh" \
+			"ja short _prsingle" \
 			"mov edx, [esi]" \
+			"mov eax, edx" \
+			"sub eax, 0E0E0E0Eh" \
+			"not edx" \
+			"and eax, edx" \
+			"not edx" \
+			"and eax, 80808080h" \
+			"jnz short _prsingle" \
 			"add esi, 4" \
 			"movzx eax, dh" \
 			"shl eax, 16" \
@@ -131,21 +137,36 @@ static unsigned short coniox_far *coniox_cell;
 			"mov al, dl" \
 			"or eax, ebx" \
 			"stosd" \
-			"dec ecx" \
-			"jnz short _prquad" \
-			"_prtail:" \
-			"pop ecx" \
-			"and ecx, 3" \
+			"sub ecx, 4" \
+			"cmp ecx, 4" \
+			"jae short _prquad" \
+			"_prsingle:" \
+			"test ecx, ecx" \
 			"jz short _prdone" \
-			"_prone:" \
 			"movzx eax, byte ptr [esi]" \
+			"cmp al, 13" \
+			"jbe short _prctl" \
+			"_prput:" \
 			"inc esi" \
 			"or eax, ebx" \
 			"stosw" \
 			"dec ecx" \
-			"jnz short _prone" \
+			"test edi, 2" \
+			"jnz short _prsingle" \
+			"jmp short _prqcheck" \
+			"_prctl:" \
+			"je short _prdone" \
+			"cmp al, 10" \
+			"je short _prdone" \
+			"cmp al, 8" \
+			"je short _prdone" \
+			"test al, al" \
+			"jnz short _prput" \
 			"_prdone:" \
+			"pop eax" \
+			"sub eax, ecx" \
 			parm [EDI][ESI][EBX][ECX] \
+			value [EAX] \
 			modify exact [EDI ESI ECX EDX EAX EBX];
 		/* 386+: a leading MOVSW aligns the destination to a dword when it is only word aligned (partial-width windows, user buffers). */
 		#pragma aux coniox_fmemcpy = \
@@ -172,19 +193,36 @@ static unsigned short coniox_far *coniox_cell;
 			"rep stosw" \
 			parm [ES DI][AX][CX] \
 			modify exact [DI CX];
+		/* Scans and writes the run in one pass; returns the number of cells written (it stops at the first NUL, BS, LF or CR, or after CX chars). */
 		#pragma aux coniox_putrun = \
 			"push ds" \
 			"mov ds, dx" \
 			"cld" \
+			"push cx" \
 			"jcxz short _prdone" \
 			"_prnext:" \
 			"lodsb" \
+			"cmp al, 13" \
+			"jbe short _prctl" \
+			"_prput:" \
 			"mov ah, bh" \
 			"stosw" \
 			"loop _prnext" \
+			"jmp short _prdone" \
+			"_prctl:" \
+			"je short _prdone" \
+			"cmp al, 10" \
+			"je short _prdone" \
+			"cmp al, 8" \
+			"je short _prdone" \
+			"or al, al" \
+			"jnz short _prput" \
 			"_prdone:" \
+			"pop ax" \
+			"sub ax, cx" \
 			"pop ds" \
 			parm [ES DI][DX SI][BX][CX] \
+			value [AX] \
 			modify exact [DI SI CX AX];
 		#pragma aux coniox_fmemcpy = \
 			"push ds" \
@@ -220,27 +258,24 @@ static unsigned short coniox_far *coniox_cell;
 		}
 	}
 
-	static coniox_inline void coniox_putrun(unsigned short coniox_far *piDst, const char coniox_far *piSrc, unsigned int piAttr, unsigned int piCount)
+	/* Scans and writes the run in one pass; returns the number of cells written (it stops at the first NUL, BS, LF or CR, or after piCount chars). */
+	static coniox_inline unsigned int coniox_putrun(unsigned short coniox_far *piDst, const char coniox_far *piSrc, unsigned int piAttr, unsigned int piCount)
 	{
-		unsigned short coniox_far *d;
+		unsigned int n;
 		unsigned short cellword;
+		unsigned char ch;
 
-		d = piDst;
 		cellword = (unsigned short) (piAttr & 0xFF00);
-		while (piCount >= 4)
+		for (n = 0; n < piCount; n++)
 		{
-			d[0] = cellword | (unsigned char) piSrc[0];
-			d[1] = cellword | (unsigned char) piSrc[1];
-			d[2] = cellword | (unsigned char) piSrc[2];
-			d[3] = cellword | (unsigned char) piSrc[3];
-			d += 4;
-			piSrc += 4;
-			piCount -= 4;
+			ch = (unsigned char) piSrc[n];
+			if (ch <= '\r' && (ch == 0 || ch == '\r' || ch == '\n' || ch == '\b'))
+			{
+				break;
+			}
+			piDst[n] = cellword | ch;
 		}
-		while (piCount--)
-		{
-			*d++ = cellword | (unsigned char) *piSrc++;
-		}
+		return(n);
 	}
 
 #endif
@@ -444,98 +479,105 @@ int putch(int __c)
 
 	coniox_init(NULL);
 
-	winwidth  = ti.winright  - ti.winleft + 1;
-	winheight = ti.winbottom - ti.wintop  + 1;
+	winwidth = ti.winright - ti.winleft + 1;
 
-	switch (__c)
+	/* Printable first: only CR, LF and BS are controls, so every char above 13 skips the three tests. */
+	if (__c > '\r' || (__c != '\r' && __c != '\n' && __c != '\b'))
 	{
-		case '\r':
+		#if ((__DOS__) || (__MSDOS__))
+			if (directvideo)
+			{
+				/* Fast path: write straight into the cached coniox_cell (the same cell coniox_putchxyattr() would compute). */
+				*coniox_cell = (unsigned short) ((ti.attribute << 8) | (__c & 0xFF));
+			}
+			else
+			{
+				coniox_putchxyattr(ti.winleft + ti.curx - 1, ti.wintop + ti.cury - 1, __c, ti.attribute);
+			}
+		#else
+			coniox_putchxyattr(ti.winleft + ti.curx - 1, ti.wintop + ti.cury - 1, __c, ti.attribute);
+		#endif
+		if (ti.curx < winwidth)
+		{
 			#if ((__DOS__) || (__MSDOS__))
-				coniox_cell -= ti.curx - 1;
+				++coniox_cell;
 			#endif
-			ti.curx = 1;
+			ti.curx++;
 			coniox_cursor_dirty = 1;
-			break;
-		case '\n':
+		}
+		else if (_wscroll)
+		{
+			winheight = ti.winbottom - ti.wintop + 1;
 			if (ti.cury < winheight)
 			{
 				#if ((__DOS__) || (__MSDOS__))
-					coniox_cell += ti.screenwidth;
+					coniox_cell += ti.screenwidth - winwidth + 1;
 				#endif
+				ti.curx = 1;
 				ti.cury++;
 				coniox_cursor_dirty = 1;
 			}
-			else if (_wscroll)
+			else
 			{
-				/* LF: keep the column, like Borland's putch (delline() never moves the physical cursor). */
-				oldx = ti.curx;
 				oldy = ti.cury;
 				ti.curx = 1;
 				ti.cury = 1;
 				delline();
-				ti.curx = oldx;
 				ti.cury = oldy;
-				coniox_cursor_dirty = 1;
-			}
-			/* _wscroll = 0: LF on the last line does not scroll. */
-			break;
-		case '\b':
-			if (ti.curx > 1)
-			{
 				#if ((__DOS__) || (__MSDOS__))
-					--coniox_cell;
+					coniox_cell -= winwidth - 1;
 				#endif
-				ti.curx--;
 				coniox_cursor_dirty = 1;
 			}
-			break;
-		default:
-			#if ((__DOS__) || (__MSDOS__))
-				if (directvideo)
-				{
-					/* Fast path: write straight into the cached coniox_cell (the same cell coniox_putchxyattr() would compute). */
-					*coniox_cell = (unsigned short) ((ti.attribute << 8) | (__c & 0xFF));
-				}
-				else
-				{
-					coniox_putchxyattr(ti.winleft + ti.curx - 1, ti.wintop + ti.cury - 1, __c, ti.attribute);
-				}
-			#else
-				coniox_putchxyattr(ti.winleft + ti.curx - 1, ti.wintop + ti.cury - 1, __c, ti.attribute);
-			#endif
-			if (ti.curx < winwidth)
-			{
+		}
+		/* _wscroll = 0: stay on the last column, further output overwrites the edge cell. */
+	}
+	else
+	{
+		switch (__c)
+		{
+			case '\r':
 				#if ((__DOS__) || (__MSDOS__))
-					++coniox_cell;
+					coniox_cell -= ti.curx - 1;
 				#endif
-				ti.curx++;
+				ti.curx = 1;
 				coniox_cursor_dirty = 1;
-			}
-			else if (_wscroll)
-			{
+				break;
+			case '\n':
+				winheight = ti.winbottom - ti.wintop + 1;
 				if (ti.cury < winheight)
 				{
 					#if ((__DOS__) || (__MSDOS__))
-						coniox_cell += ti.screenwidth - winwidth + 1;
+						coniox_cell += ti.screenwidth;
 					#endif
-					ti.curx = 1;
 					ti.cury++;
 					coniox_cursor_dirty = 1;
 				}
-				else
+				else if (_wscroll)
 				{
+					/* LF: keep the column, like Borland's putch (delline() never moves the physical cursor). */
+					oldx = ti.curx;
 					oldy = ti.cury;
 					ti.curx = 1;
 					ti.cury = 1;
 					delline();
+					ti.curx = oldx;
 					ti.cury = oldy;
-					#if ((__DOS__) || (__MSDOS__))
-						coniox_cell -= winwidth - 1;
-					#endif
 					coniox_cursor_dirty = 1;
 				}
-			}
-			/* _wscroll = 0: stay on the last column, further output overwrites the edge cell. */
+				/* _wscroll = 0: LF on the last line does not scroll. */
+				break;
+			case '\b':
+				if (ti.curx > 1)
+				{
+					#if ((__DOS__) || (__MSDOS__))
+						--coniox_cell;
+					#endif
+					ti.curx--;
+					coniox_cursor_dirty = 1;
+				}
+				break;
+		}
 	}
 	return(__c & 0xFF);
 }
@@ -1051,7 +1093,7 @@ int cputs(const char *__str)
 {
 	const char *orig = __str;
 	const char *run;
-	unsigned int i;
+	unsigned int ch;
 	unsigned int runlen, remaining;
 	unsigned long attrcell;
 	int winwidth, winheight;
@@ -1126,18 +1168,18 @@ int cputs(const char *__str)
 		{
 			remaining = CONIOX_MAX_CHARINFO;
 		}
-		/* Bounded scan, like cputws(): strcspn would walk the whole remaining string while a run never passes the window edge. */
-		runlen = 0;
-		while (runlen < remaining && ((unsigned char) run[runlen] > '\r' || (run[runlen] != 0 && run[runlen] != '\r' && run[runlen] != '\n' && run[runlen] != '\b')))
-		{
-			runlen++;
-		}
-		/* One DWORD store per cell (CHAR_INFO = { union {WCHAR; CHAR;} Char; WORD Attributes; } = 4 bytes):
-			char | padding | attribute in a single write, and the loop vectorizes. */
+		/* One bounded pass scans the run and builds its cells (strcspn would walk the whole remaining string while a run never passes the window edge).
+			One DWORD store per cell (CHAR_INFO = { union {WCHAR; CHAR;} Char; WORD Attributes; } = 4 bytes): char | padding | attribute in a single write.
+			Only chars <= 13 can be a control, so the common case costs one compare. */
 		attrcell = (unsigned long) ti.attribute << 16;
-		for (i = 0; i < runlen; i++)
+		for (runlen = 0; runlen < remaining; runlen++)
 		{
-			((unsigned long *) ci)[i] = attrcell | (unsigned char) run[i];
+			ch = (unsigned char) run[runlen];
+			if (ch <= '\r' && (ch == 0 || ch == '\r' || ch == '\n' || ch == '\b'))
+			{
+				break;
+			}
+			((unsigned long *) ci)[runlen] = attrcell | ch;
 		}
 
 		r.Left   = (short) (coniox_orgx + ti.winleft + ti.curx - 2);
@@ -1186,7 +1228,7 @@ int cputws(const wchar_t *__str)
 {
 	const wchar_t *orig = __str;
 	const wchar_t *run;
-	unsigned int i;
+	unsigned int ch;
 	unsigned int runlen, remaining;
 	unsigned long attrcell;
 	int winwidth, winheight;
@@ -1263,15 +1305,16 @@ int cputws(const wchar_t *__str)
 			remaining = CONIOX_MAX_CHARINFO;
 		}
 
-		while (runlen < remaining && run[runlen] != L'\0' && run[runlen] != L'\r' && run[runlen] != L'\n' && run[runlen] != L'\b')
-		{
-			runlen++;
-		}
-		/* One DWORD store per cell: UnicodeChar in the low word, attribute in the high word. */
+		/* One pass scans the run and builds its cells: one DWORD store per cell, UnicodeChar in the low word and attribute in the high word. */
 		attrcell = (unsigned long) ti.attribute << 16;
-		for (i = 0; i < runlen; i++)
+		for (; runlen < remaining; runlen++)
 		{
-			((unsigned long *) ci)[i] = attrcell | (unsigned short) run[i];
+			ch = (unsigned short) run[runlen];
+			if (ch <= L'\r' && (ch == 0 || ch == L'\r' || ch == L'\n' || ch == L'\b'))
+			{
+				break;
+			}
+			((unsigned long *) ci)[runlen] = attrcell | ch;
 		}
 
 		r.Left   = (short) (coniox_orgx + ti.winleft + ti.curx - 2);
@@ -1356,6 +1399,7 @@ static void coniox_putchxyattrwh(int x, int y, int ch, int attr, int w, int h)
 {
 	int i;
 	int total;
+	unsigned long cell;
 	SMALL_RECT r;
 	COORD s, c;
 	CHAR_INFO *ci;
@@ -1372,17 +1416,11 @@ static void coniox_putchxyattrwh(int x, int y, int ch, int attr, int w, int h)
 		return;
 	}
 
-	ci[0].Char.AsciiChar = (char) ch;
-	ci[0].Attributes = (WORD) attr;
-
-	for (i = 1; i < total; i <<= 1)
+	/* One DWORD store per cell, like cputs(): char | padding | attribute. */
+	cell = ((unsigned long) (WORD) attr << 16) | (unsigned char) ch;
+	for (i = 0; i < total; i++)
 	{
-		int copy = i;
-		if (copy > total - i)
-		{
-			copy = total - i;
-		}
-		memcpy(&ci[i], &ci[0], copy * sizeof(CHAR_INFO));
+		((unsigned long *) ci)[i] = cell;
 	}
 
 	r.Left = (short) (coniox_orgx + x - 1);
@@ -1608,7 +1646,8 @@ int gettext(int __left, int __top, int __right, int __bottom, void *__destin)
 	ok = ReadConsoleOutputA(coniox_console_output, ci, s, c, &r);
 	for (i = 0; ok && i < total; i++)
 	{
-		buf[i] = (ci[i].Char.AsciiChar & 0xFF) + ((ci[i].Attributes & 0xFF) << 8);
+		/* One DWORD load per cell: char in bits 0-7, attribute in bits 16-23. */
+		buf[i] = (unsigned short) ((((unsigned long *) ci)[i] & 0xFF) | ((((unsigned long *) ci)[i] >> 8) & 0xFF00));
 	}
 	if (ci != coniox_charinfo)
 	{
@@ -1709,8 +1748,8 @@ int puttext(int __left, int __top, int __right, int __bottom, void *__source)
 	ci = (unsigned short *) __source;
 	for (i = 0; i < total; i++)
 	{
-		buffer[i].Char.AsciiChar = (unsigned char) (ci[i] & 0xFF);
-		buffer[i].Attributes = (ci[i] >> 8) & 0xFF;
+		/* One DWORD store per cell, like cputs(): char | padding | attribute. */
+		((unsigned long *) buffer)[i] = (unsigned long) (ci[i] & 0xFF) | ((unsigned long) (ci[i] >> 8) << 16);
 	}
 	ok = WriteConsoleOutputA(coniox_console_output, buffer, s, c, &r);
 	if (buffer != coniox_charinfo)
@@ -1928,8 +1967,8 @@ void _setcursortype(int __cur_t)
 /* ----------------------------------------------------------------------------------------------------------------- */
 int kbhit(void)
 {
-	DWORD nevents = 0;
-	INPUT_RECORD ir;
+	DWORD nevents = 0, i, done;
+	INPUT_RECORD ir[16];
 	WORD vk;
 
 	coniox_init(NULL);
@@ -1939,52 +1978,68 @@ int kbhit(void)
 	}
 	coniox_flush_cursor();
 
-	while (PeekConsoleInputA(coniox_console_input, &ir, 1, &nevents) && nevents != 0)
+	/* Peek a batch of events: the leading ones that are not a key (key releases, resizes, mouse) are dropped with a single ReadConsoleInput instead of a Peek + Read pair each. */
+	while (PeekConsoleInputA(coniox_console_input, ir, (DWORD) (sizeof(ir) / sizeof(ir[0])), &nevents) && nevents != 0)
 	{
-		if (ir.EventType == KEY_EVENT && ir.Event.KeyEvent.bKeyDown)
+		for (i = 0; i < nevents; i++)
 		{
-			/* A character, or one of the keys DOS reports as 0 + scan code: F1-F12, cursor block, Insert, Delete and keypad 5. */
-			vk = ir.Event.KeyEvent.wVirtualKeyCode;
-			if (ir.Event.KeyEvent.uChar.AsciiChar != 0 || (vk >= VK_F1 && vk <= VK_F12) || (vk >= VK_PRIOR && vk <= VK_DOWN) || vk == VK_INSERT || vk == VK_DELETE || vk == VK_CLEAR)
+			if (ir[i].EventType == KEY_EVENT)
 			{
-				return(1);
+				if (ir[i].Event.KeyEvent.bKeyDown)
+				{
+					/* A character, or one of the keys DOS reports as 0 + scan code: F1-F12, cursor block, Insert, Delete and keypad 5. */
+					vk = ir[i].Event.KeyEvent.wVirtualKeyCode;
+					if (ir[i].Event.KeyEvent.uChar.AsciiChar != 0 || (vk >= VK_F1 && vk <= VK_F12) || (vk >= VK_PRIOR && vk <= VK_DOWN) || vk == VK_INSERT || vk == VK_DELETE || vk == VK_CLEAR)
+					{
+						break;
+					}
+				}
+			}
+			else if (ir[i].EventType == WINDOW_BUFFER_SIZE_EVENT)
+			{
+				CONSOLE_SCREEN_BUFFER_INFO csbi;
+
+				if (GetConsoleScreenBufferInfo(coniox_console_output, &csbi))
+				{
+					coniox_orgx = csbi.srWindow.Left;
+					coniox_orgy = csbi.srWindow.Top;
+					ti.screenwidth = (unsigned short) (csbi.srWindow.Right - csbi.srWindow.Left + 1);
+					ti.screenheight = (unsigned short) (csbi.srWindow.Bottom - csbi.srWindow.Top + 1);
+				}
+				if (ti.winright > ti.screenwidth)
+				{
+					ti.winright = ti.screenwidth;
+				}
+				if (ti.winbottom > ti.screenheight)
+				{
+					ti.winbottom = ti.screenheight;
+				}
+				if (ti.winleft > ti.winright)
+				{
+					ti.winleft = ti.winright;
+				}
+				if (ti.wintop > ti.winbottom)
+				{
+					ti.wintop = ti.winbottom;
+				}
+				if (!coniox_inwindow(ti.winleft + ti.curx - 1, ti.wintop + ti.cury - 1))
+				{
+					gotoxy(1, 1);
+				}
 			}
 		}
-		if (!ReadConsoleInputA(coniox_console_input, &ir, 1, &nevents) || nevents == 0)
+		/* Drop the i events that are not a key; the key itself (i < nevents) stays at the head of the queue for getch(). */
+		if (i != 0 && (!ReadConsoleInputA(coniox_console_input, ir, i, &done) || done == 0))
 		{
 			return(0);
 		}
-		if (ir.EventType == WINDOW_BUFFER_SIZE_EVENT)
+		if (i < nevents)
 		{
-			CONSOLE_SCREEN_BUFFER_INFO csbi;
-
-			if (GetConsoleScreenBufferInfo(coniox_console_output, &csbi))
-			{
-				coniox_orgx = csbi.srWindow.Left;
-				coniox_orgy = csbi.srWindow.Top;
-				ti.screenwidth = (unsigned short) (csbi.srWindow.Right - csbi.srWindow.Left + 1);
-				ti.screenheight = (unsigned short) (csbi.srWindow.Bottom - csbi.srWindow.Top + 1);
-			}
-			if (ti.winright > ti.screenwidth)
-			{
-				ti.winright = ti.screenwidth;
-			}
-			if (ti.winbottom > ti.screenheight)
-			{
-				ti.winbottom = ti.screenheight;
-			}
-			if (ti.winleft > ti.winright)
-			{
-				ti.winleft = ti.winright;
-			}
-			if (ti.wintop > ti.winbottom)
-			{
-				ti.wintop = ti.winbottom;
-			}
-			if (!coniox_inwindow(ti.winleft + ti.curx - 1, ti.wintop + ti.cury - 1))
-			{
-				gotoxy(1, 1);
-			}
+			return(1);
+		}
+		if (nevents < (DWORD) (sizeof(ir) / sizeof(ir[0])))
+		{
+			return(0);	/* the batch covered the whole queue and it is now empty: no second Peek needed */
 		}
 	}
 	return(0);
@@ -2097,32 +2152,11 @@ void coniox_init(const void* title)
 	}
 
 	#if (defined(__FLAT__))
-		if (ti.currmode == MONO)
-		{
-			coniox_vram = (unsigned short *) 0x000B0000UL;
-		}
-		else
-		{
-			coniox_vram = (unsigned short *) 0x000B8000UL;
-		}
+		coniox_vram = (unsigned short *) ((ti.currmode == MONO) ? 0x000B0000UL : 0x000B8000UL);
 	#elif (defined(__DJGPP__))
-		if (ti.currmode == MONO)
-		{
-			coniox_vram = (unsigned short *) (0x000B0000UL + __djgpp_conventional_base);
-		}
-		else
-		{
-			coniox_vram = (unsigned short *) (0x000B8000UL + __djgpp_conventional_base);
-		}
+		coniox_vram = (unsigned short *) (((ti.currmode == MONO) ? 0x000B0000UL : 0x000B8000UL) + __djgpp_conventional_base);
 	#else
-		if (ti.currmode == MONO)
-		{
-			coniox_vram = MK_FP(0xB000, 0);
-		}
-		else
-		{
-			coniox_vram = MK_FP(0xB800, 0);
-		}
+		coniox_vram = MK_FP((ti.currmode == MONO) ? 0xB000 : 0xB800, 0);
 	#endif
 
 	/* Base for 6845 CRT controller: keep the default 0x3D4 even if the adapter
@@ -2316,21 +2350,21 @@ int cputs(const char *__str)
 		}
 		remaining = winwidth - ti.curx + 1;
 
-		/* Bounded scan, like cputws(): strcspn would walk the whole remaining string while a run never passes the window edge. */
-		runlen = 0;
-		while (runlen < remaining && ((unsigned char) run[runlen] > '\r' || (run[runlen] != 0 && run[runlen] != '\r' && run[runlen] != '\n' && run[runlen] != '\b')))
-		{
-			runlen++;
-		}
 		if (directvideo)
 		{
-			/* Fast path: the whole run straight to VRAM. */
-			coniox_putrun(coniox_currentoffset, run, attrword, runlen);
+			/* Fast path: coniox_putrun() scans the run and writes it straight to VRAM in one pass; it stops at the first control or after remaining chars and returns how many cells it wrote. */
+			runlen = coniox_putrun(coniox_currentoffset, run, attrword, remaining);
 		}
 		else
 		{
 			unsigned int i;
 
+			/* Bounded scan, like cputws(): strcspn would walk the whole remaining string while a run never passes the window edge. */
+			runlen = 0;
+			while (runlen < remaining && ((unsigned char) run[runlen] > '\r' || (run[runlen] != 0 && run[runlen] != '\r' && run[runlen] != '\n' && run[runlen] != '\b')))
+			{
+				runlen++;
+			}
 			for (i = 0; i < runlen; i++)
 			{
 				coniox_putchxyattr(ti.winleft + ti.curx - 1 + (int) i, ti.wintop + ti.cury - 1, run[i], ti.attribute);
@@ -2908,11 +2942,14 @@ void gotoxy(int __x, int __y)
 	{
 		if (directvideo)
 		{
-			pokew(0x40, 0x50, (scry << 8) | (scrx & 0xFF)); /* Put cursor position in BIOS */
-			outportb(coniox_basecrt, 0x0F);
-			outportb(coniox_basecrt + 1, cursor & 0xFF);
-			outportb(coniox_basecrt, 0x0E);
-			outportb(coniox_basecrt + 1, (cursor >> 8) & 0xFF);
+			/* The BIOS data area word and the CRTC address are always written together, so when the word already holds this position the CRTC does too: no port writes at all, they are the slowest thing a gotoxy() does. */
+			if (peekw(0x40, 0x50) != (unsigned short) ((scry << 8) | (scrx & 0xFF)))
+			{
+				pokew(0x40, 0x50, (scry << 8) | (scrx & 0xFF)); /* Put cursor position in BIOS */
+				/* CRTC index+data in one 16-bit OUT (index at 3D4h, data at 3D5h): two port writes instead of four. */
+				outportw(coniox_basecrt, ((cursor & 0xFF) << 8) | 0x0F);
+				outportw(coniox_basecrt, (cursor & 0xFF00) | 0x0E);
+			}
 		}
 		else
 		{

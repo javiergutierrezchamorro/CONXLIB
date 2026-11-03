@@ -153,13 +153,32 @@ VERSION HISTORY
  - DOS32 coniox_putrun pragma aux rewritten for 386+: dword aligned destination, 4 chars per pass (one dword load, two STOSD) and a short tail, instead of 2 chars per pass.
  - DOS32 coniox_fmemsetw and coniox_fmemcpy pragma aux now align the destination to a dword before REP STOSD/MOVSD (partial-width windows, odd columns, user buffers).
  - DOS cputs(): the run scan tests the common case (char > 13) first, 2 compares per char instead of 5.
+
+5.07 - 2026/11/02
+ - DOS gotoxy() programs the CRTC cursor address with two 16-bit OUT (index+data) instead of four 8-bit OUT. Added outportw() (pragma aux for Watcom, outport for Borland, outpw elsewhere; DJGPP already has it).
+
+5.08 - 2026/11/02
+ - Windows kbhit(): peeks a batch of 16 events and drops the leading non-key ones (key releases, resizes, mouse) with one ReadConsoleInput; it no longer needs a Peek + Read pair per event plus a final empty Peek, so polling after a key press costs 2 console calls instead of 3, and event floods cost far less.
+ - Windows cputs()/cputws(): the run scan and the cell build are one pass instead of two, and the scan tests the common case (char > 13) first.
+ - Windows coniox_putchxyattrwh(): plain DWORD fill instead of the memcpy doubling, so clrscr()/clreol()/delline() fills are simpler and also set the unused char padding to zero.
+
+5.09 - 2026/11/02
+ - DOS cputs(): coniox_putrun() now scans and writes the run in one pass and returns the cells written, instead of a C scan loop followed by the write. DOS32 (386+) moves 4 chars per pass with a SWAR test for control chars and never loads a dword across a 4K page; DOS16 gets a one-pass LODSB/STOSW loop.
+ - putch(): printable chars are tested first (one compare for chars above 13) and the three control cases moved to a switch.
+ - DOS gotoxy(): no port writes when the BIOS data area already holds the target position.
+ - DOS coniox_init(): the VRAM base is selected once instead of three times.
+
+5.10 - 2026/11/03
+ - DOS16/DOS32 coniox_putrun pragma aux: printable chars now fall through the control test instead of taking a jump, which is the expensive case on an 8088 (16 cycles taken, 4 not taken), a 286 and a 386.
+ - putch(): the window height is only computed when a wrap or a line feed needs it.
+ - Windows gettext()/puttext(): one DWORD access per cell instead of two field accesses.
 */
 
 #pragma once
 #ifndef _CONIOX_H_
 #define _CONIOX_H_
 
-#define coniox_version (506)
+#define coniox_version (510)
 #define coniox_build (__DATE__)
 
 #ifdef _MSC_VER
@@ -223,6 +242,12 @@ extern "C" {
 	#pragma aux inportb  = "in  al, dx" parm nomemory [dx] value [al] modify nomemory exact [al];
 	void outportb(unsigned int port, unsigned char value);
 	#pragma aux outportb = "out dx, al" parm nomemory [dx] [al] modify nomemory exact [];
+	void outportw(unsigned int port, unsigned short value);
+	#pragma aux outportw = "out dx, ax" parm nomemory [dx] [ax] modify nomemory exact [];
+#elif defined(__TURBOC__)
+	#define outportw	outport
+#elif !defined(__DJGPP__)
+	#define outportw	outpw
 #endif
 
 #if defined(__DJGPP__)
