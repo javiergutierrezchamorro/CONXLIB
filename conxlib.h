@@ -4,8 +4,51 @@
 
 #include "coniox.h"
 
-#define conioxlib_version (203)
+#define conioxlib_version (205)
 #define conioxlib_build (__DATE__)
+
+/* Compiler identification, shown in the splash and the About box of the
+   library and available to the applications that link it */
+#if defined(__WATCOMC__)
+	#if __WATCOMC__ >= 1300
+		#define conioxlib_compiler	"Open Watcom C/C++"
+	#else
+		#define conioxlib_compiler	"Watcom C/C++"
+	#endif
+#elif defined(__TURBOC__)
+	#define conioxlib_compiler	"Borland C/C++"
+#elif defined(__DJGPP__)
+	#define conioxlib_compiler	"DJGPP GCC " __VERSION__
+#elif defined(_MSC_VER)
+	#define conioxlib_compiler	"Microsoft C/C++"
+#elif defined(__GNUC__)
+	#define conioxlib_compiler	"GCC"
+#else
+	#define conioxlib_compiler	"Unknown compiler"
+#endif
+
+/* Memory model in use: DOS flat builds (Watcom 32 bit with PMODE/W,
+   DOS/4G, DOS/32A...) report "Flat 32-bit"; 16 bit models report
+   their own name */
+#if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32)
+	#define conioxlib_model	"Flat 32-bit (Win32)"
+#elif defined(__FLAT__)
+	#define conioxlib_model	"Flat 32-bit"
+#elif defined(__DJGPP__)
+	#define conioxlib_model	"Flat 32-bit (DPMI)"
+#elif defined(__HUGE__)
+	#define conioxlib_model	"Huge 16-bit"
+#elif defined(__LARGE__)
+	#define conioxlib_model	"Large 16-bit"
+#elif defined(__COMPACT__)
+	#define conioxlib_model	"Compact 16-bit"
+#elif defined(__MEDIUM__)
+	#define conioxlib_model	"Medium 16-bit"
+#elif defined(__SMALL__)
+	#define conioxlib_model	"Small 16-bit"
+#else
+	#define conioxlib_model	"Unknown model"
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -197,7 +240,7 @@ unsigned char conioxlib_view(unsigned short x1, unsigned short y1, unsigned shor
 unsigned char conioxlib_help(unsigned short x1, unsigned short y1, unsigned short x2, unsigned short y2, unsigned char atr0, unsigned char atr1, char *, char *, char[][61]);
 unsigned char conioxlib_helpindex(unsigned short x1, unsigned short y1, unsigned char atr0, unsigned char atr1, char *, char [][16]);
 unsigned char conioxlib_filemultiselector(unsigned char *sdisk, char *sdir, struct conioxlib_sfiles *files);
-/* conioxlib_fileselector(): compact single file picker (drives, directories and names only) for the Open and Save as dialogs; returns 1 when a file is chosen and 0 when cancelled */
+/* conioxlib_fileselector(): compact single file picker (drives, directories and names only) for the Open and Save as dialogs; returns 1 when a file is chosen and 0 when cancelled. The list shows long file names when the system has them (Windows, and DOS 7 / Windows 9x with LFN under OpenWatcom) but the name returned is always the short 8.3 one, so it can be opened on any system. filemultiselector() works the same way: its list widens the name column when there are long names and the table keeps the short names */
 unsigned char conioxlib_fileselector(unsigned char *sdisk, char *sdir, char *name);
 
 /* Theme package: 0=Borland C++ 3.1, 1=Turbo C 2.0, 2=Turbo C 1.x, 3=Norton Utilities 9, 4=PC Tools, 5=Turbo Pascal 7.0, 6=Norton Commander, 7=MS-DOS Edit, 8=Lotus 1-2-3 */

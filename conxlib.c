@@ -112,7 +112,11 @@ static int _conioxlib_keyqueue[CONIOXLIB_KEYQUEUE];
 static unsigned char _conioxlib_keyqhead = 0;
 static unsigned char _conioxlib_keyqtail = 0;
 
-static int _conioxlib_filemultiselector_sort(const void *a, const void *b);
+/* Set whenever a library routine wipes line 25 without restoring it: blocks() and
+   clock() repaint the lock indicators and the clock the next time they run */
+static int _conioxlib_blocksdirty = 1;
+
+static int _conioxlib_filemultiselector_sort(const struct conioxlib_sfiles *fa, const char *la, const struct conioxlib_sfiles *fb, const char *lb);
 static void _conioxlib_filemultiselector_format(char *res, unsigned long int n);
 
 /* Darkens every attribute byte of a rectangle to 8 (dark gray) via gettext/puttext.
@@ -554,19 +558,30 @@ static void _conioxlib_paintclock (struct tm *t)
 void conioxlib_clock (void)
 {
 	static unsigned int oldmin = 0xFFFF;
+	static time_t oldt = 0;
 	time_t t;
 	struct tm *ti;
 
-	time(&t);
-	ti = localtime(&t);
-	/* Refresh the lock indicators on every call: blocks() repaints them only
-	   when their cells changed or line 25 was wiped by the library */
-	conioxlib_blocks();
-	/* localtime() can fail: never dereference a NULL struct tm */
-	if ((ti != 0) && (oldmin != (unsigned int) ti->tm_min))
+	/* A wiped line 25 lost the clock cells too: force the repaint */
+	if (_conioxlib_blocksdirty != 0)
 	{
-		oldmin = (unsigned int) ti->tm_min;
-		_conioxlib_paintclock(ti);
+		oldmin = 0xFFFF;
+	}
+	/* Refresh the lock indicators on every call: blocks() repaints them only
+	   when their state changed or line 25 was wiped by the library */
+	conioxlib_blocks();
+	/* The minute can only change when the second does: skip localtime() on the other calls of the same second */
+	t = time(0);
+	if ((t != oldt) || (oldmin == 0xFFFF))
+	{
+		oldt = t;
+		ti = localtime(&t);
+		/* localtime() can fail: never dereference a NULL struct tm */
+		if ((ti != 0) && (oldmin != (unsigned int) ti->tm_min))
+		{
+			oldmin = (unsigned int) ti->tm_min;
+			_conioxlib_paintclock(ti);
+		}
 	}
 }
 
@@ -637,6 +652,7 @@ void conioxlib_pollmouse (void)
 	CONSOLE_SCREEN_BUFFER_INFO info;
 	HWND hwnd;
 	POINT pt;
+	int ptok;
 	CONSOLE_FONT_INFO fi;
 	int col, row;
 	DWORD want;
@@ -683,7 +699,8 @@ void conioxlib_pollmouse (void)
 		_conioxlib_hwndcache = GetConsoleWindow();
 	}
 	hwnd = _conioxlib_hwndcache;
-	if (hwnd != 0 && GetCursorPos(&pt) && ScreenToClient(hwnd, &pt))
+	ptok = (hwnd != 0) && GetCursorPos(&pt) && ScreenToClient(hwnd, &pt);
+	if (ptok)
 	{
 		/* The font size is constant for practical purposes: refetch it every 64
 		   polls so a mid-session font change is picked up at no steady-state cost */
@@ -788,15 +805,13 @@ void conioxlib_pollmouse (void)
 	   asynchronously with edge detection. Clicks are only accepted when the console
 	   has focus and the cursor is inside the client area; in the classic
 	   console (conhost) the events were already read above. */
-	if ((conioxlib_mousestatus.lclick == 0) && (conioxlib_mousestatus.rclick == 0) && (hwnd != 0) && (GetForegroundWindow() == hwnd))
+	if ((conioxlib_mousestatus.lclick == 0) && (conioxlib_mousestatus.rclick == 0) && ptok && (GetForegroundWindow() == hwnd))
 	{
-		POINT apt;
 		RECT arc;
 
-		GetCursorPos(&apt);
-		ScreenToClient(hwnd, &apt);
+		/* pt already holds the cursor in client coordinates (read above) */
 		GetClientRect(hwnd, &arc);
-		if ((apt.x >= arc.left) && (apt.x < arc.right) && (apt.y >= arc.top) && (apt.y < arc.bottom))
+		if ((pt.x >= arc.left) && (pt.x < arc.right) && (pt.y >= arc.top) && (pt.y < arc.bottom))
 		{
 			if ((GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0)
 			{
@@ -929,6 +944,16 @@ void conioxlib_pollmouse (void)
 			unsigned char _conioxlib_attr;
 			unsigned char _conioxlib_sattr;
 
+			/* Nothing moved and the pointer cell is intact: one gettext instead of two gettext plus a puttext on every poll */
+			if (((int) conioxlib_mousestatus.x == _conioxlib_ptrx) && ((int) conioxlib_mousestatus.y == _conioxlib_ptry))
+			{
+				_conioxlib_attr = (unsigned char) ((_conioxlib_ptrcell >> 8) & 0xFF);
+				_conioxlib_sattr = (unsigned char) (((_conioxlib_attr & 0x0F) << 4) | (_conioxlib_attr >> 4));
+				if ((gettext((unsigned short) _conioxlib_ptrx, (unsigned short) _conioxlib_ptry, (unsigned short) _conioxlib_ptrx, (unsigned short) _conioxlib_ptry, (void *) _conioxlib_cells) != 0) && (_conioxlib_cells[0] == (unsigned short) (0x01 | ((unsigned short) _conioxlib_sattr << 8))))
+				{
+					return;
+				}
+			}
 			if ((_conioxlib_ptrx >= 1) && (_conioxlib_ptry >= 1))
 			{
 				if (gettext((unsigned short) _conioxlib_ptrx, (unsigned short) _conioxlib_ptry, (unsigned short) _conioxlib_ptrx, (unsigned short) _conioxlib_ptry, (void *) _conioxlib_cells) != 0)
@@ -967,13 +992,6 @@ void conioxlib_pollmouse (void)
 #endif
 
 
-/* Last image painted on the lock cells 60-74 of line 25 plus a dirty flag
-   set whenever a library routine wipes line 25 without restoring it.
-   blocks() runs on every poll cycle (~100 Hz): with the cache the puttext()
-   only fires on a real state change instead of on every single call. */
-static unsigned short _conioxlib_blockscache[15];
-static int _conioxlib_blocksdirty = 1;
-
 /* ------------ Draws the state of the lock indicators ------------- */
 /* blocks:
    Prototype:
@@ -988,17 +1006,11 @@ void conioxlib_blocks (void)
 {
 	char status[16];
 	unsigned short cells[15];
-	unsigned int i;
+	unsigned int i, state;
 	unsigned short cellattr;
 	int on_ins, on_cap, on_num, on_scr;
+	static unsigned int oldstate = 0xFFFF;
 
-	memset(status, 32, sizeof(status) - 1);
-	status[sizeof(status) - 1] = 0;
-	/* Always show the four mnemonics; uppercase when the lock is active */
-	memcpy(&status[0], "ins", 3);
-	memcpy(&status[4], "cap", 3);
-	memcpy(&status[8], "num", 3);
-	memcpy(&status[12], "scr", 3);
 #if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32)
 	on_ins = (GetKeyState(VK_INSERT) & 1) != 0;
 	on_cap = (GetKeyState(VK_CAPITAL) & 1) != 0;
@@ -1015,23 +1027,23 @@ void conioxlib_blocks (void)
 		on_scr = (fun & 16) != 0;
 	}
 #endif
-	if (on_ins)
+	/* The four locks and the status color packed in one word: this runs on every
+	   poll cycle (~100 Hz), so nothing is rebuilt or painted unless the word
+	   changed or line 25 was wiped (blocksdirty) */
+	state = (unsigned int) ((on_ins ? 1 : 0) | (on_cap ? 2 : 0) | (on_num ? 4 : 0) | (on_scr ? 8 : 0) | ((unsigned int) _conioxlib_curtheme.atrstatus << 4));
+	if ((_conioxlib_blocksdirty == 0) && (state == oldstate))
 	{
-		memcpy(&status[0], "INS", 3);
+		return;
 	}
-	if (on_cap)
-	{
-		memcpy(&status[4], "CAP", 3);
-	}
-	if (on_num)
-	{
-		memcpy(&status[8], "NUM", 3);
-	}
-	if (on_scr)
-	{
-		memcpy(&status[12], "SCR", 3);
-	}
-	/* Repaint only when a lock changed or when line 25 was wiped (blocksdirty) */
+	oldstate = state;
+	_conioxlib_blocksdirty = 0;
+	/* Always show the four mnemonics; uppercase when the lock is active */
+	memset(status, 32, sizeof(status) - 1);
+	status[sizeof(status) - 1] = 0;
+	memcpy(&status[0], on_ins ? "INS" : "ins", 3);
+	memcpy(&status[4], on_cap ? "CAP" : "cap", 3);
+	memcpy(&status[8], on_num ? "NUM" : "num", 3);
+	memcpy(&status[12], on_scr ? "SCR" : "scr", 3);
 	/* puttext avoids window/gotoxy trouble on Win32 buffered consoles; the status
 	   line is a fixed 80x25 area: status() writes 1-59, the lock indicators 60-74 */
 	cellattr = (unsigned short) ((unsigned int) _conioxlib_curtheme.atrstatus << 8);
@@ -1039,12 +1051,7 @@ void conioxlib_blocks (void)
 	{
 		cells[i] = (unsigned short) (cellattr | (unsigned char) status[i]);
 	}
-	if (_conioxlib_blocksdirty || (memcmp(_conioxlib_blockscache, cells, sizeof(cells)) != 0))
-	{
-		puttext(60, 25, 74, 25, cells);
-		memcpy(_conioxlib_blockscache, cells, sizeof(cells));
-		_conioxlib_blocksdirty = 0;
-	}
+	puttext(60, 25, 74, 25, cells);
 }
 
 
@@ -1604,16 +1611,15 @@ unsigned int conioxlib_ckey (void)
 {
 	unsigned int key;
 
-	do
+	for (;;)
 	{
-		key = 0;
 		_conioxlib_poll();
-		if (!_conioxlib_keyhit())
+		if (_conioxlib_keyhit())
 		{
-			delay(10);
+			break;
 		}
+		delay(10);
 	}
-	while (!_conioxlib_keyhit());
 	_conioxlib_readkey(&key);
 	return(key);
 }
@@ -2244,7 +2250,7 @@ unsigned char conioxlib_menu (unsigned short x1, unsigned short y1, unsigned cha
 				if ((conioxlib_mousestatus.y >= (unsigned int) y1) && (conioxlib_mousestatus.y <= (unsigned int) (y1 + (nvis - 1) * separation)))
 				{
 					row = ((int) conioxlib_mousestatus.y - (int) y1) / (int) separation;
-					if ((int) conioxlib_mousestatus.x < (x1 + (unsigned int) l))
+					if (((int) conioxlib_mousestatus.x >= (int) x1) && ((int) conioxlib_mousestatus.x < ((int) x1 + l)))
 					{
 						/* Click on an item: pick it */
 						i = top + row;
@@ -2864,6 +2870,8 @@ void interrupt error (unsigned int bp, unsigned int di, unsigned int si, unsigne
 	unsigned int err;
 	unsigned char oldx, oldy;
 	char *oldb;
+	static const char *errmsg[13] = {"Disk is write protected", "Unknown unit", "Drive is not ready", "Unknown command", "Data error (Bad CRC)", "Bad request structure length", "Seek error", "Unknown media type", "Sector not found", "Printer is out of paper", "Write fault", "Read fault", "General failure"};
+	static const unsigned char answer[4] = {1, 3, 0, 2};
 	char butt[][11] = {"Retry", "Fail", "Ignore", "Abort"};
 	char desc[][71] = {"Retry the process that have caused the error                        ",
 										"Fail the process that have caused the error                         ",
@@ -2881,83 +2889,16 @@ void interrupt error (unsigned int bp, unsigned int di, unsigned int si, unsigne
 	gettext(8, 10, 70, 16, oldb);
 	box(8, 10, 68, 15, CONIOXLIB_ATTR(WHITE, RED), A_DOUBLE, "Error", 1);
 	cputsc(8, 68, 11, "A fatal error occurred");
-	if (err == 0x00)
+	if (err <= 0x0C)
 	{
-		cputsc(8, 68, 12, "Disk is write protected");
-	}
-	else if (err == 0x01)
-	{
-		cputsc(8, 68, 12, "Unknown unit");
-	}
-	else if (err == 0x02)
-	{
-		cputsc(8, 68, 12, "Drive is not ready");
-	}
-	else if (err == 0x03)
-	{
-		cputsc(8, 68, 12, "Unknown command");
-	}
-	else if (err == 0x04)
-	{
-		cputsc(8, 68, 12, "Data error (Bad CRC)");
-	}
-	else if (err == 0x05)
-	{
-		cputsc(8, 68, 12, "Bad request structure length");
-	}
-	else if (err == 0x06)
-	{
-		cputsc(8, 68, 12, "Seek error");
-	}
-	else if (err == 0x07)
-	{
-		cputsc(8, 68, 12, "Unknown media type");
-	}
-	else if (err == 0x08)
-	{
-		cputsc(8, 68, 12, "Sector not found");
-	}
-	else if (err == 0x09)
-	{
-		cputsc(8, 68, 12, "Printer is out of paper");
-	}
-	else if (err == 0x0A)
-	{
-		cputsc(8, 68, 12, "Write fault");
-	}
-	else if (err == 0x0B)
-	{
-		cputsc(8, 68, 12, "Read fault");
-	}
-	else if (err == 0x0C)
-	{
-		cputsc(8, 68, 12, "General failure");
+		cputsc(8, 68, 12, errmsg[err]);
 	}
 	err = conioxlib_buttons (19, 12, CONIOXLIB_ATTR(BLACK, GREEN), CONIOXLIB_ATTR(WHITE, GREEN), CONIOXLIB_ATTR(YELLOW, GREEN), butt, desc, 4, 2);
 	gotoxy(oldx, oldy);
 	puttext(8, 10, 70, 16, oldb);
 	free(oldb);
-	if (err == 0)
-	{
-		ax = 1;
-	}
-	else if (err == 1)
-	{
-		ax = 3;
-	}
-	else if (err == 2)
-	{
-		ax = 0;
-	}
-	else if (err == 3)
-	{
-		ax = 2;
-	}
-	else
-	{
-		/* ESC or F1 on the dialog: fail the call */
-		ax = 3;
-	}
+	/* Retry, Fail, Ignore and Abort map to the DOS answers; ESC or F1 on the dialog fail the call */
+	ax = (err < 4) ? answer[err] : 3;
 }
 #pragma warn .par
 
@@ -2982,9 +2923,9 @@ void interrupt error (unsigned int bp, unsigned int di, unsigned int si, unsigne
    */
 unsigned char conioxlib_view (unsigned short x1, unsigned short y1, unsigned short x2, unsigned short y2, unsigned char atr0, unsigned char atr1, char buffer[][61], unsigned char last, const char *title)
 {
-	unsigned int z, c;
+	unsigned int z, c, w, len;
 	unsigned char oldx, oldy;
-	int f, ini, maxini;
+	int f, ini, oldini, maxini;
 	unsigned int key;
 	char *oldb;
 	char tmp[70];
@@ -3015,6 +2956,13 @@ unsigned char conioxlib_view (unsigned short x1, unsigned short y1, unsigned sho
 	}
 	z = 0;
 	ini = 0;
+	oldini = -1;
+	/* Text columns between the left margin and the scroll bar, never more than the 60 of a line */
+	w = (unsigned int) (x2 - x1 - 2);
+	if (w > 60)
+	{
+		w = 60;
+	}
 	/* Last first line that still fills the window */
 	maxini = (int) last - (int) (y2 - y1 - 1);
 	if (maxini < 0)
@@ -3023,23 +2971,39 @@ unsigned char conioxlib_view (unsigned short x1, unsigned short y1, unsigned sho
 	}
 	do
 	{
-		textattr(atr0);
-		gotoxy (x2, z + y1 + 2);
-		putch('\xB0');
-		c = y1 + 1;
-		textattr(atr1);
-		for (f = ini; f != ini + y2 - y1 - 1; f++)
+		/* Repaint only when the first visible line changed: the thumb moves and the rows are redrawn */
+		if (ini != oldini)
 		{
-			memset(tmp, 32, 60);
-			tmp[60] = 0;
-			/* Rows past the content are painted blank without touching the caller buffer */
-			if (f < (int) last)
+			oldini = ini;
+			textattr(atr0);
+			gotoxy(x2, z + y1 + 2);
+			putch('\xB0');
+			if (maxini != 0)
 			{
-				memcpy(tmp, buffer[f], strlen(buffer[f]));
+				z = (unsigned int) ((ini * (y2 - y1 - 4)) / maxini);
 			}
-			gotoxy(x1 + 2, c);
-			cputs(tmp);
-			c++;
+			gotoxy(x2, z + y1 + 2);
+			putch('\xB2');
+			c = y1 + 1;
+			textattr(atr1);
+			for (f = ini; f != ini + y2 - y1 - 1; f++)
+			{
+				memset(tmp, 32, w);
+				tmp[w] = 0;
+				/* Rows past the content are painted blank without touching the caller buffer */
+				if (f < (int) last)
+				{
+					len = (unsigned int) strlen(buffer[f]);
+					if (len > w)
+					{
+						len = w;
+					}
+					memcpy(tmp, buffer[f], len);
+				}
+				gotoxy(x1 + 2, c);
+				cputs(tmp);
+				c++;
+			}
 		}
 		do
 		{
@@ -3124,15 +3088,6 @@ unsigned char conioxlib_view (unsigned short x1, unsigned short y1, unsigned sho
 		{
 			ini = maxini;
 		}
-		textattr(atr0);
-		gotoxy(x2, z + y1 + 2);
-		putch('\xB0');
-		if (maxini != 0)
-		{
-			z = (ini * (y2 - y1 - 4)) / maxini;
-		}
-		gotoxy(x2, z + y1 + 2);
-		putch('\xB2');
 	}
 	while ((key != KBD_ESC) && (key != KBD_ENTER) && (key != KBD_F1));
 	conioxlib_restorescr(x1, y1, x2 + 2, y2 + 1, oldb);
@@ -3312,6 +3267,70 @@ unsigned char conioxlib_help (unsigned short x1, unsigned short y1, unsigned sho
 }
 
 
+#if ((__DOS__) || (__MSDOS__)) && defined(__WATCOMC__)
+/* ------------------ Long file names (DOS 7 / Windows 9x) ---------------------- */
+/* Int 21h AX=7160h CL=2: true name in its long form. path is a short path such as C:\DIR\REPORT~1.TXT
+   and the last component of the answer (the long name of the file) is copied to out, outsize bytes at
+   most. Returns 0 on success, 0x7100 when the services do not exist (DOS 6 and older, or LFN
+   disabled) and the DOS error code otherwise. The lists show the long name; the callers always get
+   the short one back */
+static unsigned int _conioxlib_lfnlong (const char *path, char *out, unsigned int outsize)
+{
+	unsigned char raw[262];
+	unsigned int res;
+	int carry;
+	char *p;
+#if defined(__FLAT__)
+	struct _conioxlib_rmregs rr;
+
+	memset(&rr, 0, sizeof(rr));
+	rr.eax = 0x7160;
+	rr.ecx = 2;
+	rr.esi = 0;
+	rr.edi = 128;
+	/* Real mode block of 32 paragraphs: the path at offset 0 and the answer at offset 128 */
+	if (!_conioxlib_rmint21(&rr, 32, path, (unsigned int) strlen(path) + 1, raw, 128, sizeof(raw)))
+	{
+		return(0x7100);
+	}
+	res = (unsigned int) (rr.eax & 0xFFFF);
+	carry = ((rr.flags & 1) != 0);
+#else
+	union REGS r;
+	struct SREGS s;
+
+	memset(&r, 0, sizeof(r));
+	memset(&s, 0, sizeof(s));
+	memset(raw, 0, sizeof(raw));
+	_conioxlib_rax(r) = 0x7160;
+	_conioxlib_rcx(r) = 2;
+	s.ds = FP_SEG(path);
+	r.w.si = FP_OFF(path);
+	s.es = FP_SEG(raw);
+	_conioxlib_rdi(r) = FP_OFF(raw);
+	_coniox_int86x(0x21, &r, &r, &s);
+	res = _conioxlib_rax(r);
+	carry = (_conioxlib_rcflag(r) != 0);
+#endif
+	/* DOS 6 answers AX=7100h (with or without carry) to a function it does not know */
+	if (res == 0x7100)
+	{
+		return(0x7100);
+	}
+	if (carry)
+	{
+		return((res != 0) ? res : 1);
+	}
+	raw[sizeof(raw) - 1] = 0;
+	p = strrchr((char *) raw, '\\');
+	p = (p != 0) ? p + 1 : (char *) raw;
+	strncpy(out, p, outsize - 1);
+	out[outsize - 1] = 0;
+	return(0);
+}
+#endif
+
+
 /* ------------------- Environment to pick up files ----------------------- */
 /* filemultiselector:
    Prototype:
@@ -3365,6 +3384,15 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 	char *s;
 	char mask[15];
 	char tmp1[80], tmp2[80], dir[80], olddir[80];
+	/* Long names of the entries (what the list shows) in the same order as the table; the table keeps the short ones */
+	static char CONIOXLIB_FARDATA lnames[CONIOXLIB_MAXFILES][41];
+	struct conioxlib_sfiles tmpf;
+	char tmpl[41];
+	int nw, cw;
+#if ((__DOS__) || (__MSDOS__)) && defined(__WATCOMC__)
+	int lfn;
+	unsigned int lfnr;
+#endif
 
 	_setcursortype(_NOCURSOR);
 	oldb = conioxlib_savescr(1, 2, 80, 24);
@@ -3449,7 +3477,12 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 		i++;
 	}
 	key = peekb(0x40, 0x75);
-	for (j = 0; j != key; j++)
+	/* The DOS letters are 26: a wrong byte of the BIOS data area must not run the table over its limit */
+	if ((unsigned int) i + key > 26)
+	{
+		key = (i < 26) ? (unsigned int) (26 - i) : 0;
+	}
+	for (j = 0; j != (int) key; j++)
 	{
 		sprintf(files[i].name, "\x10%c\x11", i + 'A');
 		strcpy(files[i].size, "\xF0   DRIVE   \xF0");
@@ -3469,8 +3502,15 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 	ndisks = i - 1;
 	textattr(CONIOXLIB_ATTR(BLACK, CYAN));
 	strcpy(mask, "*.*");
-	_conioxlib_hint("ESC close; ENTER accept; SPACE/INS mark; arrows move");
+	for (j = 0; j <= (int) ndisks; j++)
+	{
+		strcpy(lnames[j], files[j].name);
+	}
+#if ((__DOS__) || (__MSDOS__)) && defined(__WATCOMC__)
+	lfn = 1;
+#endif
 	select_1:
+	_conioxlib_hint("ESC close; ENTER accept; SPACE/INS mark; arrows move");
 	for (i = 0; i != CONIOXLIB_MAXFILES; i++)
 	{
 		files[i].selected = 0;
@@ -3540,8 +3580,8 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 	{
 #if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32)
 		memset(files[i].name, 0, 13);
-		/* A long name does not fit the 12 characters of the table: its 8.3 alias is stored instead, so the entry can still be opened */
-		strncpy(files[i].name, ((strlen(ffd.cFileName) > 12) && (ffd.cAlternateFileName[0] != 0)) ? ffd.cAlternateFileName : ffd.cFileName, 12);
+		/* The table keeps the 8.3 alias (it is what the caller gets back and can open); the list shows the long name */
+		strncpy(files[i].name, (ffd.cAlternateFileName[0] != 0) ? ffd.cAlternateFileName : ffd.cFileName, 12);
 		if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 #else
 		memcpy(files[i].name, _conioxlib_ffname(ffblk), 12);
@@ -3573,6 +3613,28 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 			_conioxlib_filemultiselector_format(files[i].size, _conioxlib_ffsize(ffblk));
 #endif
 			strlwr(files[i].name);
+		}
+#if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32)
+		strncpy(lnames[i], ffd.cFileName, 40);
+		lnames[i][40] = 0;
+#else
+		strcpy(lnames[i], files[i].name);
+#if defined(__WATCOMC__)
+		if (lfn && (strcmp(files[i].name, ".") != 0) && (strcmp(files[i].name, "..") != 0))
+		{
+			sprintf(tmp1, "%c:%s%s", disk, dir, files[i].name);
+			lfnr = _conioxlib_lfnlong(tmp1, lnames[i], 41);
+			if (lfnr == 0x7100)
+			{
+				lfn = 0;
+			}
+		}
+#endif
+#endif
+		/* A plain 8.3 name keeps the classic case of the table; a long name is listed as it is stored */
+		if (stricmp(lnames[i], files[i].name) == 0)
+		{
+			strcpy(lnames[i], files[i].name);
 		}
 #if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32)
 		FileTimeToLocalFileTime(&ffd.ftLastWriteTime, &ft);
@@ -3689,8 +3751,32 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 		files[i].date[0] = 0;
 		files[i].time[0] = 0;
 		files[i].comment[0] = 0;
+		lnames[i][0] = 0;
 	}
-	qsort((void *) files, last + 1, sizeof(files[0]), _conioxlib_filemultiselector_sort);
+	/* Insertion sort of the table together with the long names (200 entries at most) */
+	for (i = 1; i <= (int) last; i++)
+	{
+		memcpy(&tmpf, &files[i], sizeof(tmpf));
+		strcpy(tmpl, lnames[i]);
+		for (j = i - 1; (j >= 0) && (_conioxlib_filemultiselector_sort(&files[j], lnames[j], &tmpf, tmpl) > 0); j--)
+		{
+			memcpy(&files[j + 1], &files[j], sizeof(tmpf));
+			strcpy(lnames[j + 1], lnames[j]);
+		}
+		memcpy(&files[j + 1], &tmpf, sizeof(tmpf));
+		strcpy(lnames[j + 1], tmpl);
+	}
+	/* Name column: 12 characters, or 29 when any entry has a long name (the comment column gives up the difference) */
+	nw = 12;
+	for (i = 0; i <= (int) last; i++)
+	{
+		if (strlen(lnames[i]) > 12)
+		{
+			nw = 29;
+			break;
+		}
+	}
+	cw = 45 - nw;
 	box(2, 2, 78, 23, 0, A_NONE, "", 5);
 	textattr(CONIOXLIB_ATTR(BLACK, CYAN));
 	memset(tmp1, 0xCD, 77);
@@ -3705,8 +3791,21 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 	gotoxy(3, 2);
 	cputs("[\xFE]");
 	textattr(CONIOXLIB_ATTR(BLACK, CYAN));
+	memset(tmp1, 32, 77);
+	tmp1[0] = '\xBA';
+	tmp1[nw + 1] = '\xBA';
+	tmp1[nw + 16] = '\xBA';
+	tmp1[nw + 25] = '\xBA';
+	tmp1[nw + 31] = '\xBA';
+	tmp1[77] = '\xBA';
+	tmp1[78] = 0;
+	memcpy(&tmp1[1 + ((nw - 4) >> 1)], "Name", 4);
+	memcpy(&tmp1[nw + 7], "Size", 4);
+	memcpy(&tmp1[nw + 19], "Date", 4);
+	memcpy(&tmp1[nw + 26], "Time", 4);
+	memcpy(&tmp1[nw + 32 + ((cw - 7) >> 1)], "Comment", 7);
 	gotoxy (1, 3);
-	cputs("\xBA    Name    \xBA     Size     \xBA  Date  \xBATime \xBA             Comment             \xBA");
+	cputs(tmp1);
 	memset(tmp1, 0xCD, 78);
 	tmp1[0] = '\xB6';
 	tmp1[77] = '\xB5';
@@ -3717,10 +3816,10 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 	{
 		memset(tmp1, 32, 78);
 		tmp1[0] = '\xBA';
-		tmp1[13] = '\xBA';
-		tmp1[28] = '\xBA';
-		tmp1[37] = '\xBA';
-		tmp1[43] = '\xBA';
+		tmp1[nw + 1] = '\xBA';
+		tmp1[nw + 16] = '\xBA';
+		tmp1[nw + 25] = '\xBA';
+		tmp1[nw + 31] = '\xBA';
 		if (j == 5)
 		{
 			tmp1[77] = '\x18';
@@ -3748,7 +3847,7 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 		for (i = 0; i < 18; i++)
 		{
 			gotoxy (2, 5 + i);
-			cprintf("%-12s\xBA%14s\xBA%-8s\xBA%-5s\xBA%-33s", files[i].name, files[i].size, files[i].date, files[i].time, files[i].comment);
+			cprintf("%-*.*s\xBA%14s\xBA%-8s\xBA%-5s\xBA%-*.*s", nw, nw, lnames[i], files[i].size, files[i].date, files[i].time, cw, cw, files[i].comment);
 		}
 	}
 	else
@@ -3756,12 +3855,12 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 		for (i = 0; i <= last; i++)
 		{
 			gotoxy (2, 5 + i);
-			cprintf("%-12s\xBA%14s\xBA%-8s\xBA%-5s\xBA%-33s", files[i].name, files[i].size, files[i].date, files[i].time, files[i].comment);
+			cprintf("%-*.*s\xBA%14s\xBA%-8s\xBA%-5s\xBA%-*.*s", nw, nw, lnames[i], files[i].size, files[i].date, files[i].time, cw, cw, files[i].comment);
 		}
 	}
 	textattr(CONIOXLIB_ATTR(WHITE, GREEN));
 	gotoxy(2, 5);
-	cprintf("%-12s\xBA%14s\xBA%-8s\xBA%-5s\xBA%-33s", files[0].name, files[0].size, files[0].date, files[0].time, files[0].comment);
+	cprintf("%-*.*s\xBA%14s\xBA%-8s\xBA%-5s\xBA%-*.*s", nw, nw, lnames[0], files[0].size, files[0].date, files[0].time, cw, cw, files[0].comment);
 	i = 0;
 	j = 0;
 	do
@@ -3806,7 +3905,7 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 							textattr(CONIOXLIB_ATTR(BLACK, CYAN));
 						}
 						gotoxy(2, 5 + i);
-						cprintf("%-12s\xBA%14s\xBA%-8s\xBA%-5s\xBA%-33s", files[j].name, files[j].size, files[j].date, files[j].time, files[j].comment);
+						cprintf("%-*.*s\xBA%14s\xBA%-8s\xBA%-5s\xBA%-*.*s", nw, nw, lnames[j], files[j].size, files[j].date, files[j].time, cw, cw, files[j].comment);
 						j = j - i + row;
 						i = row;
 						click = 1;
@@ -3837,7 +3936,7 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 			textattr(CONIOXLIB_ATTR(BLACK, CYAN));
 		}
 		gotoxy(2, 5 + i);
-		cprintf("%-12s\xBA%14s\xBA%-8s\xBA%-5s\xBA%-33s", files[j].name, files[j].size, files[j].date, files[j].time, files[j].comment);
+		cprintf("%-*.*s\xBA%14s\xBA%-8s\xBA%-5s\xBA%-*.*s", nw, nw, lnames[j], files[j].size, files[j].date, files[j].time, cw, cw, files[j].comment);
 
 		if (key == KBD_ENTER)
 		{
@@ -3940,7 +4039,7 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 					textattr(CONIOXLIB_ATTR(BLACK, CYAN));
 				}
 				gotoxy(2, 5 + i);
-				cprintf("%-12s\xBA%14s\xBA%-8s\xBA%-5s\xBA%-33s", files[j].name, files[j].size, files[j].date, files[j].time, files[j].comment);
+				cprintf("%-*.*s\xBA%14s\xBA%-8s\xBA%-5s\xBA%-*.*s", nw, nw, lnames[j], files[j].size, files[j].date, files[j].time, cw, cw, files[j].comment);
 			}
 			/* A mouse click marks the clicked entry and stays on it */
 			if ((j < last) && (click == 0))
@@ -3992,7 +4091,7 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 					textattr(CONIOXLIB_ATTR(BLACK, CYAN));
 				}
 				gotoxy (2, 5 + i);
-				cprintf("%-12s\xBA%14s\xBA%-8s\xBA%-5s\xBA%-33s", files[i + j].name, files[i + j].size, files[i + j].date, files[i + j].time, files[i + j].comment);
+				cprintf("%-*.*s\xBA%14s\xBA%-8s\xBA%-5s\xBA%-*.*s", nw, nw, lnames[i + j], files[i + j].size, files[i + j].date, files[i + j].time, cw, cw, files[i + j].comment);
 			}
 			if (key == KBD_END)
 			{
@@ -4010,7 +4109,7 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 		}
 		textattr(CONIOXLIB_ATTR(WHITE, GREEN));
 		gotoxy(2, 5 + i);
-		cprintf("%-12s\xBA%14s\xBA%-8s\xBA%-5s\xBA%-33s", files[j].name, files[j].size, files[j].date, files[j].time, files[j].comment);
+		cprintf("%-*.*s\xBA%14s\xBA%-8s\xBA%-5s\xBA%-*.*s", nw, nw, lnames[j], files[j].size, files[j].date, files[j].time, cw, cw, files[j].comment);
 	}
 	while ((key != KBD_ENTER) && (key != KBD_ESC) && (key != KBD_F1));
 	if (key == KBD_ESC)
@@ -4056,10 +4155,19 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 
 
 /* -------------------- Sorts the select ---------------------------------- */
-static int _conioxlib_filemultiselector_sort (const void *a, const void *b)
+static int _conioxlib_filemultiselector_sort (const struct conioxlib_sfiles *fa, const char *la, const struct conioxlib_sfiles *fb, const char *lb)
 {
-	/* Sort by name: the selected byte of the structure must not alter the order */
-	return(strcmp(((struct conioxlib_sfiles *) a)->name, ((struct conioxlib_sfiles *) b)->name));
+	int ra, rb;
+
+	/* Order: drives, ".", "..", directories and files; inside a group by the long name that the list shows,
+	   ignoring the case (the selected byte of the structure must not alter the order) */
+	ra = (fa->name[0] == '\x10') ? 0 : (strcmp(fa->name, ".") == 0) ? 1 : (strcmp(fa->name, "..") == 0) ? 2 : ((unsigned char) fa->size[0] == 0xF0) ? 3 : 4;
+	rb = (fb->name[0] == '\x10') ? 0 : (strcmp(fb->name, ".") == 0) ? 1 : (strcmp(fb->name, "..") == 0) ? 2 : ((unsigned char) fb->size[0] == 0xF0) ? 3 : 4;
+	if (ra != rb)
+	{
+		return(ra - rb);
+	}
+	return(stricmp(la, lb));
 }
 
 
@@ -4111,6 +4219,8 @@ static void _conioxlib_filemultiselector_format (char *res, unsigned long int n)
 unsigned char conioxlib_fileselector (unsigned char *sdisk, char *sdir, char *name)
 {
 	static char CONIOXLIB_FARDATA items[200][41];
+	static char CONIOXLIB_FARDATA shorts[200][41];
+	char lname[41];
 	int i;
 	int done;
 	unsigned char disk, olddrive, res;
@@ -4118,6 +4228,11 @@ unsigned char conioxlib_fileselector (unsigned char *sdisk, char *sdir, char *na
 	int j;
 	unsigned int key;
 	_conioxlib_ffblk ffblk;
+#if defined(__WATCOMC__)
+	unsigned int lfnr;
+	int lfn;
+	char path[80];
+#endif
 #endif
 #if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32)
 	WIN32_FIND_DATA ffd;
@@ -4193,6 +4308,11 @@ unsigned char conioxlib_fileselector (unsigned char *sdisk, char *sdir, char *na
 		i++;
 	}
 	key = peekb(0x40, 0x75);
+	/* The DOS letters are 26: a wrong byte of the BIOS data area must not run the table over its limit */
+	if ((unsigned int) i + key > 26)
+	{
+		key = (i < 26) ? (unsigned int) (26 - i) : 0;
+	}
 	for (j = 0; j != (int) key; j++)
 	{
 		sprintf(items[i], "\x10%c\x11", i + 'A');
@@ -4200,21 +4320,39 @@ unsigned char conioxlib_fileselector (unsigned char *sdisk, char *sdir, char *na
 	}
 #endif
 	strcpy(items[i], "..");
+	strcpy(shorts[i], "..");
 	i++;
 #if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32)
 	h = (void *) FindFirstFileA("*.*", &ffd);
 	done = (h == INVALID_HANDLE_VALUE);
 #else
 	done = _conioxlib_findfirst("*.*", &ffblk);
+#if defined(__WATCOMC__)
+	lfn = 1;
+#endif
 #endif
 	while (!done)
 	{
 #if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32)
-		/* Long names are replaced by their 8.3 alias (the list shows 38 characters) and the copy is bounded to tmp */
-		strncpy(tmp, ((strlen(ffd.cFileName) > 38) && (ffd.cAlternateFileName[0] != 0)) ? ffd.cAlternateFileName : ffd.cFileName, sizeof(tmp) - 1);
+		/* The 8.3 alias is what the caller gets back; the list shows the long name */
+		strncpy(tmp, (ffd.cAlternateFileName[0] != 0) ? ffd.cAlternateFileName : ffd.cFileName, sizeof(tmp) - 1);
 		tmp[sizeof(tmp) - 1] = 0;
+		strncpy(lname, ffd.cFileName, sizeof(lname) - 1);
+		lname[sizeof(lname) - 1] = 0;
 #else
 		strcpy(tmp, _conioxlib_ffname(ffblk));
+		strcpy(lname, tmp);
+#if defined(__WATCOMC__)
+		if (lfn && (strcmp(tmp, ".") != 0) && (strcmp(tmp, "..") != 0))
+		{
+			sprintf(path, "%c:%s%s", disk, dir, tmp);
+			lfnr = _conioxlib_lfnlong(path, lname, sizeof(lname));
+			if (lfnr == 0x7100)
+			{
+				lfn = 0;
+			}
+		}
+#endif
 #endif
 		if ((strcmp(tmp, ".") != 0) && (strcmp(tmp, "..") != 0) && (i < 200))
 		{
@@ -4224,18 +4362,24 @@ unsigned char conioxlib_fileselector (unsigned char *sdisk, char *sdir, char *na
 			if (_conioxlib_ffattrib(ffblk) & 0x10)
 #endif
 			{
-				strncpy(items[i], "[", 40);
-				strncat(items[i], tmp, 38);
-				strcat(items[i], "]");
-				items[i][40] = 0;
-				strupr(items[i]);
+				/* A plain 8.3 name keeps the classic case; a long name is listed as it is stored */
+				strupr(tmp);
+				if (stricmp(lname, tmp) == 0)
+				{
+					strcpy(lname, tmp);
+				}
+				sprintf(items[i], "[%.38s]", lname);
 			}
 			else
 			{
-				strncpy(items[i], tmp, 40);
-				items[i][40] = 0;
-				strlwr(items[i]);
+				strlwr(tmp);
+				if (stricmp(lname, tmp) == 0)
+				{
+					strcpy(lname, tmp);
+				}
+				sprintf(items[i], "%.40s", lname);
 			}
+			sprintf(shorts[i], "%.40s", tmp);
 			i++;
 		}
 #if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32)
@@ -4277,14 +4421,12 @@ unsigned char conioxlib_fileselector (unsigned char *sdisk, char *sdir, char *na
 	}
 	if (items[res][0] == '[')
 	{
-		/* Directory: enter it and rescan */
-		strcpy(tmp, &items[res][1]);
-		tmp[strlen(tmp) - 1] = 0;
-		_conioxlib_chdir(tmp);
+		/* Directory: enter it (by its short name) and rescan */
+		_conioxlib_chdir(shorts[res]);
 		goto fileselector_1;
 	}
-	/* Plain file: accept it */
-	strcpy(name, items[res]);
+	/* Plain file: accept it; the caller gets the short name back */
+	strcpy(name, shorts[res]);
 	*sdisk = disk;
 	strcpy(sdir, dir);
 	_conioxlib_setdisk(olddrive);
@@ -4310,6 +4452,7 @@ void conioxlib_hello (char *name, unsigned char commercial)
 	unsigned char oldx, oldy;
 	FILE *f;
 	char *oldb;
+	char splash[96];
 #if ((__DOS__) || (__MSDOS__)) && defined(__TURBOC__)
 	void interrupt (*oldvect)();
 #endif
@@ -4344,7 +4487,8 @@ void conioxlib_hello (char *name, unsigned char commercial)
 	textattr(CONIOXLIB_ATTR(LIGHTGRAY, BLACK));
 	conioxlib_setpal(1);
 	conioxlib_push();
-	conioxlib_background((unsigned char *) "");
+	sprintf(splash, " CONXLIB %u.%02u build %s - %s - %s", (unsigned int) (conioxlib_version / 100), (unsigned int) (conioxlib_version % 100), conioxlib_build, conioxlib_compiler, conioxlib_model);
+	conioxlib_background((unsigned char *) splash);
 #if ((__DOS__) || (__MSDOS__)) && defined(__TURBOC__)
 	oldvect = getvect(0x24);
 #endif
@@ -4554,10 +4698,16 @@ void conioxlib_about (unsigned char commercial)
 	cputsc(x1, x2, y1 + 1, "CONXLIB for DOS and Windows");
 	sprintf(ver, "Version  %u.%02u", (unsigned int) (conioxlib_version / 100), (unsigned int) (conioxlib_version % 100));
 	cputsc(x1, x2, y1 + 2, ver);
+	sprintf(ver, "Build  %s", conioxlib_build);
+	cputsc(x1, x2, y1 + 3, ver);
 	cputsc(x1, x2, y1 + 4, "(c) Copyright 1997-2026 Javier Gutierrez Chamorro");
 	cputsc(x1, x2, y1 + 5, "https://nikkhokkho.sourceforge.io");
 	sprintf(ver, "CONIOX %u.%02u based - Public Domain source code", (unsigned int) (coniox_version / 100), (unsigned int) (coniox_version % 100));
 	cputsc(x1, x2, y1 + 6, ver);
+	sprintf(ver, "Compiler  %s", conioxlib_compiler);
+	cputsc(x1, x2, y1 + 7, ver);
+	sprintf(ver, "Memory model  %s", conioxlib_model);
+	cputsc(x1, x2, y1 + 8, ver);
 	textattr(CONIOXLIB_ATTR(RED, LIGHTGRAY));
 	if (commercial)
 	{
@@ -5438,11 +5588,7 @@ unsigned char conioxlib_grid (unsigned short x1, unsigned short y1, unsigned cha
 		cputs(items[y]);
 	}
 	while ((key != KBD_ENTER) && (key != KBD_ESC) && (key != KBD_F1));
-	if (key == KBD_ESC)
-	{
-		return(255);
-	}
-	else if (key == KBD_F1)
+	if ((key == KBD_ESC) || (key == KBD_F1))
 	{
 		return(255);
 	}
@@ -5552,95 +5698,22 @@ unsigned char conioxlib_helpindex (unsigned short x1, unsigned short y1, unsigne
    */
 void conioxlib_theme (unsigned char id)
 {
-	switch (id)
-	{
-		case 1: /* Turbo C 2.0: blue desktop, yellow text and cyan menus */
-			_conioxlib_curtheme.atr0 = CONIOXLIB_ATTR(YELLOW, BLUE);
-			_conioxlib_curtheme.atr1 = CONIOXLIB_ATTR(BLACK, CYAN);
-			_conioxlib_curtheme.atrhot = CONIOXLIB_ATTR(YELLOW, BLUE);
-			_conioxlib_curtheme.atrstatus = CONIOXLIB_ATTR(BLACK, CYAN);
-			_conioxlib_curtheme.atrdialog = CONIOXLIB_ATTR(BLACK, CYAN);
-			_conioxlib_curtheme.frame = CONIOXLIB_BOX_A_DOUBLE;
-			strcpy(_conioxlib_curtheme.name, "Turbo C 2.0");
-			break;
-		case 2: /* Turbo C 1.x */
-			_conioxlib_curtheme.atr0 = CONIOXLIB_ATTR(LIGHTGRAY, BLACK);
-			_conioxlib_curtheme.atr1 = CONIOXLIB_ATTR(BLACK, LIGHTGRAY);
-			_conioxlib_curtheme.atrhot = CONIOXLIB_ATTR(YELLOW, BLACK);
-			_conioxlib_curtheme.atrstatus = CONIOXLIB_ATTR(BLACK, LIGHTGRAY);
-			_conioxlib_curtheme.atrdialog = CONIOXLIB_ATTR(WHITE, BLACK);
-			_conioxlib_curtheme.frame = CONIOXLIB_BOX_A_SINGLE;
-			strcpy(_conioxlib_curtheme.name, "Turbo C 1.x");
-			break;
-		case 3: /* Norton Utilities 9: blue with cyan frames and yellow accents */
-			_conioxlib_curtheme.atr0 = CONIOXLIB_ATTR(WHITE, BLUE);
-			_conioxlib_curtheme.atr1 = CONIOXLIB_ATTR(BLACK, CYAN);
-			_conioxlib_curtheme.atrhot = CONIOXLIB_ATTR(YELLOW, BLUE);
-			_conioxlib_curtheme.atrstatus = CONIOXLIB_ATTR(WHITE, BLUE);
-			_conioxlib_curtheme.atrdialog = CONIOXLIB_ATTR(CYAN, BLUE);
-			_conioxlib_curtheme.frame = CONIOXLIB_BOX_A_DOUBLE;
-			strcpy(_conioxlib_curtheme.name, "Norton Utilities 9");
-			break;
-		case 4: /* PC Tools */
-			_conioxlib_curtheme.atr0 = CONIOXLIB_ATTR(WHITE, CYAN);
-			_conioxlib_curtheme.atr1 = CONIOXLIB_ATTR(BLACK, LIGHTGRAY);
-			_conioxlib_curtheme.atrhot = CONIOXLIB_ATTR(YELLOW, CYAN);
-			_conioxlib_curtheme.atrstatus = CONIOXLIB_ATTR(BLACK, LIGHTGRAY);
-			_conioxlib_curtheme.atrdialog = CONIOXLIB_ATTR(WHITE, BLUE);
-			_conioxlib_curtheme.frame = CONIOXLIB_BOX_A_DOUBLE;
-			strcpy(_conioxlib_curtheme.name, "PC Tools");
-			break;
-		case 5: /* Turbo Pascal 7.0: Turbo Vision 2.0 desktop (blue), gray dialogs,
-			   green selection and the black-on-cyan status line of the real IDE;
-			   identical to the Borland C++ 3.1 theme (default): both IDEs use
-			   the same Turbo Vision 2.0 palette */
-			_conioxlib_curtheme.atr0 = CONIOXLIB_ATTR(WHITE, BLUE);
-			_conioxlib_curtheme.atr1 = CONIOXLIB_ATTR(BLACK, GREEN);
-			_conioxlib_curtheme.atrhot = CONIOXLIB_ATTR(CYAN, LIGHTGRAY);
-			_conioxlib_curtheme.atrstatus = CONIOXLIB_ATTR(BLACK, CYAN);
-			_conioxlib_curtheme.atrdialog = CONIOXLIB_ATTR(BLACK, LIGHTGRAY);
-			_conioxlib_curtheme.frame = CONIOXLIB_BOX_A_DOUBLE;
-			strcpy(_conioxlib_curtheme.name, "Turbo Pascal 7.0");
-			break;
-		case 6: /* Norton Commander: blue panels and cyan menus with black focus */
-			_conioxlib_curtheme.atr0 = CONIOXLIB_ATTR(BLACK, CYAN);
-			_conioxlib_curtheme.atr1 = CONIOXLIB_ATTR(WHITE, BLACK);
-			_conioxlib_curtheme.atrhot = CONIOXLIB_ATTR(YELLOW, CYAN);
-			_conioxlib_curtheme.atrstatus = CONIOXLIB_ATTR(BLACK, CYAN);
-			_conioxlib_curtheme.atrdialog = CONIOXLIB_ATTR(CYAN, BLUE);
-			_conioxlib_curtheme.frame = CONIOXLIB_BOX_A_DOUBLE;
-			strcpy(_conioxlib_curtheme.name, "Norton Commander");
-			break;
-		case 7: /* MS-DOS Edit: blue screen with single-line cyan frames */
-			_conioxlib_curtheme.atr0 = CONIOXLIB_ATTR(WHITE, BLUE);
-			_conioxlib_curtheme.atr1 = CONIOXLIB_ATTR(BLACK, CYAN);
-			_conioxlib_curtheme.atrhot = CONIOXLIB_ATTR(YELLOW, BLUE);
-			_conioxlib_curtheme.atrstatus = CONIOXLIB_ATTR(BLACK, CYAN);
-			_conioxlib_curtheme.atrdialog = CONIOXLIB_ATTR(CYAN, BLUE);
-			_conioxlib_curtheme.frame = CONIOXLIB_BOX_A_SINGLE;
-			strcpy(_conioxlib_curtheme.name, "MS-DOS Edit");
-			break;
-		case 8: /* Lotus 1-2-3: black and white with inverse selection */
-			_conioxlib_curtheme.atr0 = CONIOXLIB_ATTR(WHITE, BLACK);
-			_conioxlib_curtheme.atr1 = CONIOXLIB_ATTR(BLACK, WHITE);
-			_conioxlib_curtheme.atrhot = CONIOXLIB_ATTR(YELLOW, BLACK);
-			_conioxlib_curtheme.atrstatus = CONIOXLIB_ATTR(WHITE, BLACK);
-			_conioxlib_curtheme.atrdialog = CONIOXLIB_ATTR(WHITE, BLACK);
-			_conioxlib_curtheme.frame = CONIOXLIB_BOX_A_SINGLE;
-			strcpy(_conioxlib_curtheme.name, "Lotus 1-2-3");
-			break;
-		default: /* Borland C++ 3.1: same Turbo Vision 2.0 palette as Turbo
-			      Pascal 7.0 (case 5): blue desktop, gray dialogs, green
-			      selection and black-on-cyan status line */
-			_conioxlib_curtheme.atr0 = CONIOXLIB_ATTR(WHITE, BLUE);
-			_conioxlib_curtheme.atr1 = CONIOXLIB_ATTR(BLACK, GREEN);
-			_conioxlib_curtheme.atrhot = CONIOXLIB_ATTR(CYAN, LIGHTGRAY);
-			_conioxlib_curtheme.atrstatus = CONIOXLIB_ATTR(BLACK, CYAN);
-			_conioxlib_curtheme.atrdialog = CONIOXLIB_ATTR(BLACK, LIGHTGRAY);
-			_conioxlib_curtheme.frame = CONIOXLIB_BOX_A_DOUBLE;
-			strcpy(_conioxlib_curtheme.name, "Borland C++ 3.1");
-			break;
-	}
+	/* The order of the table is the order of the ids; unknown ids fall back to Borland C++ 3.1 */
+	static const struct conioxlib_stheme themes[CONIOXLIB_THEMES] = {
+		{CONIOXLIB_ATTR(WHITE, BLUE), CONIOXLIB_ATTR(BLACK, GREEN), CONIOXLIB_ATTR(CYAN, LIGHTGRAY), CONIOXLIB_ATTR(BLACK, CYAN), CONIOXLIB_ATTR(BLACK, LIGHTGRAY), CONIOXLIB_BOX_A_DOUBLE, "Borland C++ 3.1"},
+		{CONIOXLIB_ATTR(YELLOW, BLUE), CONIOXLIB_ATTR(BLACK, CYAN), CONIOXLIB_ATTR(YELLOW, BLUE), CONIOXLIB_ATTR(BLACK, CYAN), CONIOXLIB_ATTR(BLACK, CYAN), CONIOXLIB_BOX_A_DOUBLE, "Turbo C 2.0"},
+		{CONIOXLIB_ATTR(LIGHTGRAY, BLACK), CONIOXLIB_ATTR(BLACK, LIGHTGRAY), CONIOXLIB_ATTR(YELLOW, BLACK), CONIOXLIB_ATTR(BLACK, LIGHTGRAY), CONIOXLIB_ATTR(WHITE, BLACK), CONIOXLIB_BOX_A_SINGLE, "Turbo C 1.x"},
+		{CONIOXLIB_ATTR(WHITE, BLUE), CONIOXLIB_ATTR(BLACK, CYAN), CONIOXLIB_ATTR(YELLOW, BLUE), CONIOXLIB_ATTR(WHITE, BLUE), CONIOXLIB_ATTR(CYAN, BLUE), CONIOXLIB_BOX_A_DOUBLE, "Norton Utilities 9"},
+		{CONIOXLIB_ATTR(WHITE, CYAN), CONIOXLIB_ATTR(BLACK, LIGHTGRAY), CONIOXLIB_ATTR(YELLOW, CYAN), CONIOXLIB_ATTR(BLACK, LIGHTGRAY), CONIOXLIB_ATTR(WHITE, BLUE), CONIOXLIB_BOX_A_DOUBLE, "PC Tools"},
+		{CONIOXLIB_ATTR(WHITE, BLUE), CONIOXLIB_ATTR(BLACK, GREEN), CONIOXLIB_ATTR(CYAN, LIGHTGRAY), CONIOXLIB_ATTR(BLACK, CYAN), CONIOXLIB_ATTR(BLACK, LIGHTGRAY), CONIOXLIB_BOX_A_DOUBLE, "Turbo Pascal 7.0"},
+		{CONIOXLIB_ATTR(BLACK, CYAN), CONIOXLIB_ATTR(WHITE, BLACK), CONIOXLIB_ATTR(YELLOW, CYAN), CONIOXLIB_ATTR(BLACK, CYAN), CONIOXLIB_ATTR(CYAN, BLUE), CONIOXLIB_BOX_A_DOUBLE, "Norton Commander"},
+		{CONIOXLIB_ATTR(WHITE, BLUE), CONIOXLIB_ATTR(BLACK, CYAN), CONIOXLIB_ATTR(YELLOW, BLUE), CONIOXLIB_ATTR(BLACK, CYAN), CONIOXLIB_ATTR(CYAN, BLUE), CONIOXLIB_BOX_A_SINGLE, "MS-DOS Edit"},
+		{CONIOXLIB_ATTR(WHITE, BLACK), CONIOXLIB_ATTR(BLACK, WHITE), CONIOXLIB_ATTR(YELLOW, BLACK), CONIOXLIB_ATTR(WHITE, BLACK), CONIOXLIB_ATTR(WHITE, BLACK), CONIOXLIB_BOX_A_SINGLE, "Lotus 1-2-3"}
+	};
+
+	_conioxlib_curtheme = themes[(id < CONIOXLIB_THEMES) ? id : 0];
+	/* The status color changed: the lock indicators and the clock of line 25 must be repainted */
+	_conioxlib_blocksdirty = 1;
 }
 
 /* --------------------------- Read current theme -------------------------- */
@@ -5906,7 +5979,7 @@ void conioxlib_progress (const char *title, unsigned int value, unsigned int max
    Shows a message box with up to three buttons.
    Parameters: title is the caption, msg the text, buttons
    the labels and nbuttons their number (1 to 3); passing 0
-   as buttons uses the defaults OK and Cancel. Returns as
+   as buttons uses the default OK button. Returns as
    conioxlib_buttons() does: the index of the pressed
    button, 254 when F1 was pressed or 255 when cancelled with ESC.
    */
@@ -6009,6 +6082,7 @@ unsigned char conioxlib_inputbox (const char *title, const char *label, char *bu
 	unsigned char r;
 	char btns[2][11];
 	char desc[2][71];
+	char field[40];
 	unsigned short x1, y1, x2, y2;
 
 	if ((buf == 0) || (len < 1))
@@ -6035,7 +6109,10 @@ unsigned char conioxlib_inputbox (const char *title, const char *label, char *bu
 	textattr(CONIOXLIB_ATTR(BLACK, LIGHTGRAY));
 	gotoxy(x1 + 2, y1 + 1);
 	cputs((label != 0) ? (char *) label : "Value:");
-	conioxlib_getstr((unsigned short) (x1 + 2), (unsigned short) (y1 + 2), CONIOXLIB_ATTR(WHITE, BLUE), buf, len);
+	/* The field edits a copy: the caller's string changes only when OK is pressed */
+	strncpy(field, buf, (size_t) len);
+	field[(int) len] = 0;
+	conioxlib_getstr((unsigned short) (x1 + 2), (unsigned short) (y1 + 2), CONIOXLIB_ATTR(WHITE, BLUE), field, len);
 	strcpy(btns[0], "OK");
 	strcpy(btns[1], "Cancel");
 	memset(desc[0], 32, 70);
@@ -6043,6 +6120,10 @@ unsigned char conioxlib_inputbox (const char *title, const char *label, char *bu
 	desc[0][70] = 0;
 	desc[1][70] = 0;
 	r = conioxlib_buttons((unsigned short) (x1 + 14), (unsigned short) (y1 + 4), CONIOXLIB_ATTR(BLACK, GREEN), CONIOXLIB_ATTR(WHITE, GREEN), CONIOXLIB_ATTR(YELLOW, GREEN), btns, desc, 2, 2);
+	if (r == 0)
+	{
+		strcpy(buf, field);
+	}
 	conioxlib_restorescr(x1, y1, x2 + 2, y2 + 1, oldb);
 	gotoxy(oldx, oldy);
 	return(r);
@@ -6209,7 +6290,7 @@ unsigned char conioxlib_listbox (unsigned short x1, unsigned short y1, unsigned 
 {
 	unsigned char oldx, oldy;
 	char *oldb;
-	int top, sel, vis, row, maxrow, repaint, itemw;
+	int top, sel, vis, row, maxrow, repaint, itemw, prevtop, prevsel, i;
 	unsigned int key;
 
 	if ((nitems == 0) || (items == 0))
@@ -6280,6 +6361,8 @@ unsigned char conioxlib_listbox (unsigned short x1, unsigned short y1, unsigned 
 			}
 			repaint = 0;
 		}
+		prevtop = top;
+		prevsel = sel;
 		do
 		{
 			key = 0;
@@ -6393,8 +6476,21 @@ unsigned char conioxlib_listbox (unsigned short x1, unsigned short y1, unsigned 
 		{
 			top = sel - vis + 1;
 		}
-		/* Every key that reaches this point moved the selection or the page: the list must be repainted */
-		repaint = 1;
+		if (top != prevtop)
+		{
+			repaint = 1;
+		}
+		else if ((repaint == 0) && (sel != prevsel) && (key != KBD_ENTER) && (key != KBD_ESC))
+		{
+			/* Same page: only the row that loses the highlight and the one that gets it change */
+			for (row = 0; row < 2; row++)
+			{
+				i = (row == 0) ? prevsel : sel;
+				gotoxy(x1 + 1, y1 + 1 + i - top);
+				textattr((i == sel) ? atr1 : atr0);
+				cprintf("%-*.*s", itemw, itemw, items[i]);
+			}
+		}
 	}
 	while ((key != KBD_ENTER) && (key != KBD_ESC));
 	conioxlib_restorescr(x1, y1, x2 + 2, y2 + 1, oldb);

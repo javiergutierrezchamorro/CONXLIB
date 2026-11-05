@@ -59,7 +59,7 @@ SET LIB=
 rem *** OPENWATCOM C++ 2.0 *** 
 SET WATCOM=D:\FICHEROS\OC
 SET OLDPATH=%PATH%
-SET PATH=%WATCOM%\BINNT;%WATCOM%\BINW;%WATCOM%\BINP;%PATH%
+SET PATH=%WATCOM%\BINNT64;%WATCOM%\BINNT;%WATCOM%\BINW;%WATCOM%\BINP;%PATH%
 SET EDPATH=%WATCOM%\EDDAT
 SET INCLUDE=%WATCOM%\H;%WATCOM%\MFC\INCLUDE;%WATCOM%\H\NT;INCLUDE;
 SET LIB=LIB;
@@ -73,7 +73,7 @@ WCL -w3 -oneatx -ohirbk -ol -ol+ -oi -ei -zp4 -0 -ml -s -ri -zm /bt=dos /l=dos /
 REN conxdemo.exe conxdemo_ocd16.exe
 rem *** DOS32 ***
 DEL conxdemo_ocd32.exe
-WCL386 -w3 -oneatx -ohirbk -ol -ol+ -oi -ei -zp16 -6r -fpi87 -fp6 -mf -s -ri -zm /bt=dos /l=pmodewi /fhwe /"OPTION ELIMINATE" /"OPTION VFREMOVAL" ..\conxdemo.c ..\coniox.c ..\conxlib.c
+WCL386 -w3 -oneatx -ohirbk -ol -ol+ -oi -ei -zp16 -6r -fpi87 -fp6 -mf -s -ri -zm /bt=dos /l=pmodew /fhwe /"OPTION ELIMINATE" /"OPTION VFREMOVAL" ..\conxdemo.c ..\coniox.c ..\conxlib.c
 REN conxdemo.exe conxdemo_ocd32.exe
 
 SET WATCOM=
