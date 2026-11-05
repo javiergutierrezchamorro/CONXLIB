@@ -32,6 +32,26 @@
 	#define strrev	_strrev
 #endif
 
+/* Vector set/get: Watcom names them _dos_setvect/_dos_getvect and Borland
+   C has both names; Turbo C only has setvect/getvect, so alias them there.
+   _conioxlib_intvec declares interrupt handler pointer variables with the
+   qualifiers of each compiler */
+#if ((__DOS__) || (__MSDOS__))
+	#if defined(__WATCOMC__)
+		#define _conioxlib_intvec	void __interrupt __far
+	#elif defined(__TURBOC__)
+		#define _conioxlib_intvec	void interrupt
+	#endif
+	#if defined(__TURBOC__) && !defined(__BORLANDC__)
+		#define _dos_setvect(v, h)	setvect(v, h)
+		#define _dos_getvect(v)		getvect(v)
+	#endif
+	/* Forward declaration of the INT 29h filter of conioxlib_shell(): it is defined after conioxlib_shell() and Watcom needs the symbol declared at the _dos_setvect() call, Borland accepted the implicit int declaration there */
+	#if defined(__WATCOMC__) || defined(__TURBOC__)
+		_conioxlib_intvec conioxlib_shell_patch();
+	#endif
+#endif
+
 /* int86 and registers: Watcom uses r.w, the rest use r.x */
 #if ((__DOS__) || (__MSDOS__))
 	#if ((defined(__FLAT__)) || (defined(__DJGPP__)))
@@ -375,7 +395,7 @@ static int _conioxlib_hotmatch(const char *s, unsigned int key)
    */
 void conioxlib_cputsc (unsigned short x1, unsigned short x2, unsigned short y, const char *str)
 {
-	unsigned int x;
+	unsigned int x, len;
 
 	if ((str == 0) || (str[0] == 0) || (x2 < x1))
 	{
@@ -383,13 +403,14 @@ void conioxlib_cputsc (unsigned short x1, unsigned short x2, unsigned short y, c
 	}
 	/* Clamp over-long strings: without the guard the centering
 	   arithmetic underflows and gotoxy() receives a wrapped column */
-	if (strlen(str) > (unsigned int) ((x2 - x1) + 1))
+	len = (unsigned int) strlen(str);
+	if (len > (unsigned int) ((x2 - x1) + 1))
 	{
 		x = x1;
 	}
 	else
 	{
-		x = (((x2 - x1 + 1) >> 1) - ((unsigned int) strlen(str) >> 1) + x1);
+		x = (((x2 - x1 + 1) >> 1) - (len >> 1) + x1);
 	}
 	gotoxy(x, y);
 	cputs((char *) str);
@@ -4436,6 +4457,52 @@ unsigned char conioxlib_fileselector (unsigned char *sdisk, char *sdir, char *na
 }
 
 
+/* ---------------- Compiler identification string ------------------------- */
+/* conioxlib_compilerstring:
+   Prototype:
+   const char * conioxlib_compilerstring(void);
+   Returns a static string with the name and version of the compiler
+   used to build the library, taken from the predefined macros, e.g.
+   "Open Watcom C/C++ 2.0 beta" for __WATCOMC__ 1300, "Borland C++ 3.10"
+   for __BORLANDC__ 0x0310 or "Turbo C/C++ 2.0" for __TURBOC__ 0x0200.
+   The splash and the About box show it.
+   */
+const char * conioxlib_compilerstring (void)
+{
+	static char buf[48];
+#if defined(__WATCOMC__)
+	if (__WATCOMC__ >= 1200)
+	{
+		/* __WATCOMC__ is vvrr: 1200 = 1.0, 1290 = 1.9, 1300 = 2.0 */
+		sprintf(buf, "Open Watcom C/C++ %u.%u%s", (unsigned int) ((__WATCOMC__ / 100) - 11), (unsigned int) ((__WATCOMC__ % 100) / 10), (__WATCOMC__ >= 1300) ? " beta" : "");
+	}
+	else
+	{
+		sprintf(buf, "Watcom C/C++ %u.%u", (unsigned int) (__WATCOMC__ / 100), (unsigned int) ((__WATCOMC__ % 100) / 10));
+	}
+#elif defined(__BORLANDC__)
+	/* __BORLANDC__ is the version as hex digit pairs vvrr: 0x0200 = 2.0, 0x0310 = 3.1, 0x0450 = 4.5, 0x0500 = 5.0, 0x0520 = 5.2 (the 5.02 box, also C++Builder 1.0), 0x0550 = C++Builder 5.0 */
+	sprintf(buf, "Borland C++ %u.%u%u", (unsigned int) ((__BORLANDC__ >> 8) & 0xFF), (unsigned int) ((__BORLANDC__ >> 4) & 0xF), (unsigned int) (__BORLANDC__ & 0xF));
+#elif defined(__TURBOC__) || defined(TURBOC)
+	/* TURBOC/__TURBOC__ is the version as bytes: 0x0100 = Turbo C 1.0, 0x0105 = 1.5, 0x0200 = 2.0; Turbo C++ 1.0 reports 0x0295 */
+#if defined(__TURBOC__)
+	sprintf(buf, "Turbo C/C++ %u.%u", (unsigned int) ((__TURBOC__ >> 8) & 0xFF), (unsigned int) (__TURBOC__ & 0xFF));
+#else
+	sprintf(buf, "Turbo C/C++ %u.%u", (unsigned int) ((TURBOC >> 8) & 0xFF), (unsigned int) (TURBOC & 0xFF));
+#endif
+#elif defined(__DJGPP__)
+	sprintf(buf, "DJGPP GCC %s", __VERSION__);
+#elif defined(__GNUC__)
+	sprintf(buf, "GCC %s", __VERSION__);
+#elif defined(_MSC_VER)
+	sprintf(buf, "Microsoft C/C++ %u", (unsigned int) _MSC_VER);
+#else
+	sprintf(buf, "Unknown compiler");
+#endif
+	return(buf);
+}
+
+
 /* --------------------------- Startup function ---------------------------- */
 /* hello:
    Prototype:
@@ -4487,7 +4554,7 @@ void conioxlib_hello (char *name, unsigned char commercial)
 	textattr(CONIOXLIB_ATTR(LIGHTGRAY, BLACK));
 	conioxlib_setpal(1);
 	conioxlib_push();
-	sprintf(splash, " CONXLIB %u.%02u build %s - %s - %s", (unsigned int) (conioxlib_version / 100), (unsigned int) (conioxlib_version % 100), conioxlib_build, conioxlib_compiler, conioxlib_model);
+	sprintf(splash, " CONXLIB %u.%02u - %s - %s %s", (unsigned int) (conioxlib_version / 100), (unsigned int) (conioxlib_version % 100), conioxlib_compilerstring(), conioxlib_build, conioxlib_buildtime);
 	conioxlib_background((unsigned char *) splash);
 #if ((__DOS__) || (__MSDOS__)) && defined(__TURBOC__)
 	oldvect = getvect(0x24);
@@ -4577,7 +4644,7 @@ void conioxlib_bye (char *name, unsigned char e, unsigned char commercial)
 	}
 	gotoxy(1, 1);
 	cprintf("CONXLIB %u.%02u for DOS and Windows\r\n", (unsigned int) (conioxlib_version / 100), (unsigned int) (conioxlib_version % 100));
-	cputs("(c) Copyright 1997-2026 Javier Gutierrez Chamorro\r\n");
+	cputs("(c) Copyright 1997-2026 " CONIOXLIB_AUTHOR "\r\n");
 	cputs("https://nikkhokkho.sourceforge.io\r\n");
 	cputs("Public Domain source code - use, copy and modify it freely\r\n");
 	textattr(CONIOXLIB_ATTR(LIGHTRED, BLACK));
@@ -4698,13 +4765,13 @@ void conioxlib_about (unsigned char commercial)
 	cputsc(x1, x2, y1 + 1, "CONXLIB for DOS and Windows");
 	sprintf(ver, "Version  %u.%02u", (unsigned int) (conioxlib_version / 100), (unsigned int) (conioxlib_version % 100));
 	cputsc(x1, x2, y1 + 2, ver);
-	sprintf(ver, "Build  %s", conioxlib_build);
+	sprintf(ver, "Build  %s %s", conioxlib_build, conioxlib_buildtime);
 	cputsc(x1, x2, y1 + 3, ver);
-	cputsc(x1, x2, y1 + 4, "(c) Copyright 1997-2026 Javier Gutierrez Chamorro");
+	cputsc(x1, x2, y1 + 4, "(c) Copyright 1997-2026 " CONIOXLIB_AUTHOR);
 	cputsc(x1, x2, y1 + 5, "https://nikkhokkho.sourceforge.io");
 	sprintf(ver, "CONIOX %u.%02u based - Public Domain source code", (unsigned int) (coniox_version / 100), (unsigned int) (coniox_version % 100));
 	cputsc(x1, x2, y1 + 6, ver);
-	sprintf(ver, "Compiler  %s", conioxlib_compiler);
+	sprintf(ver, "Compiler  %s", conioxlib_compilerstring());
 	cputsc(x1, x2, y1 + 7, ver);
 	sprintf(ver, "Memory model  %s", conioxlib_model);
 	cputsc(x1, x2, y1 + 8, ver);
@@ -5123,25 +5190,32 @@ void conioxlib_shell (unsigned short x1, unsigned short y1, unsigned short x2, u
 	/* The command interpreter needs a visible cursor: the caller may have hidden it */
 	_setcursortype(_NORMALCURSOR);
 	textattr(CONIOXLIB_ATTR(LIGHTGRAY, BLACK));
-#if ((__DOS__) || (__MSDOS__)) && defined(__TURBOC__)
+#if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32)
 	{
-		void interrupt (*oldvect)();
 		char *comspec;
 
-		/* DOS keeps the real interpreter path in COMSPEC; do not rely on command.com being in the current directory or PATH */
 		comspec = getenv("COMSPEC");
-		oldvect = getvect(0x29);
-		setvect(0x29, conioxlib_shell_patch);
-		i = system((command[0] != 0) ? command : ((comspec != 0) ? comspec : "command.com"));
-		setvect(0x29, oldvect);
+		i = system((command[0] != 0) ? command : ((comspec != 0) ? comspec : "cmd"));
 	}
 #else
 	{
 		char *comspec;
+#if defined(__WATCOMC__) || defined(__TURBOC__)
+		_conioxlib_intvec (*oldvect)();
+#endif
 
+		/* DOS keeps the real interpreter path in COMSPEC; do not rely on command.com being in the current directory or PATH */
 		comspec = getenv("COMSPEC");
 #if ((__DOS__) || (__MSDOS__))
+#if defined(__WATCOMC__) || defined(__TURBOC__)
+		/* Hook INT 29h so the CON output of the child lands in the shell window: every DOS compiler installs the filter through _dos_setvect (Watcom, Borland C) or the Turbo C alias */
+		oldvect = _dos_getvect(0x29);
+		_dos_setvect(0x29, conioxlib_shell_patch);
+#endif
 		i = system((command[0] != 0) ? command : ((comspec != 0) ? comspec : "command.com"));
+#if defined(__WATCOMC__) || defined(__TURBOC__)
+		_dos_setvect(0x29, oldvect);
+#endif
 #else
 		i = system((command[0] != 0) ? command : ((comspec != 0) ? comspec : "cmd"));
 #endif
@@ -5169,18 +5243,20 @@ void conioxlib_shell (unsigned short x1, unsigned short y1, unsigned short x2, u
 }
 
 
-#if ((__DOS__) || (__MSDOS__)) && defined(__TURBOC__)
+#if ((__DOS__) || (__MSDOS__)) && (defined(__TURBOC__) || defined(__WATCOMC__))
 
-#pragma warn -par
 /* ------------------- Exit routine of conioxlib_shell -------------------------- */
 /* conioxlib_shell_patch:
-   Prototype (Turbo C DOS builds only):
+   Prototype (Turbo C and Watcom DOS builds):
    void interrupt conioxlib_shell_patch(unsigned int, ...);
-   Int 29h filter installed by conioxlib_shell() under Turbo C.
+   void __interrupt __far conioxlib_shell_patch(union INTPACK r);
+   Int 29h filter installed by conioxlib_shell().
    Parameters: the interrupt frame registers.
    It redirects the CON output of the child process into the
    shell window. Do not call it directly.
    */
+#if defined(__TURBOC__)
+#pragma warn -par
 void interrupt conioxlib_shell_patch (unsigned int bp, unsigned int di, unsigned int si, unsigned int ds, unsigned int es, unsigned int dx, unsigned int cx, unsigned int bx, unsigned int ax)
 {
 	unsigned char al;
@@ -5189,6 +5265,12 @@ void interrupt conioxlib_shell_patch (unsigned int bp, unsigned int di, unsigned
 	putch(al);
 }
 #pragma warn .par
+#else
+void __interrupt __far conioxlib_shell_patch (union INTPACK r)
+{
+	putch(r.h.al);
+}
+#endif
 
 #endif
 

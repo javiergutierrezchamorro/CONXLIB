@@ -4,32 +4,13 @@
 
 #include "coniox.h"
 
-#define conioxlib_version (205)
+#define conioxlib_version (209)
 #define conioxlib_build (__DATE__)
-
-/* Compiler identification, shown in the splash and the About box of the
-   library and available to the applications that link it */
-#if defined(__WATCOMC__)
-	#if __WATCOMC__ >= 1300
-		#define conioxlib_compiler	"Open Watcom C/C++"
-	#else
-		#define conioxlib_compiler	"Watcom C/C++"
-	#endif
-#elif defined(__TURBOC__)
-	#define conioxlib_compiler	"Borland C/C++"
-#elif defined(__DJGPP__)
-	#define conioxlib_compiler	"DJGPP GCC " __VERSION__
-#elif defined(_MSC_VER)
-	#define conioxlib_compiler	"Microsoft C/C++"
-#elif defined(__GNUC__)
-	#define conioxlib_compiler	"GCC"
-#else
-	#define conioxlib_compiler	"Unknown compiler"
-#endif
+#define conioxlib_buildtime (__TIME__)
 
 /* Memory model in use: DOS flat builds (Watcom 32 bit with PMODE/W,
-   DOS/4G, DOS/32A...) report "Flat 32-bit"; 16 bit models report
-   their own name */
+   DOS/4G, DOS/32A...) report "Flat 32-bit"; 16 bit models report their
+   own name */
 #if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32)
 	#define conioxlib_model	"Flat 32-bit (Win32)"
 #elif defined(__FLAT__)
@@ -63,6 +44,11 @@ extern "C" {
 #define CONIOXLIB_BOX_S_DOUBLE  CONIOXLIB_BOX_U_SINGLE
 #define CONIOXLIB_BOX_U_DOUBLE  "\xD5\xB8\xCD\xCD\xB3\xD4\xBE"
 #define CONIOXLIB_BOX_S_SINGLE  CONIOXLIB_BOX_U_DOUBLE
+
+/* Author name shown in the About box and in the farewell screen; the
+   accented e is written as its CP437 byte (\x82) so sources compile
+   the same on DOS and Windows with any encoding */
+#define CONIOXLIB_AUTHOR	"Javier Guti\x82rrez Chamorro (Guti)"
 
 #define CONIOXLIB_BOX_SHADOW    1
 #define CONIOXLIB_BOX_CLOSE     2
@@ -231,6 +217,8 @@ void conioxlib_background(unsigned char msg[]);
 void conioxlib_hello(char *, unsigned char);
 void conioxlib_bye(char *, unsigned char, unsigned char);
 void conioxlib_about(unsigned char);
+/* conioxlib_compilerstring(): name and version of the compiler used to build, e.g. "Open Watcom C/C++ 2.0 beta"; shown in the splash and the About box */
+const char * conioxlib_compilerstring(void);
 unsigned char conioxlib_exittodos(char *);
 void conioxlib_screensaver(void);
 void conioxlib_shell(unsigned short x1, unsigned short y1, unsigned short x2, unsigned short y2, char *);
