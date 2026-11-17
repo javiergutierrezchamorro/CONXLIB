@@ -146,6 +146,7 @@ static int _conioxlib_blocksdirty = 1;
 static int _conioxlib_filemultiselector_sort(const struct conioxlib_sfiles *fa, const char *la, const struct conioxlib_sfiles *fb, const char *lb);
 static void _conioxlib_filemultiselector_format(char *res, unsigned long int n);
 static void _conioxlib_filemultiselector_row(unsigned short y, int idx, unsigned char atr, int nw, int cw, char lnames[][41], struct conioxlib_sfiles *files);
+static unsigned char _conioxlib_enum_drives(char names[][13], char comments[][34], unsigned char max);
 static void _conioxlib_poll(void);
 static void _conioxlib_fillch(unsigned short x, unsigned short y, int n, unsigned char ch, unsigned char atr);
 
@@ -3404,15 +3405,12 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 		unsigned mon: 4;
 		unsigned year: 7;
 	} ff_fdate;
-	union REGS r;
 	_conioxlib_ffblk ffblk;
 #endif
 #if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32)
 	WIN32_FIND_DATA ffd;
 	FILETIME ft;
 	SYSTEMTIME st;
-	unsigned int dr;
-	unsigned int drmask;
 	void *h;
 #endif
 	char *descbuf;
@@ -3441,96 +3439,23 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 	}
 	oldx = wherex();
 	oldy = wherey();
-	/* Enumerate drives */
-	i = 0;
-#if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32)
-	drmask = GetLogicalDrives();
-	for (dr = 0; dr != 26; dr++)
+	/* Enumerate drives (shared helper) */
 	{
-		if (drmask & (1u << dr))
+		char drivenames[26][13];
+		char drivecomments[26][34];
+		unsigned char nd;
+
+		nd = _conioxlib_enum_drives(drivenames, drivecomments, 26);
+		for (i = 0; i < (int) nd; i++)
 		{
-			tmp1[0] = (char) ('A' + dr);
-			tmp1[1] = ':';
-			tmp1[2] = '\\';
-			tmp1[3] = 0;
-			switch (GetDriveTypeA(tmp1))
-			{
-				case DRIVE_REMOVABLE:
-					strcpy(files[i].comment, "Removable Disk");
-					break;
-				case DRIVE_FIXED:
-					strcpy(files[i].comment, "Hard Disk");
-					break;
-				case DRIVE_REMOTE:
-					strcpy(files[i].comment, "Network Disk");
-					break;
-				case DRIVE_CDROM:
-					strcpy(files[i].comment, "CD-ROM Disk");
-					break;
-				case DRIVE_RAMDISK:
-					strcpy(files[i].comment, "Virtual Floppy Disk");
-					break;
-				default:
-					strcpy(files[i].comment, "Disk Drive");
-					break;
-			}
-			sprintf(files[i].name, "\x10%c\x11", 'A' + dr);
+			strcpy(files[i].name, drivenames[i]);
+			strcpy(files[i].comment, drivecomments[i]);
 			strcpy(files[i].size, "\xF0   DRIVE   \xF0");
 			files[i].date[0] = 0;
 			files[i].time[0] = 0;
-			i++;
+			files[i].selected = 0;
 		}
 	}
-#else
-	key = ((peekb(0x40, 0x10) & 192) >> 6) + 1;
-	for (j = 0; j != key; j++)
-	{
-		r.h.ah = 8;
-		r.h.dl = j;
-		_coniox_int86(0x13, &r, &r);
-		sprintf(files[i].name, "\x10%c\x11", i + 'A');
-		strcpy(files[i].size, "\xF0   DRIVE   \xF0");
-		files[i].date[0] = 0;
-		files[i].time[0] = 0;
-		if (r.h.bl <= 2)
-		{
-			strcpy(files[i].comment, "5\xAC Floppy Disk");
-		}
-		else if ((r.h.bl >= 3) && (r.h.bl <= 5))
-		{
-			strcpy(files[i].comment, "3\xAB Floppy Disk");
-		}
-		else
-		{
-			strcpy(files[i].comment, "Disk Drive");
-		}
-		i++;
-	}
-	if (key == 1)
-	{
-		sprintf(files[i].name, "\x10%c\x11", i + 'A');
-		strcpy(files[i].size, "\xF0   DRIVE   \xF0");
-		files[i].date[0] = 0;
-		files[i].time[0] = 0;
-		strcpy(files[i].comment, "Virtual Floppy Disk");
-		i++;
-	}
-	key = peekb(0x40, 0x75);
-	/* The DOS letters are 26: a wrong byte of the BIOS data area must not run the table over its limit */
-	if ((unsigned int) i + key > 26)
-	{
-		key = (i < 26) ? (unsigned int) (26 - i) : 0;
-	}
-	for (j = 0; j != (int) key; j++)
-	{
-		sprintf(files[i].name, "\x10%c\x11", i + 'A');
-		strcpy(files[i].size, "\xF0   DRIVE   \xF0");
-		files[i].date[0] = 0;
-		files[i].time[0] = 0;
-		strcpy(files[i].comment, "Hard Disk");
-		i++;
-	}
-#endif
 	olddrive = _conioxlib_getdisk();
 #if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32) || defined(__WATCOMC__)
 	_conioxlib_getcwd(olddir, 79);
@@ -3670,7 +3595,8 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 		}
 #endif
 #endif
-		/* A plain 8.3 name keeps the classic case of the table; a long name is listed as it is stored */
+		/* Classic case already applied to the short name (dirs upper / files lower).
+		   If the long name is the same ignoring case, force that classic case onto the display. */
 		if (stricmp(lnames[i], files[i].name) == 0)
 		{
 			strcpy(lnames[i], files[i].name);
@@ -3765,7 +3691,7 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 		done = _conioxlib_findnext(&ffblk);
 #endif
 		i++;
-		if (i > 200)
+		if (i >= CONIOXLIB_MAXFILES)
 		{
 			break;
 		}
@@ -3792,7 +3718,7 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 		files[i].comment[0] = 0;
 		lnames[i][0] = 0;
 	}
-	/* Insertion sort of the table together with the long names (200 entries at most) */
+	/* Insertion sort of the table together with the long names (CONIOXLIB_MAXFILES entries at most) */
 	for (i = 1; i <= (int) last; i++)
 	{
 		memcpy(&tmpf, &files[i], sizeof(tmpf));
@@ -4143,6 +4069,124 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 }
 
 
+/* -------------------- Enumerate logical drives (shared) -------------------- */
+/* Fills names[] with the classic "\x10A\x11" form and, when comments != NULL,
+   a short human description. Returns the number of drives found (capped by max).
+   Used by both fileselector and filemultiselector so the BIOS / GetLogicalDrives
+   logic lives in one place. */
+static unsigned char _conioxlib_enum_drives(char names[][13], char comments[][34], unsigned char max)
+{
+	unsigned char i = 0;
+#if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32)
+	unsigned int dr;
+	unsigned int drmask;
+	char root[4];
+
+	if ((names == 0) || (max == 0))
+	{
+		return(0);
+	}
+	drmask = GetLogicalDrives();
+	root[1] = ':';
+	root[2] = '\\';
+	root[3] = 0;
+	for (dr = 0; (dr < 26) && (i < max); dr++)
+	{
+		if ((drmask & (1u << dr)) == 0)
+		{
+			continue;
+		}
+		root[0] = (char) ('A' + dr);
+		sprintf(names[i], "\x10%c\x11", (char) ('A' + dr));
+		if (comments != 0)
+		{
+			switch (GetDriveTypeA(root))
+			{
+				case DRIVE_REMOVABLE:
+					strcpy(comments[i], "Removable Disk");
+					break;
+				case DRIVE_FIXED:
+					strcpy(comments[i], "Hard Disk");
+					break;
+				case DRIVE_REMOTE:
+					strcpy(comments[i], "Network Disk");
+					break;
+				case DRIVE_CDROM:
+					strcpy(comments[i], "CD-ROM Disk");
+					break;
+				case DRIVE_RAMDISK:
+					strcpy(comments[i], "Virtual Floppy Disk");
+					break;
+				default:
+					strcpy(comments[i], "Disk Drive");
+					break;
+			}
+		}
+		i++;
+	}
+#else
+	unsigned int key;
+	unsigned int j;
+	union REGS r;
+
+	if ((names == 0) || (max == 0))
+	{
+		return(0);
+	}
+	/* Floppy count from equipment word, then hard disks from BIOS data area */
+	key = ((peekb(0x40, 0x10) & 192) >> 6) + 1;
+	for (j = 0; (j < key) && (i < max); j++)
+	{
+		r.h.ah = 8;
+		r.h.dl = (unsigned char) j;
+		_coniox_int86(0x13, &r, &r);
+		sprintf(names[i], "\x10%c\x11", (char) (i + 'A'));
+		if (comments != 0)
+		{
+			if (r.h.bl <= 2)
+			{
+				strcpy(comments[i], "5\xAC Floppy Disk");
+			}
+			else if ((r.h.bl >= 3) && (r.h.bl <= 5))
+			{
+				strcpy(comments[i], "3\xAB Floppy Disk");
+			}
+			else
+			{
+				strcpy(comments[i], "Disk Drive");
+			}
+		}
+		i++;
+	}
+	if ((key == 1) && (i < max))
+	{
+		sprintf(names[i], "\x10%c\x11", (char) (i + 'A'));
+		if (comments != 0)
+		{
+			strcpy(comments[i], "Virtual Floppy Disk");
+		}
+		i++;
+	}
+	key = peekb(0x40, 0x75);
+	/* Never exceed 26 letters even if the BIOS byte is garbage */
+	if ((unsigned int) i + key > 26)
+	{
+		key = (i < 26) ? (unsigned int) (26 - i) : 0;
+	}
+	for (j = 0; (j < key) && (i < max); j++)
+	{
+		sprintf(names[i], "\x10%c\x11", (char) (i + 'A'));
+		if (comments != 0)
+		{
+			strcpy(comments[i], "Hard Disk");
+		}
+		i++;
+	}
+#endif
+	return(i);
+}
+
+
 /* -------------------- Sorts the select ---------------------------------- */
 static int _conioxlib_filemultiselector_sort (const struct conioxlib_sfiles *fa, const char *la, const struct conioxlib_sfiles *fb, const char *lb)
 {
@@ -4245,15 +4289,13 @@ static void _conioxlib_filemultiselector_row(unsigned short y, int idx, unsigned
    */
 unsigned char conioxlib_fileselector (unsigned char *sdisk, char *sdir, char *name)
 {
-	static char CONIOXLIB_FARDATA items[200][41];
-	static char CONIOXLIB_FARDATA shorts[200][41];
+	static char CONIOXLIB_FARDATA items[CONIOXLIB_MAXFILES][41];
+	static char CONIOXLIB_FARDATA shorts[CONIOXLIB_MAXFILES][41];
 	char lname[41];
 	int i;
 	int done;
 	unsigned char disk, olddrive, res;
 #if ((__DOS__) || (__MSDOS__))
-	int j;
-	unsigned int key;
 	_conioxlib_ffblk ffblk;
 #if defined(__WATCOMC__)
 	unsigned int lfnr;
@@ -4263,7 +4305,6 @@ unsigned char conioxlib_fileselector (unsigned char *sdisk, char *sdir, char *na
 #endif
 #if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32)
 	WIN32_FIND_DATA ffd;
-	unsigned int dr, drmask;
 	void *h;
 #endif
 	char tmp[80], dir[80], olddir[80];
@@ -4310,42 +4351,20 @@ unsigned char conioxlib_fileselector (unsigned char *sdisk, char *sdir, char *na
 	/* Ensure we are on the selected drive and directory so the relative scan works everywhere */
 	_conioxlib_setdisk(disk - 'A');
 	_conioxlib_chdir(dir);
-	/* Enumerate the drives the same way the filemultiselector does */
-	i = 0;
-#if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32)
-	drmask = GetLogicalDrives();
-	for (dr = 0; dr != 26; dr++)
+	/* Enumerate drives with the shared helper (no comments needed) */
 	{
-		if (drmask & (1u << dr))
+		char drivenames[26][13];
+		unsigned char nd;
+		unsigned char d;
+
+		nd = _conioxlib_enum_drives(drivenames, 0, 26);
+		for (d = 0; d < nd; d++)
 		{
-			sprintf(items[i], "\x10%c\x11", 'A' + dr);
-			i++;
+			strcpy(items[d], drivenames[d]);
+			shorts[d][0] = 0;
 		}
+		i = (int) nd;
 	}
-#else
-	key = ((peekb(0x40, 0x10) & 192) >> 6) + 1;
-	for (j = 0; j != (int) key; j++)
-	{
-		sprintf(items[i], "\x10%c\x11", i + 'A');
-		i++;
-	}
-	if (key == 1)
-	{
-		sprintf(items[i], "\x10%c\x11", i + 'A');
-		i++;
-	}
-	key = peekb(0x40, 0x75);
-	/* The DOS letters are 26: a wrong byte of the BIOS data area must not run the table over its limit */
-	if ((unsigned int) i + key > 26)
-	{
-		key = (i < 26) ? (unsigned int) (26 - i) : 0;
-	}
-	for (j = 0; j != (int) key; j++)
-	{
-		sprintf(items[i], "\x10%c\x11", i + 'A');
-		i++;
-	}
-#endif
 	strcpy(items[i], "..");
 	strcpy(shorts[i], "..");
 	i++;
@@ -4381,7 +4400,7 @@ unsigned char conioxlib_fileselector (unsigned char *sdisk, char *sdir, char *na
 		}
 #endif
 #endif
-		if ((strcmp(tmp, ".") != 0) && (strcmp(tmp, "..") != 0) && (i < 200))
+		if ((strcmp(tmp, ".") != 0) && (strcmp(tmp, "..") != 0) && (i < CONIOXLIB_MAXFILES))
 		{
 #if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32)
 			if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
@@ -4389,7 +4408,8 @@ unsigned char conioxlib_fileselector (unsigned char *sdisk, char *sdir, char *na
 			if (_conioxlib_ffattrib(ffblk) & 0x10)
 #endif
 			{
-				/* A plain 8.3 name keeps the classic case; a long name is listed as it is stored */
+				/* Decide classic case once on the short name (dirs upper, files lower).
+				   If the long name is the same ignoring case, force that classic case onto the display. */
 				strupr(tmp);
 				if (stricmp(lname, tmp) == 0)
 				{
