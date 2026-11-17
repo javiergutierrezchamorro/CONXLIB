@@ -128,6 +128,13 @@ static struct conioxlib_stheme _conioxlib_curtheme = {
 /* Keys captured by conioxlib_pollmouse() under Windows: a small FIFO keeps
    every key of a batch read; the old single slot dropped all but the first */
 #define CONIOXLIB_KEYQUEUE	16
+/* Layout constants: one place for the fixed 80x25 geometry used by status,
+   background, about and progress so a future wide-screen path has a single map */
+#define CONIOXLIB_SCR_W		80
+#define CONIOXLIB_SCR_H		25
+#define CONIOXLIB_STATUS_COLS	59
+#define CONIOXLIB_STATUS_ROW	25
+#define CONIOXLIB_TITLE_ROW	1
 static int _conioxlib_keyqueue[CONIOXLIB_KEYQUEUE];
 static unsigned char _conioxlib_keyqhead = 0;
 static unsigned char _conioxlib_keyqtail = 0;
@@ -138,6 +145,7 @@ static int _conioxlib_blocksdirty = 1;
 
 static int _conioxlib_filemultiselector_sort(const struct conioxlib_sfiles *fa, const char *la, const struct conioxlib_sfiles *fb, const char *lb);
 static void _conioxlib_filemultiselector_format(char *res, unsigned long int n);
+static void _conioxlib_filemultiselector_row(unsigned short y, int idx, unsigned char atr, int nw, int cw, char lnames[][41], struct conioxlib_sfiles *files);
 static void _conioxlib_poll(void);
 static void _conioxlib_fillch(unsigned short x, unsigned short y, int n, unsigned char ch, unsigned char atr);
 
@@ -216,12 +224,34 @@ static unsigned int _conioxlib_pollkey(void)
 	return(key);
 }
 
-/* Writes a help description on the status line (columns 1-59) with
-   the color of the active theme; used by menu/menubar/buttons/option/property.
-   status() already paints cols 1-59 via puttext without moving the cursor. */
-static void _conioxlib_hint(const char *d)
+/* Status-line hint used by menu/menubar/buttons/option/property/about. */
+#define _conioxlib_hint(d)	conioxlib_status(d)
+
+/* Map common mouse gestures when *key is still 0: right-click → F1,
+   vertical wheel → upkey/downkey. Horizontal wheel is left to the caller.
+   Returns nonzero when *key was written. */
+static int _conioxlib_mouse_nav(unsigned int *key, unsigned int upkey, unsigned int downkey)
 {
-	conioxlib_status(d);
+	if ((key == 0) || (*key != 0))
+	{
+		return(0);
+	}
+	if (conioxlib_mousestatus.rclick != 0)
+	{
+		*key = KBD_F1;
+		return(1);
+	}
+	if (conioxlib_mousestatus.wheely < 0)
+	{
+		*key = downkey;
+		return(1);
+	}
+	if (conioxlib_mousestatus.wheely > 0)
+	{
+		*key = upkey;
+		return(1);
+	}
+	return(0);
 }
 
 /* ------------------------- Checks for a pending key --------------------- */
@@ -2032,19 +2062,9 @@ unsigned char conioxlib_buttons (unsigned short x1, unsigned short y1, unsigned 
 					}
 				}
 			}
-			/* Right button */
-			else if (conioxlib_mousestatus.rclick != 0)
+			else
 			{
-				key = KBD_F1;
-			}
-			/* Wheel: moves to the next or previous button */
-			else if (conioxlib_mousestatus.wheely < 0)
-			{
-				key = KBD_RIGHT;
-			}
-			else if (conioxlib_mousestatus.wheely > 0)
-			{
-				key = KBD_LEFT;
+				_conioxlib_mouse_nav(&key, KBD_LEFT, KBD_RIGHT);
 			}
 
 		}
@@ -2374,17 +2394,9 @@ unsigned char conioxlib_menu (unsigned short x1, unsigned short y1, unsigned cha
 					}
 				}
 			}
-			else if (conioxlib_mousestatus.rclick != 0)
+			else
 			{
-				key = KBD_F1;
-			}
-			else if (conioxlib_mousestatus.wheely < 0)
-			{
-				key = KBD_DOWN;
-			}
-			else if (conioxlib_mousestatus.wheely > 0)
-			{
-				key = KBD_UP;
+				_conioxlib_mouse_nav(&key, KBD_UP, KBD_DOWN);
 			}
 		}
 		while ((key != 1) && (key != KBD_UP) && (key != KBD_DOWN) && (key != KBD_LEFT) && (key != KBD_RIGHT) && (key != KBD_PGUP) && (key != KBD_PGDW) && (key != KBD_ORG) && (key != KBD_END) && (key != KBD_ESC) && (key != KBD_ENTER) && (key != KBD_F1));
@@ -2631,18 +2643,17 @@ unsigned char conioxlib_menubar (unsigned short y, unsigned char atr0, unsigned 
 					}
 				}
 			}
-			else if (conioxlib_mousestatus.rclick != 0)
+			else if (!_conioxlib_mouse_nav(&key, KBD_LEFT, KBD_RIGHT))
 			{
-				key = KBD_F1;
-			}
-			/* Horizontal wheel: jump to the previous or next menu */
-			else if (conioxlib_mousestatus.wheelx < 0)
-			{
-				key = KBD_RIGHT;
-			}
-			else if (conioxlib_mousestatus.wheelx > 0)
-			{
-				key = KBD_LEFT;
+				/* Horizontal wheel: jump to the previous or next menu */
+				if (conioxlib_mousestatus.wheelx < 0)
+				{
+					key = KBD_RIGHT;
+				}
+				else if (conioxlib_mousestatus.wheelx > 0)
+				{
+					key = KBD_LEFT;
+				}
 			}
 
 		}
@@ -2776,19 +2787,9 @@ static unsigned char _conioxlib_checklist (unsigned short x1, unsigned short y1,
 					key = KBD_INS;
 				}
 			}
-			/* Right button */
-			else if (conioxlib_mousestatus.rclick != 0)
+			else
 			{
-				key = KBD_F1;
-			}
-			/* Wheel: moves the selection up or down */
-			else if (conioxlib_mousestatus.wheely < 0)
-			{
-				key = KBD_DOWN;
-			}
-			else if (conioxlib_mousestatus.wheely > 0)
-			{
-				key = KBD_UP;
+				_conioxlib_mouse_nav(&key, KBD_UP, KBD_DOWN);
 			}
 
 		}
@@ -2976,7 +2977,6 @@ unsigned char conioxlib_view (unsigned short x1, unsigned short y1, unsigned sho
 	int f, ini, oldini, maxini;
 	unsigned int key;
 	char *oldb;
-	char tmp[70];
 
 	/* Degenerate rectangles used to loop forever building the frame */
 	if ((y2 < (unsigned short) (y1 + 5)) || (x2 < x1))
@@ -3033,24 +3033,32 @@ unsigned char conioxlib_view (unsigned short x1, unsigned short y1, unsigned sho
 			gotoxy(x2, z + y1 + 2);
 			putch('\xB2');
 			c = y1 + 1;
-			textattr(atr1);
-			for (f = ini; f != ini + y2 - y1 - 1; f++)
 			{
-				memset(tmp, 32, w);
-				tmp[w] = 0;
-				/* Rows past the content are painted blank without touching the caller buffer */
-				if (f < (int) last)
+				unsigned short cells[60];
+				unsigned short ca = (unsigned short) ((unsigned int) atr1 << 8);
+				unsigned int i;
+
+				for (f = ini; f != ini + y2 - y1 - 1; f++)
 				{
-					len = (unsigned int) strlen(buffer[f]);
-					if (len > w)
+					for (i = 0; i < w; i++)
 					{
-						len = w;
+						cells[i] = (unsigned short) (ca | ' ');
 					}
-					memcpy(tmp, buffer[f], len);
+					if (f < (int) last)
+					{
+						len = (unsigned int) strlen(buffer[f]);
+						if (len > w)
+						{
+							len = w;
+						}
+						for (i = 0; i < len; i++)
+						{
+							cells[i] = (unsigned short) (ca | (unsigned char) buffer[f][i]);
+						}
+					}
+					puttext((unsigned short) (x1 + 2), (unsigned short) c, (unsigned short) (x1 + 1 + w), (unsigned short) c, cells);
+					c++;
 				}
-				gotoxy(x1 + 2, c);
-				cputs(tmp);
-				c++;
 			}
 		}
 		do
@@ -3080,18 +3088,9 @@ unsigned char conioxlib_view (unsigned short x1, unsigned short y1, unsigned sho
 					key = KBD_ESC;
 				}
 			}
-			/* Right button */
-			else if (conioxlib_mousestatus.rclick != 0)
+			else
 			{
-				key = KBD_F1;
-			}
-			else if (conioxlib_mousestatus.wheely < 0)
-			{
-				key = KBD_DOWN;
-			}
-			else if (conioxlib_mousestatus.wheely > 0)
-			{
-				key = KBD_UP;
+				_conioxlib_mouse_nav(&key, KBD_UP, KBD_DOWN);
 			}
 
 		}
@@ -3882,25 +3881,18 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 	tmp1[78] = 0;
 	gotoxy (1, 23);
 	cputs(tmp1);
-	if (last >= 18)
+	for (i = 0; i < 18; i++)
 	{
-		for (i = 0; i < 18; i++)
+		if (i <= (int) last)
 		{
-			gotoxy (2, 5 + i);
-			cprintf("%-*.*s\xBA%14s\xBA%-8s\xBA%-5s\xBA%-*.*s", nw, nw, lnames[i], files[i].size, files[i].date, files[i].time, cw, cw, files[i].comment);
+			_conioxlib_filemultiselector_row((unsigned short) (5 + i), i, CONIOXLIB_ATTR(BLACK, CYAN), nw, cw, lnames, files);
+		}
+		else
+		{
+			_conioxlib_filemultiselector_row((unsigned short) (5 + i), -1, CONIOXLIB_ATTR(BLACK, CYAN), nw, cw, lnames, files);
 		}
 	}
-	else
-	{
-		for (i = 0; i <= last; i++)
-		{
-			gotoxy (2, 5 + i);
-			cprintf("%-*.*s\xBA%14s\xBA%-8s\xBA%-5s\xBA%-*.*s", nw, nw, lnames[i], files[i].size, files[i].date, files[i].time, cw, cw, files[i].comment);
-		}
-	}
-	textattr(CONIOXLIB_ATTR(WHITE, GREEN));
-	gotoxy(2, 5);
-	cprintf("%-*.*s\xBA%14s\xBA%-8s\xBA%-5s\xBA%-*.*s", nw, nw, lnames[0], files[0].size, files[0].date, files[0].time, cw, cw, files[0].comment);
+	_conioxlib_filemultiselector_row(5, 0, CONIOXLIB_ATTR(WHITE, GREEN), nw, cw, lnames, files);
 	i = 0;
 	j = 0;
 	do
@@ -3909,7 +3901,7 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 		{
 			click = 0;
 			key = _conioxlib_pollkey();
-			/* Left button */
+			/* Left button: close, scroll arrows, or pick a row (like listbox) */
 			if (conioxlib_mousestatus.lclick != 0)
 			{
 				if ((conioxlib_mousestatus.x == 4) && (conioxlib_mousestatus.y == 2))
@@ -3931,16 +3923,9 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 					if ((j - i + row) <= (int) last)
 					{
 						/* Repaint the row that loses the cursor, then move the cursor to the clicked row */
-						if (files[j].selected)
-						{
-							textattr(CONIOXLIB_ATTR(WHITE, CYAN));
-						}
-						else
-						{
-							textattr(CONIOXLIB_ATTR(BLACK, CYAN));
-						}
-						gotoxy(2, 5 + i);
-						cprintf("%-*.*s\xBA%14s\xBA%-8s\xBA%-5s\xBA%-*.*s", nw, nw, lnames[j], files[j].size, files[j].date, files[j].time, cw, cw, files[j].comment);
+						_conioxlib_filemultiselector_row((unsigned short) (5 + i), j,
+							files[j].selected ? CONIOXLIB_ATTR(WHITE, CYAN) : CONIOXLIB_ATTR(BLACK, CYAN),
+							nw, cw, lnames, files);
 						j = j - i + row;
 						i = row;
 						click = 1;
@@ -3948,27 +3933,16 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 					}
 				}
 			}
-			else if (conioxlib_mousestatus.wheely < 0)
+			else
 			{
-				key = KBD_DOWN;
-			}
-			else if (conioxlib_mousestatus.wheely > 0)
-			{
-				key = KBD_UP;
+				_conioxlib_mouse_nav(&key, KBD_UP, KBD_DOWN);
 			}
 
 		}
 		while ((key != KBD_DOWN) && (key != KBD_UP) && (key != KBD_PGDW) && (key != KBD_PGUP) && (key != KBD_ORG) && (key != KBD_END) && (key != KBD_INS) && (key != KBD_SPACE) && (key != KBD_ENTER) && (key != KBD_ESC) && (key != KBD_F4) && (key != KBD_F3) && (key != KBD_F2) && (key != KBD_F1));
-		if (files[j].selected)
-		{
-			textattr(CONIOXLIB_ATTR(WHITE, CYAN));
-		}
-		else
-		{
-			textattr(CONIOXLIB_ATTR(BLACK, CYAN));
-		}
-		gotoxy(2, 5 + i);
-		cprintf("%-*.*s\xBA%14s\xBA%-8s\xBA%-5s\xBA%-*.*s", nw, nw, lnames[j], files[j].size, files[j].date, files[j].time, cw, cw, files[j].comment);
+		_conioxlib_filemultiselector_row((unsigned short) (5 + i), j,
+			files[j].selected ? CONIOXLIB_ATTR(WHITE, CYAN) : CONIOXLIB_ATTR(BLACK, CYAN),
+			nw, cw, lnames, files);
 
 		if (key == KBD_ENTER)
 		{
@@ -4062,16 +4036,9 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 			{
 				files[j].selected++;
 				files[j].selected = files[j].selected & 1;
-				if (files[j].selected)
-				{
-					textattr(CONIOXLIB_ATTR(WHITE, CYAN));
-				}
-				else
-				{
-					textattr(CONIOXLIB_ATTR(BLACK, CYAN));
-				}
-				gotoxy(2, 5 + i);
-				cprintf("%-*.*s\xBA%14s\xBA%-8s\xBA%-5s\xBA%-*.*s", nw, nw, lnames[j], files[j].size, files[j].date, files[j].time, cw, cw, files[j].comment);
+				_conioxlib_filemultiselector_row((unsigned short) (5 + i), j,
+					files[j].selected ? CONIOXLIB_ATTR(WHITE, CYAN) : CONIOXLIB_ATTR(BLACK, CYAN),
+					nw, cw, lnames, files);
 			}
 			/* A mouse click marks the clicked entry and stays on it */
 			if ((j < last) && (click == 0))
@@ -4093,37 +4060,29 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 		if (i < 0)
 		{
 			movetext(2, 5, 77, 21, 2, 6);
-			textattr(CONIOXLIB_ATTR(BLACK, CYAN));
-			memset(tmp1, 32, 76);
-			tmp1[76] = 0;
-			gotoxy(2, 5);
-			cputs(tmp1);
+			_conioxlib_filemultiselector_row(5, j, CONIOXLIB_ATTR(BLACK, CYAN), nw, cw, lnames, files);
 			i = 0;
 		}
 		else if (i > 17)
 		{
 			movetext(2, 6, 77, 22, 2, 5);
-			textattr(CONIOXLIB_ATTR(BLACK, CYAN));
-			memset(tmp1, 32, 76);
-			tmp1[76] = 0;
-			gotoxy(2, 22);
-			cputs(tmp1);
+			_conioxlib_filemultiselector_row(22, j, CONIOXLIB_ATTR(BLACK, CYAN), nw, cw, lnames, files);
 			i = 17;
 		}
 		if ((key == KBD_PGDW) || (key == KBD_PGUP) || (key == KBD_ORG) || (key == KBD_END))
 		{
 			for (i = 0; i < 18; i++)
 			{
-				if (files[i + j].selected)
+				if ((i + j) <= (int) last)
 				{
-					textattr(CONIOXLIB_ATTR(WHITE, CYAN));
+					_conioxlib_filemultiselector_row((unsigned short) (5 + i), i + j,
+						files[i + j].selected ? CONIOXLIB_ATTR(WHITE, CYAN) : CONIOXLIB_ATTR(BLACK, CYAN),
+						nw, cw, lnames, files);
 				}
 				else
 				{
-					textattr(CONIOXLIB_ATTR(BLACK, CYAN));
+					_conioxlib_filemultiselector_row((unsigned short) (5 + i), -1, CONIOXLIB_ATTR(BLACK, CYAN), nw, cw, lnames, files);
 				}
-				gotoxy (2, 5 + i);
-				cprintf("%-*.*s\xBA%14s\xBA%-8s\xBA%-5s\xBA%-*.*s", nw, nw, lnames[i + j], files[i + j].size, files[i + j].date, files[i + j].time, cw, cw, files[i + j].comment);
 			}
 			if (key == KBD_END)
 			{
@@ -4139,9 +4098,7 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 				i = 0;
 			}
 		}
-		textattr(CONIOXLIB_ATTR(WHITE, GREEN));
-		gotoxy(2, 5 + i);
-		cprintf("%-*.*s\xBA%14s\xBA%-8s\xBA%-5s\xBA%-*.*s", nw, nw, lnames[j], files[j].size, files[j].date, files[j].time, cw, cw, files[j].comment);
+		_conioxlib_filemultiselector_row((unsigned short) (5 + i), j, CONIOXLIB_ATTR(WHITE, GREEN), nw, cw, lnames, files);
 	}
 	while ((key != KBD_ENTER) && (key != KBD_ESC) && (key != KBD_F1));
 	if (key == KBD_ESC)
@@ -4234,6 +4191,44 @@ static void _conioxlib_filemultiselector_format (char *res, unsigned long int n)
 			j = 3;
 		}
 	}
+}
+
+
+/* Paints one filemultiselector row at screen column 2..77 with puttext.
+   idx < 0 or an empty name paints a blank row (used for short directories). */
+static void _conioxlib_filemultiselector_row(unsigned short y, int idx, unsigned char atr, int nw, int cw, char lnames[][41], struct conioxlib_sfiles *files)
+{
+	char line[80];
+	unsigned short cells[76];
+	unsigned short ca;
+	unsigned int i, len;
+
+	ca = (unsigned short) ((unsigned int) atr << 8);
+	if ((idx < 0) || (files[idx].name[0] == 0))
+	{
+		for (i = 0; i < 76; i++)
+		{
+			cells[i] = (unsigned short) (ca | ' ');
+		}
+		puttext(2, y, 77, y, cells);
+		return;
+	}
+	sprintf(line, "%-*.*s\xBA%14s\xBA%-8s\xBA%-5s\xBA%-*.*s",
+		nw, nw, lnames[idx], files[idx].size, files[idx].date, files[idx].time, cw, cw, files[idx].comment);
+	len = (unsigned int) strlen(line);
+	if (len > 76)
+	{
+		len = 76;
+	}
+	for (i = 0; i < len; i++)
+	{
+		cells[i] = (unsigned short) (ca | (unsigned char) line[i]);
+	}
+	for (; i < 76; i++)
+	{
+		cells[i] = (unsigned short) (ca | ' ');
+	}
+	puttext(2, y, 77, y, cells);
 }
 
 
@@ -4702,29 +4697,29 @@ void conioxlib_background (unsigned char msg[])
 	struct tm *ti;
 
 	/* Cell is always 2 bytes (char + attr). Never use unsigned int here: on Win32/DOS32 that is 4 bytes and overflows. */
-	oldb = (unsigned short *) malloc(80 * 25 * sizeof(unsigned short));
+	oldb = (unsigned short *) malloc(CONIOXLIB_SCR_W * CONIOXLIB_SCR_H * sizeof(unsigned short));
 	if (oldb == 0)
 	{
 		return;
 	}
 	fill = (unsigned short) ((CONIOXLIB_ATTR(CYAN, BLUE) << 8) | 0xB0);
 	olda = oldb;
-	for (i = 0; i != (unsigned int) (80 * 23); i++)
+	for (i = 0; i != (unsigned int) (CONIOXLIB_SCR_W * (CONIOXLIB_SCR_H - 2)); i++)
 	{
 		*olda = fill;
 		olda++;
 	}
-	puttext(1, 2, 80, 24, oldb);
+	puttext(1, 2, CONIOXLIB_SCR_W, CONIOXLIB_SCR_H - 1, oldb);
 	status = (unsigned short) (((unsigned int) _conioxlib_curtheme.atrstatus << 8) | 0x20);
 	olda = oldb;
-	for (i = 0; i != 80; i++)
+	for (i = 0; i != CONIOXLIB_SCR_W; i++)
 	{
 		*olda = status;
 		olda++;
 	}
-	puttext(1, 25, 80, 25, oldb);
-	/* Row 1 is the title bar: always paint all 80 cells so the right side is
-	   not left black when msg is shorter than the screen width. */
+	puttext(1, CONIOXLIB_STATUS_ROW, CONIOXLIB_SCR_W, CONIOXLIB_STATUS_ROW, oldb);
+	/* Row 1 is the title bar: always paint all columns so a short msg
+	   does not leave the right side black. */
 	{
 		unsigned short titleattr;
 		unsigned int len;
@@ -4733,20 +4728,20 @@ void conioxlib_background (unsigned char msg[])
 		titleattr = (unsigned short) (CONIOXLIB_ATTR(BLACK, LIGHTGRAY) << 8);
 		p = ((msg != 0) && (msg[0] != 0)) ? (const char *) msg : "";
 		len = (unsigned int) strlen(p);
-		if (len > 80)
+		if (len > CONIOXLIB_SCR_W)
 		{
-			len = 80;
+			len = CONIOXLIB_SCR_W;
 		}
 		olda = oldb;
 		for (i = 0; i < len; i++)
 		{
 			*olda++ = (unsigned short) (titleattr | (unsigned char) p[i]);
 		}
-		for (; i < 80; i++)
+		for (; i < CONIOXLIB_SCR_W; i++)
 		{
 			*olda++ = (unsigned short) (titleattr | ' ');
 		}
-		puttext(1, 1, 80, 1, oldb);
+		puttext(1, CONIOXLIB_TITLE_ROW, CONIOXLIB_SCR_W, CONIOXLIB_TITLE_ROW, oldb);
 	}
 	time(&t);
 	ti = localtime(&t);
@@ -5619,19 +5614,9 @@ unsigned char conioxlib_grid (unsigned short x1, unsigned short y1, unsigned cha
 					key = 0xFFFF;
 				}
 			}
-			/* Right button */
-			else if (conioxlib_mousestatus.rclick != 0)
+			else
 			{
-				key = KBD_F1;
-			}
-			/* Wheel: moves the selection up or down */
-			else if (conioxlib_mousestatus.wheely < 0)
-			{
-				key = KBD_DOWN;
-			}
-			else if (conioxlib_mousestatus.wheely > 0)
-			{
-				key = KBD_UP;
+				_conioxlib_mouse_nav(&key, KBD_UP, KBD_DOWN);
 			}
 
 		}
@@ -5903,7 +5888,7 @@ void conioxlib_restorescr (unsigned short x1, unsigned short y1, unsigned short 
    */
 void conioxlib_status (const char *msg)
 {
-	unsigned short cells[59];
+	unsigned short cells[CONIOXLIB_STATUS_COLS];
 	unsigned short cellattr;
 	unsigned int i, len;
 	const char *p;
@@ -5911,19 +5896,19 @@ void conioxlib_status (const char *msg)
 	cellattr = (unsigned short) ((unsigned int) _conioxlib_curtheme.atrstatus << 8);
 	p = (msg != 0) ? msg : "";
 	len = (unsigned int) strlen(p);
-	if (len > 59)
+	if (len > CONIOXLIB_STATUS_COLS)
 	{
-		len = 59;
+		len = CONIOXLIB_STATUS_COLS;
 	}
 	for (i = 0; i < len; i++)
 	{
 		cells[i] = (unsigned short) (cellattr | (unsigned char) p[i]);
 	}
-	for (; i < 59; i++)
+	for (; i < CONIOXLIB_STATUS_COLS; i++)
 	{
 		cells[i] = (unsigned short) (cellattr | ' ');
 	}
-	puttext(1, 25, 59, 25, cells);
+	puttext(1, CONIOXLIB_STATUS_ROW, CONIOXLIB_STATUS_COLS, CONIOXLIB_STATUS_ROW, cells);
 }
 
 /* ------------------------- Temporary tooltip hint ------------------------ */
@@ -6048,6 +6033,11 @@ void conioxlib_progressbar (unsigned short x, unsigned short y, unsigned short w
    */
 void conioxlib_progress (const char *title, unsigned int value, unsigned int maxv)
 {
+	unsigned short cells[28];
+	unsigned short ca;
+	unsigned int i, len;
+	const char *p;
+
 	if (maxv == 0)
 	{
 		maxv = 1;
@@ -6057,17 +6047,23 @@ void conioxlib_progress (const char *title, unsigned int value, unsigned int max
 		value = maxv;
 	}
 	_wscroll = 0;
-	textattr(_conioxlib_curtheme.atrstatus);
-	gotoxy(1, 25);
-	if ((title != 0) && (title[0] != 0))
+	ca = (unsigned short) ((unsigned int) _conioxlib_curtheme.atrstatus << 8);
+	p = ((title != 0) && (title[0] != 0)) ? title : "";
+	len = (unsigned int) strlen(p);
+	if (len > 28)
 	{
-		cprintf("%-28.28s", title);
+		len = 28;
 	}
-	else
+	for (i = 0; i < len; i++)
 	{
-		cprintf("%*s", 28, "");
+		cells[i] = (unsigned short) (ca | (unsigned char) p[i]);
 	}
-	conioxlib_progressbar(30, 25, 20, _conioxlib_curtheme.atrstatus, value, maxv);
+	for (; i < 28; i++)
+	{
+		cells[i] = (unsigned short) (ca | ' ');
+	}
+	puttext(1, CONIOXLIB_STATUS_ROW, 28, CONIOXLIB_STATUS_ROW, cells);
+	conioxlib_progressbar(30, CONIOXLIB_STATUS_ROW, 20, _conioxlib_curtheme.atrstatus, value, maxv);
 }
 
 /* --------------------------- Message box dialog -------------------------- */
@@ -6412,41 +6408,56 @@ unsigned char conioxlib_listbox (unsigned short x1, unsigned short y1, unsigned 
 		if (repaint != 0)
 		{
 			/* Item rows leave the last interior column free for the bar */
-			for (row = 0; row < vis; row++)
 			{
-				gotoxy(x1 + 1, y1 + 1 + row);
-				if (top + row < (int) nitems)
+				unsigned short cells[40];
+				unsigned short ca;
+				unsigned int col, len;
+				const char *s;
+				int iw = itemw;
+
+				if (iw > 40)
 				{
-					textattr((top + row == sel) ? atr1 : atr0);
-					cprintf("%-*.*s", itemw, itemw, items[top + row]);
+					iw = 40;
 				}
-				else
+				for (row = 0; row < vis; row++)
 				{
-					textattr(atr0);
-					cprintf("%*s", itemw, "");
+					ca = (unsigned short) ((unsigned int) ((top + row == sel) ? atr1 : atr0) << 8);
+					for (col = 0; col < (unsigned int) iw; col++)
+					{
+						cells[col] = (unsigned short) (ca | ' ');
+					}
+					if (top + row < (int) nitems)
+					{
+						s = items[top + row];
+						len = (unsigned int) strlen(s);
+						if (len > (unsigned int) iw)
+						{
+							len = (unsigned int) iw;
+						}
+						for (col = 0; col < len; col++)
+						{
+							cells[col] = (unsigned short) (ca | (unsigned char) s[col]);
+						}
+					}
+					puttext((unsigned short) (x1 + 1), (unsigned short) (y1 + 1 + row), (unsigned short) (x1 + iw), (unsigned short) (y1 + 1 + row), cells);
 				}
 			}
 			/* Scroll bar in the last interior column when the list overflows */
 			if (((int) nitems > vis) && (vis >= 3))
 			{
-				textattr(atr0);
-				gotoxy((unsigned short) (x2 - 1), (unsigned short) (y1 + 1));
-				putch(0x18);
+				_conioxlib_fillch((unsigned short) (x2 - 1), (unsigned short) (y1 + 1), 1, 0x18, atr0);
 				for (row = 2; row < vis; row++)
 				{
-					gotoxy((unsigned short) (x2 - 1), (unsigned short) (y1 + row));
-					putch(0xB0);
+					_conioxlib_fillch((unsigned short) (x2 - 1), (unsigned short) (y1 + row), 1, 0xB0, atr0);
 				}
-				gotoxy((unsigned short) (x2 - 1), (unsigned short) (y1 + vis));
-				putch(0x19);
+				_conioxlib_fillch((unsigned short) (x2 - 1), (unsigned short) (y1 + vis), 1, 0x19, atr0);
 				/* Thumb at the position of top inside the bar */
 				row = 1 + (top * (vis - 3)) / ((int) nitems - vis);
 				if (row > vis - 2)
 				{
 					row = vis - 2;
 				}
-				gotoxy((unsigned short) (x2 - 1), (unsigned short) (y1 + 1 + row));
-				putch(0xB2);
+				_conioxlib_fillch((unsigned short) (x2 - 1), (unsigned short) (y1 + 1 + row), 1, 0xB2, atr0);
 			}
 			repaint = 0;
 		}
@@ -6499,13 +6510,9 @@ unsigned char conioxlib_listbox (unsigned short x1, unsigned short y1, unsigned 
 					}
 				}
 			}
-			else if (conioxlib_mousestatus.wheely < 0)
+			else
 			{
-				key = KBD_DOWN;
-			}
-			else if (conioxlib_mousestatus.wheely > 0)
-			{
-				key = KBD_UP;
+				_conioxlib_mouse_nav(&key, KBD_UP, KBD_DOWN);
 			}
 
 		}
