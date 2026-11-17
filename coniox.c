@@ -69,6 +69,7 @@ static unsigned short coniox_far *coniox_cell;
 #if defined(__WATCOMC__)
 	static coniox_inline void coniox_fmemsetw(void coniox_far *m, short val, size_t count);
 	static coniox_inline void coniox_fmemcpy(void coniox_far *dst, const void coniox_far *src, size_t count);
+	static coniox_inline void coniox_fmemout(unsigned int port, const void coniox_far *src, size_t count);
 	#if (defined(__FLAT__))
 		static coniox_inline unsigned int coniox_putrun(unsigned short *piDst, const char *piSrc, unsigned int piAttr, size_t piCount);
 	#else
@@ -188,6 +189,12 @@ static unsigned short coniox_far *coniox_cell;
 			"rep movsb" \
 			parm [EDI][ESI][EBX] \
 			modify exact [ECX EDI ESI];
+		/* port in DX (low word of EDX), source in ESI, byte count in ECX: one REP OUTSB to a fixed I/O port (DAC data, etc.). */
+		#pragma aux coniox_fmemout = \
+			"cld" \
+			"rep outsb" \
+			parm [EDX][ESI][ECX] \
+			modify exact [ESI ECX];
 	#else
 		#pragma aux coniox_fmemsetw = \
 			"cld" \
@@ -237,6 +244,22 @@ static unsigned short coniox_far *coniox_cell;
 			"pop ds" \
 			parm [ES DI][DX SI][CX] \
 			modify exact [CX SI DI];
+		/* port in DX, far source in AX:SI, byte count in CX.
+		   Pure 8086 loop (LODSB/OUT/LOOP): REP OUTSB is 186+ and rejected when the
+		   compiler CPU setting is 8086 (default DOS16 without -3/-4). */
+		#pragma aux coniox_fmemout = \
+			"push ds" \
+			"mov ds, ax" \
+			"cld" \
+			"jcxz short _fmodone" \
+			"_fmonext:" \
+			"lodsb" \
+			"out dx, al" \
+			"loop _fmonext" \
+			"_fmodone:" \
+			"pop ds" \
+			parm [DX][AX SI][CX] \
+			modify exact [SI CX AX];
 	#endif
 #else
 	#define coniox_fmemcpy      _fmemmove
@@ -256,6 +279,17 @@ static unsigned short coniox_far *coniox_cell;
 		while (count--)
 		{
 			*buf++ = val;
+		}
+	}
+
+	/* Byte stream to a fixed I/O port (DAC data, ATTR, etc.). */
+	static coniox_inline void coniox_fmemout(unsigned int port, const void coniox_far *src, size_t count)
+	{
+		const unsigned char coniox_far *p = (const unsigned char coniox_far *) src;
+
+		while (count--)
+		{
+			outportb(port, *p++);
 		}
 	}
 
@@ -1763,70 +1797,18 @@ int puttext(int __left, int __top, int __right, int __bottom, void *__source)
 
 
 /* ----------------------------------------------------------------------------------------------------------------- */
+typedef char coniox_wchar_info_size_check[(sizeof(wchar_info) == sizeof(CHAR_INFO)) ? 1 : -1];
+
 int putwtext(int __left, int __top, int __right, int __bottom, const wchar_info *__source)
 {
-	int i;
-	int total;
 	int ok;
 	SMALL_RECT r;
 	COORD s, c = { 0,0 };
-	CHAR_INFO *buffer;
 
 
 	coniox_init(NULL);
 	/* Borland-style validation: rectangle inside the absolute screen. */
 	if (__source == NULL || __left < 1 || __top < 1 || __right > ti.screenwidth || __bottom > ti.screenheight || __right < __left || __bottom < __top)
-	{
-		return(0);
-	}
-	total = (__right - __left + 1) * (__bottom - __top + 1);
-	buffer = (total <= CONIOX_MAX_CHARINFO) ? coniox_charinfo : (CHAR_INFO *) malloc((size_t) total * sizeof(CHAR_INFO));
-	if (buffer == NULL)
-	{
-		return(0);
-	}
-
-	r.Left = (short) (coniox_orgx + __left - 1);
-	r.Top = (short) (coniox_orgy + __top - 1);
-	r.Right = (short) (coniox_orgx + __right - 1);
-	r.Bottom = (short) (coniox_orgy + __bottom - 1);
-	s.X = (short)(__right - __left + 1);
-	s.Y = (short)(__bottom - __top + 1);
-
-	for (i = 0; i < total; i++)
-	{
-		buffer[i].Char.UnicodeChar = __source[i].letter;
-		buffer[i].Attributes = __source[i].attr;
-	}
-	ok = WriteConsoleOutputW(coniox_console_output, buffer, s, c, &r);
-	if (buffer != coniox_charinfo)
-	{
-		free(buffer);
-	}
-	return(ok ? 1 : 0);
-}
-
-
-/* ----------------------------------------------------------------------------------------------------------------- */
-int getwtext(int __left, int __top, int __right, int __bottom, wchar_info *__destin)
-{
-	int i;
-	int total;
-	int ok;
-	SMALL_RECT r;
-	COORD s, c = { 0,0 };
-	CHAR_INFO *buffer;
-
-
-	coniox_init(NULL);
-	/* Borland-style validation: rectangle inside the absolute screen. */
-	if (__destin == NULL || __left < 1 || __top < 1 || __right > ti.screenwidth || __bottom > ti.screenheight || __right < __left || __bottom < __top)
-	{
-		return(0);
-	}
-	total = (__right - __left + 1) * (__bottom - __top + 1);
-	buffer = (total <= CONIOX_MAX_CHARINFO) ? coniox_charinfo : (CHAR_INFO *) malloc((size_t) total * sizeof(CHAR_INFO));
-	if (buffer == NULL)
 	{
 		return(0);
 	}
@@ -1837,20 +1819,35 @@ int getwtext(int __left, int __top, int __right, int __bottom, wchar_info *__des
 	s.X = (short) (__right - __left + 1);
 	s.Y = (short) (__bottom - __top + 1);
 
-	ok = ReadConsoleOutputW(coniox_console_output, buffer, s, c, &r);
-	for (i = 0; ok && i < total; i++)
-	{
-		__destin[i].letter = buffer[i].Char.UnicodeChar;
-		__destin[i].attr = buffer[i].Attributes;
-	}
-	if (buffer != coniox_charinfo)
-	{
-		free(buffer);
-	}
+	/* wchar_info and CHAR_INFO share the layout (WCHAR + WORD, 4 bytes): the console reads/writes the caller buffer directly, no conversion pass nor scratch copy. */
+	ok = WriteConsoleOutputW(coniox_console_output, (const CHAR_INFO *) __source, s, c, &r);
 	return(ok ? 1 : 0);
 }
+/* ----------------------------------------------------------------------------------------------------------------- */
+int getwtext(int __left, int __top, int __right, int __bottom, wchar_info *__destin)
+{
+	int ok;
+	SMALL_RECT r;
+	COORD s, c = { 0,0 };
 
 
+	coniox_init(NULL);
+	/* Borland-style validation: rectangle inside the absolute screen. */
+	if (__destin == NULL || __left < 1 || __top < 1 || __right > ti.screenwidth || __bottom > ti.screenheight || __right < __left || __bottom < __top)
+	{
+		return(0);
+	}
+	r.Left = (short) (coniox_orgx + __left - 1);
+	r.Top = (short) (coniox_orgy + __top - 1);
+	r.Right = (short) (coniox_orgx + __right - 1);
+	r.Bottom = (short) (coniox_orgy + __bottom - 1);
+	s.X = (short) (__right - __left + 1);
+	s.Y = (short) (__bottom - __top + 1);
+
+	/* wchar_info and CHAR_INFO share the layout (WCHAR + WORD, 4 bytes): the console reads/writes the caller buffer directly, no conversion pass nor scratch copy. */
+	ok = ReadConsoleOutputW(coniox_console_output, (CHAR_INFO *) __destin, s, c, &r);
+	return(ok ? 1 : 0);
+}
 /* ----------------------------------------------------------------------------------------------------------------- */
 void textmode(int __newmode)
 {
@@ -2625,16 +2622,16 @@ static void coniox_enhanced_palette(unsigned int pal)
 
 	if (directvideo)
 	{
-		for (i = 0; i < 16; i++)
-		{
-			if ((i == 0) || (coniox_dac[i] != coniox_dac[i - 1] + 1))
-			{
-				outportb(0x3C8, coniox_dac[i]);	/* DAC: register to write; it auto-increments, so only each run of consecutive registers needs it */
-			}
-			outportb(0x3C9, coniox_rgb[i][0]);	/* R */
-			outportb(0x3C9, coniox_rgb[i][1]);	/* G */
-			outportb(0x3C9, coniox_rgb[i][2]);	/* B */
-		}
+		/* Text-mode attribute → DAC map is fixed and non-linear: 0-5, 20, 7, 56-63.
+		   Four index writes + four bulk data bursts (no runtime run detection). */
+		outportb(0x3C8, 0);
+		coniox_fmemout(0x3C9, &coniox_rgb[0][0], 18);	/* attrs 0-5  → DAC 0-5   */
+		outportb(0x3C8, 20);
+		coniox_fmemout(0x3C9, &coniox_rgb[6][0], 3);	/* attr  6   → DAC 20    */
+		outportb(0x3C8, 7);
+		coniox_fmemout(0x3C9, &coniox_rgb[7][0], 3);	/* attr  7   → DAC 7     */
+		outportb(0x3C8, 56);
+		coniox_fmemout(0x3C9, &coniox_rgb[8][0], 24);	/* attrs 8-15 → DAC 56-63 */
 	}
 	else
 	{
