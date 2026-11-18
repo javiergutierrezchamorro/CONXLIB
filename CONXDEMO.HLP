@@ -1,6 +1,6 @@
 @Introduction
 CONXLIB is a single-file C console user interface
-library for DOS, Windows and OS/2 text consoles. It
+library for DOS and Windows text consoles. It
 brings a classic Borland / Turbo Vision look to plain
 conio programs: framed windows, pull-down menus, menu
 bars, list boxes, buttons, check boxes, radio option
@@ -106,7 +106,7 @@ Open Watcom (16-bit DOS, large model):
   wcc -ml -3 -d2 conxdemo.c
   wlink system dos name conxdemo file conxlib,conxdemo
 
-Open Watcom (32-bit flat DOS, DOS4GW):
+Open Watcom (32-bit flat DOS, PMODE/W):
   wcc386 -3r -d2 conxlib.c   (and conxdemo.c)
   wlink system pmodew name conxdemo file conxlib,\
     conxdemo
@@ -137,14 +137,14 @@ The home page is https://nikkhokkho.sourceforge.io
 See @Introduction for what the library is and @Build
 for how to compile it.
 @Main
-Welcome to the CONXLIB 2.0 demonstration program.
+Welcome to the CONXLIB 2.15 demonstration program.
 Pick an option with the arrow keys, hotkeys or the mouse.
 Press F1 for help. ESC in the main menu acts as Exit.
 This help file documents every public function and
 variable of conxlib: one topic per symbol, each with a
 prototype, a short description, the parameters, the
 return value and a ready-to-run example. It is also a
-stress data set for the help engine: 58 topics, enough
+stress data set for the help engine: 65 topics, enough
 to exercise the malloc'd topic cache, the offset seek
 and the 60/15 column truncation.
 See also: @Introduction @Index
@@ -583,9 +583,10 @@ Prototype:
 void conioxlib_background(
     const unsigned char *msg);
 Paints the application background with the colors of
-the active theme and writes msg centered on line 25.
-Parameters: msg is the message for the status area; an
-empty string leaves the status area blank. It also
+the active theme and writes msg left-aligned on the
+title bar (row 1).
+Parameters: msg is the message for the title bar; an
+empty or null string leaves the bar blank. It also
 marks the status double buffer dirty so the next
 conioxlib_status() repaints.
 Example:
@@ -936,7 +937,7 @@ unsigned char conioxlib_msgbox(
 Shows a message box with up to three buttons.
 Parameters: title is the caption, msg the text, buttons
 the labels and nbuttons their number (1 to 3); passing
-0 as buttons uses the defaults OK and Cancel.
+0 as buttons uses the default OK button.
 Returns: as conioxlib_buttons() does: the index of the
 pressed button, 254 when F1 was pressed or 255 when
 cancelled.
@@ -952,8 +953,8 @@ Asks for a string in a dialog box.
 Parameters: title is the caption, label the text next
 to the field, buf receives the answer and is also the
 initial value, and len the maximum length.
-Returns: 0 when accepted with ENTER, 1 when cancelled
-and 255 when F1 was pressed.
+Returns: 0 when accepted with OK, 1 when cancelled,
+254 when F1 was pressed and 255 when cancelled with ESC.
 Example:
   r = conioxlib_inputbox("Open", "File:",
       name, 60);
@@ -967,7 +968,7 @@ Parameters: like conioxlib_inputbox(), plus mindigits:
 the OK button only accepts the answer when at least
 that many digits were typed. Invalid characters are
 ignored as they are pressed.
-Returns: 0 when accepted, 1 when cancelled and 255 when
+Returns: 0 when accepted, 1 when cancelled and 254 when
 F1 was pressed.
 Example:
   r = conioxlib_inputmask("Port", "Value:",

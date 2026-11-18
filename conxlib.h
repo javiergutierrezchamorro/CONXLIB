@@ -12,23 +12,23 @@
    DOS/4G, DOS/32A...) report "Flat 32-bit"; 16 bit models report their
    own name */
 #if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32)
-	#define conioxlib_model	"Flat 32-bit (Win32)"
+        #define conioxlib_model "Flat 32-bit (Win32)"
 #elif defined(__FLAT__)
-	#define conioxlib_model	"Flat 32-bit"
+        #define conioxlib_model "Flat 32-bit"
 #elif defined(__DJGPP__)
-	#define conioxlib_model	"Flat 32-bit (DPMI)"
+        #define conioxlib_model "Flat 32-bit (DPMI)"
 #elif defined(__HUGE__)
-	#define conioxlib_model	"Huge 16-bit"
+        #define conioxlib_model "Huge 16-bit"
 #elif defined(__LARGE__)
-	#define conioxlib_model	"Large 16-bit"
+        #define conioxlib_model "Large 16-bit"
 #elif defined(__COMPACT__)
-	#define conioxlib_model	"Compact 16-bit"
+        #define conioxlib_model "Compact 16-bit"
 #elif defined(__MEDIUM__)
-	#define conioxlib_model	"Medium 16-bit"
+        #define conioxlib_model "Medium 16-bit"
 #elif defined(__SMALL__)
-	#define conioxlib_model	"Small 16-bit"
+        #define conioxlib_model "Small 16-bit"
 #else
-	#define conioxlib_model	"Unknown model"
+        #define conioxlib_model "Unknown model"
 #endif
 
 #ifdef __cplusplus
@@ -48,18 +48,18 @@ extern "C" {
 /* Author name shown in the About box and in the farewell screen; the
    accented e is written as its CP437 byte (\x82) so sources compile
    the same on DOS and Windows with any encoding */
-#define CONIOXLIB_AUTHOR	"Javier Guti\x82rrez Chamorro (Guti)"
+#define CONIOXLIB_AUTHOR        "Javier Guti\x82rrez Chamorro (Guti)"
 
 /* box() flags: combine with | */
 #define CONIOXLIB_BOX_SHADOW    1
 #define CONIOXLIB_BOX_CLOSE     2
-#define CONIOXLIB_BOX_NOWINDOW	4
+#define CONIOXLIB_BOX_NOWINDOW  4
 /* CONIOXLIB_BOX_ZOOM: animate the frame in 8..12 steps before drawing the
    final window. The origin is the center of the rectangle, unless a
    menu()/menubar() pick has just registered an item position, in which case
    the box grows from that item ("open from the menu bar" combo). Any key
    press aborts the animation. No effect on the final painted window. */
-#define CONIOXLIB_BOX_ZOOM	8
+#define CONIOXLIB_BOX_ZOOM      8
 
 /* Portable key codes built on coniox KEY_* (scan codes). Extended keys arrive as (scan << 8). */
 #define KBD_UP    ((KEY_UP) << 8)
@@ -90,13 +90,13 @@ extern "C" {
 
 
 /* Attribute helpers using CONIOX color names */
-#define CONIOXLIB_ATTR(fg, bg)	((unsigned int)(((bg) << 4) | (fg)))
+#define CONIOXLIB_ATTR(fg, bg)  ((unsigned int)(((bg) << 4) | (fg)))
 
 /* Large static buffers are declared far under 16 bit DOS compilers (Watcom
    large model, Borland) so they do not overflow the 64 KB DGROUP segment;
    the macro is empty everywhere else */
 #if ((__DOS__) || (__MSDOS__)) && !defined(__FLAT__) && !defined(__DJGPP__) && (defined(__WATCOMC__) || defined(__TURBOC__))
-#define CONIOXLIB_FARDATA	far
+#define CONIOXLIB_FARDATA       far
 #else
 #define CONIOXLIB_FARDATA
 #endif
@@ -120,79 +120,79 @@ extern "C" {
      CONIOXLIB_MAXFILES    maximum rows in filemultiselector() table
    Exceeding MENU_MAX clamps; exceeding MAXFILES truncates the directory scan.
    -------------------------------------------------------------------------- */
-#define CONIOXLIB_SCR_W			80
-#define CONIOXLIB_SCR_H			25
-#define CONIOXLIB_STATUS_COLS	59
-#define CONIOXLIB_STATUS_ROW	25
-#define CONIOXLIB_TITLE_ROW		1
-#define CONIOXLIB_LOCKS_COL		60
-#define CONIOXLIB_LOCKS_END		74
-#define CONIOXLIB_CLOCK_COL		76
-#define CONIOXLIB_CLOCK_END		80
+#define CONIOXLIB_SCR_W                 80
+#define CONIOXLIB_SCR_H                 25
+#define CONIOXLIB_STATUS_COLS   59
+#define CONIOXLIB_STATUS_ROW    25
+#define CONIOXLIB_TITLE_ROW             1
+#define CONIOXLIB_LOCKS_COL             60
+#define CONIOXLIB_LOCKS_END             74
+#define CONIOXLIB_CLOCK_COL             76
+#define CONIOXLIB_CLOCK_END             80
 
-#define CONIOXLIB_ITEM_W		21
-#define CONIOXLIB_HINT_W		71
-#define CONIOXLIB_BTN_W			11
-#define CONIOXLIB_LISTITEM_W	41
-#define CONIOXLIB_HELP_W		61
-#define CONIOXLIB_GRID_W		16
-#define CONIOXLIB_MENU_MAX		32
-#define CONIOXLIB_KEYQUEUE		16
+#define CONIOXLIB_ITEM_W                21
+#define CONIOXLIB_HINT_W                71
+#define CONIOXLIB_BTN_W                 11
+#define CONIOXLIB_LISTITEM_W    41
+#define CONIOXLIB_HELP_W                61
+#define CONIOXLIB_GRID_W                16
+#define CONIOXLIB_MENU_MAX              32
+#define CONIOXLIB_KEYQUEUE              16
 
 /* Entries of the files table expected by conioxlib_filemultiselector().
    The caller must provide at least CONIOXLIB_MAXFILES rows. The directory
    scan stops when the table is full. */
-#define CONIOXLIB_MAXFILES		220
+#define CONIOXLIB_MAXFILES              220
 
 
 struct conioxlib_smousestatus
 {
-	unsigned int x;
-	unsigned int y;
-	int wheelx;
-	int wheely;
-	unsigned int lclick;
-	unsigned int rclick;
+        unsigned int x;
+        unsigned int y;
+        int wheelx;
+        int wheely;
+        unsigned int lclick;
+        unsigned int rclick;
 };
 
 
 struct conioxlib_sfiles
 {
-	unsigned char selected;
-	char name[13];
-	char size[15];
-	char date[9];
-	char time[6];
-	char comment[34];
+        unsigned char selected;
+        char name[13];
+        char size[15];
+        char date[9];
+        char time[6];
+        char comment[34];
 };
 
 struct conioxlib_scountry
 {
-	unsigned int date;					/* Date format */
-	char curr[5];               /* Currency symbol */
-	char thsep[2];              /* Thousands separator */
-	char dsep[2];               /* Decimal separator */
-	char dtsep[2];              /* Date separator */
-	char tmsep[2];              /* Time separator */
-	unsigned char currstyle[2]; /* Currency style */
-	unsigned char digits;       /* Significant currency digits */
-	unsigned char time;         /* Time format */
-	unsigned long int convcase; /* Uppercase conversion */
-	unsigned char dasep;        /* Data separator */
-	char reserved[10];          /* Reserved */
-	unsigned int code;          /* Code page */
+        unsigned int date;                                      /* Date format */
+        char curr[5];               /* Currency symbol */
+        char thsep[2];              /* Thousands separator */
+        char dsep[2];               /* Decimal separator */
+        char dtsep[2];              /* Date separator */
+        char tmsep[2];              /* Time separator */
+        unsigned char currstyle[2]; /* Currency style */
+        unsigned char digits;       /* Significant currency digits */
+        unsigned char time;         /* Time format */
+        unsigned long int convcase; /* Uppercase conversion */
+        unsigned char dasep;        /* Data separator */
+        char reserved[10];          /* Reserved */
+        unsigned int code;          /* Code page */
 };
 
 
 /* Extended free disk space: filled by conioxlib_getdiskfree_ext() */
 struct conioxlib_sdiskfree
 {
-	unsigned int size;                  /* Size of this structure */
-	unsigned int version;               /* Structure version */
-	unsigned long int sectors_per_cluster;
-	unsigned long int bytes_per_sector;
-	unsigned long int avail_clusters;   /* Free clusters */
-	unsigned long int total_clusters;   /* Total clusters */
+        unsigned int size;                  /* Size of this structure */
+        unsigned int version;               /* Structure version */
+        unsigned long int sectors_per_cluster;
+        unsigned long int bytes_per_sector;
+        unsigned long int avail_clusters;   /* Free clusters */
+        unsigned long int total_clusters;   /* Total clusters */
 };
 
 
@@ -278,12 +278,12 @@ void conioxlib_cputs_hot(unsigned short x, unsigned short y, unsigned char atr, 
    Prefer the active theme button colors (see conioxlib_theme_btnattrs). */
 unsigned char conioxlib_buttons(unsigned short x1, unsigned short y1, unsigned char atr0, unsigned char atr1, unsigned char atrhot, const char items[][CONIOXLIB_BTN_W], const char desc[][CONIOXLIB_HINT_W], unsigned char noptions, unsigned char separation);
 /* Item whose first character is '-' is a non-selectable separator (drawn as a line). */
-#define CONIOXLIB_SEPARATOR	"-"
+#define CONIOXLIB_SEPARATOR     "-"
 /* menu()/menubar() reserved return codes (valid item indices are 0..noptions-1) */
-#define CONIOXLIB_MENU_RIGHT	252
-#define CONIOXLIB_MENU_LEFT	253
-#define CONIOXLIB_MENU_HELP	254
-#define CONIOXLIB_MENU_ESC	255
+#define CONIOXLIB_MENU_RIGHT    252
+#define CONIOXLIB_MENU_LEFT     253
+#define CONIOXLIB_MENU_HELP     254
+#define CONIOXLIB_MENU_ESC      255
 /* menu(): items whose first character is '-' are non-selectable separators.
    Every row is drawn full-width (the widest visible item, up to ITEM_W-1 columns),
    so the highlight bar covers the whole width and redrawing leaves no debris. If
@@ -320,21 +320,21 @@ unsigned char conioxlib_filemultiselector(unsigned char *sdisk, char *sdir, stru
 unsigned char conioxlib_fileselector(unsigned char *sdisk, char *sdir, char *name);
 
 /* Theme package: 0=Borland C++ 3.1, 1=Turbo C 2.0, 2=Turbo C 1.x, 3=Norton Utilities 9, 4=PC Tools, 5=Turbo Pascal 7.0, 6=Norton Commander, 7=MS-DOS Edit, 8=Lotus 1-2-3 */
-#define CONIOXLIB_THEMES	9
+#define CONIOXLIB_THEMES        9
 struct conioxlib_stheme
 {
-	unsigned char atr0;
-	unsigned char atr1;
-	unsigned char atrhot;
-	unsigned char atrstatus;
-	unsigned char atrdialog;
-	/* Per-theme Turbo Vision button colors (face / selected / accelerator).
-	   conioxlib_theme_btnattrs() returns these instead of a fixed green. */
-	unsigned char btnatr0;
-	unsigned char btnatr1;
-	unsigned char btnatrhot;
-	const char *frame;
-	char name[20];
+        unsigned char atr0;
+        unsigned char atr1;
+        unsigned char atrhot;
+        unsigned char atrstatus;
+        unsigned char atrdialog;
+        /* Per-theme Turbo Vision button colors (face / selected / accelerator).
+           conioxlib_theme_btnattrs() returns these instead of a fixed green. */
+        unsigned char btnatr0;
+        unsigned char btnatr1;
+        unsigned char btnatrhot;
+        const char *frame;
+        char name[20];
 };
 void conioxlib_theme(unsigned char id);
 void conioxlib_gettheme(struct conioxlib_stheme *t);
@@ -353,8 +353,10 @@ void conioxlib_tooltip(unsigned short x, unsigned short y, const char *msg, unsi
 void conioxlib_progressbar(unsigned short x, unsigned short y, unsigned short width, unsigned char atr, unsigned int value, unsigned int maxv);
 void conioxlib_progress(const char *title, unsigned int value, unsigned int maxv);
 unsigned char conioxlib_msgbox(const char *title, const char *msg, char buttons[][CONIOXLIB_BTN_W], unsigned char nbuttons);
-unsigned char conioxlib_inputbox(const char *title, const char *label, char *buf, char len);
-unsigned char conioxlib_inputmask(const char *title, const char *label, char *buf, char len, char mindigits);
+/* len is int (not char) so a 160-byte buffer can be passed without sign
+   truncation on compilers where `char` is signed (Watcom/Borland/Turbo C). */
+unsigned char conioxlib_inputbox(const char *title, const char *label, char *buf, int len);
+unsigned char conioxlib_inputmask(const char *title, const char *label, char *buf, int len, char mindigits);
 unsigned char conioxlib_listbox(unsigned short x1, unsigned short y1, unsigned short x2, unsigned short y2, unsigned char atr0, unsigned char atr1, const char items[][CONIOXLIB_LISTITEM_W], unsigned char nitems, const char *title);
 
 #if ((__DOS__) || (__MSDOS__)) && defined(__TURBOC__)
@@ -363,25 +365,25 @@ void interrupt conioxlib_shell_patch(unsigned int, unsigned int, unsigned int, u
 #endif
 
 /* Compatibility aliases with the original CONXLIB short names */
-#define textsize(x1, y1, x2, y2)	gettextsize(x1, y1, x2, y2)
-#define cputsc		conioxlib_cputsc
-#define box		conioxlib_box
-#define conioxlib_watch		conioxlib_clock
-#define blocks		conioxlib_blocks
-#define A_NONE		CONIOXLIB_BOX_A_NONE
-#define A_BLOCK		CONIOXLIB_BOX_A_BLOCK
-#define A_SINGLE	CONIOXLIB_BOX_A_SINGLE
-#define A_DOUBLE	CONIOXLIB_BOX_A_DOUBLE
-#define U_SINGLE	CONIOXLIB_BOX_U_SINGLE
-#define S_DOUBLE	CONIOXLIB_BOX_S_DOUBLE
-#define U_DOUBLE	CONIOXLIB_BOX_U_DOUBLE
-#define S_SINGLE	CONIOXLIB_BOX_S_SINGLE
-#define SHADOW		CONIOXLIB_BOX_SHADOW
-#define CLOSE		CONIOXLIB_BOX_CLOSE
-#define NOWINDOW	CONIOXLIB_BOX_NOWINDOW
-#define ZOOM		CONIOXLIB_BOX_ZOOM
-#define sfiles		conioxlib_sfiles
-#define scountry	conioxlib_scountry
+#define textsize(x1, y1, x2, y2)        gettextsize(x1, y1, x2, y2)
+#define cputsc          conioxlib_cputsc
+#define box             conioxlib_box
+#define conioxlib_watch         conioxlib_clock
+#define blocks          conioxlib_blocks
+#define A_NONE          CONIOXLIB_BOX_A_NONE
+#define A_BLOCK         CONIOXLIB_BOX_A_BLOCK
+#define A_SINGLE        CONIOXLIB_BOX_A_SINGLE
+#define A_DOUBLE        CONIOXLIB_BOX_A_DOUBLE
+#define U_SINGLE        CONIOXLIB_BOX_U_SINGLE
+#define S_DOUBLE        CONIOXLIB_BOX_S_DOUBLE
+#define U_DOUBLE        CONIOXLIB_BOX_U_DOUBLE
+#define S_SINGLE        CONIOXLIB_BOX_S_SINGLE
+#define SHADOW          CONIOXLIB_BOX_SHADOW
+#define CLOSE           CONIOXLIB_BOX_CLOSE
+#define NOWINDOW        CONIOXLIB_BOX_NOWINDOW
+#define ZOOM            CONIOXLIB_BOX_ZOOM
+#define sfiles          conioxlib_sfiles
+#define scountry        conioxlib_scountry
 
 #ifdef __cplusplus
 }
