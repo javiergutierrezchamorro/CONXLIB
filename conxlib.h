@@ -144,6 +144,14 @@ extern "C" {
    scan stops when the table is full. */
 #define CONIOXLIB_MAXFILES              220
 
+/* Sort column IDs for conioxlib_filemultiselector() */
+#define CONIOXLIB_SORT_NAME     0
+#define CONIOXLIB_SORT_SIZE     1
+#define CONIOXLIB_SORT_DATE     2
+#define CONIOXLIB_SORT_TIME     3
+/* Sort direction flags (combine with column ID via |) */
+#define CONIOXLIB_SORT_DESC     0x80
+
 
 struct conioxlib_smousestatus
 {
@@ -314,26 +322,38 @@ void conioxlib_shell(unsigned short x1, unsigned short y1, unsigned short x2, un
 unsigned char conioxlib_calendar(unsigned short x, unsigned short y, unsigned char atr0, unsigned char atr1, unsigned char atr2, unsigned char *day, unsigned char *month, unsigned int *year);
 unsigned char conioxlib_view(unsigned short x1, unsigned short y1, unsigned short x2, unsigned short y2, unsigned char atr0, unsigned char atr1, const char buffer[][CONIOXLIB_HELP_W], unsigned char last, const char *title);
 unsigned char conioxlib_help(unsigned short x1, unsigned short y1, unsigned short x2, unsigned short y2, unsigned char atr0, unsigned char atr1, const char *name, const char *topic, char buffer[][CONIOXLIB_HELP_W]);
-unsigned char conioxlib_helpindex(unsigned short x1, unsigned short y1, unsigned char atr0, unsigned char atr1, const char *name, char buffer[][16]);
+unsigned char conioxlib_helpindex(unsigned short x1, unsigned short y1, unsigned char atr0, unsigned char atr1, const char *name, char buffer[][32]);
 unsigned char conioxlib_filemultiselector(unsigned char *sdisk, char *sdir, struct conioxlib_sfiles *files);
 /* conioxlib_fileselector(): compact single file picker (drives, directories and names only) for the Open and Save as dialogs; returns 1 when a file is chosen and 0 when cancelled. The list shows long file names when the system has them (Windows, and DOS 7 / Windows 9x with LFN under OpenWatcom) but the name returned is always the short 8.3 one, so it can be opened on any system. filemultiselector() works the same way: its list widens the name column when there are long names and the table keeps the short names */
 unsigned char conioxlib_fileselector(unsigned char *sdisk, char *sdir, char *name);
 
-/* Theme package: 0=Borland C++ 3.1, 1=Turbo C 2.0, 2=Turbo C 1.x, 3=Norton Utilities 9, 4=PC Tools, 5=Turbo Pascal 7.0, 6=Norton Commander, 7=MS-DOS Edit, 8=Lotus 1-2-3 */
-#define CONIOXLIB_THEMES        9
+/* Theme package:
+   0=Borland C++ 3.1, 1=Turbo C 2.0, 2=Turbo C 1.x, 3=Norton Utilities 9,
+   4=PC Tools, 5=Norton Commander, 6=MS-DOS Edit, 7=Lotus 1-2-3,
+   8=Borland SideKick, 9=Volkov Commander, 10=DOS Navigator, 11=XTree Gold */
+#define CONIOXLIB_THEMES        12
 struct conioxlib_stheme
 {
-        unsigned char atr0;
-        unsigned char atr1;
-        unsigned char atrhot;
-        unsigned char atrstatus;
-        unsigned char atrdialog;
+        unsigned char atr0;        /* menu bar / list normal text */
+        unsigned char atr1;        /* menu bar / list selected (highlighted) */
+        unsigned char atrhot;      /* accelerator (hotkey) character in menus */
+        unsigned char atrstatus;   /* status line (row 25) text */
+        unsigned char atrdialog;   /* dialog frame / unselected text */
         /* Per-theme Turbo Vision button colors (face / selected / accelerator).
            conioxlib_theme_btnattrs() returns these instead of a fixed green. */
-        unsigned char btnatr0;
-        unsigned char btnatr1;
-        unsigned char btnatrhot;
-        const char *frame;
+        unsigned char btnatr0;     /* button normal face */
+        unsigned char btnatr1;     /* button selected (focused) face */
+        unsigned char btnatrhot;   /* button accelerator (hotkey) character */
+        /* Extended TV palette fields. Used by inputline, label and dialog interior.
+           Defaults match the Borland Turbo Vision 2.0 cpColor entries so a theme
+           that only sets the basic 9 fields still renders correctly. */
+        unsigned char atrinput;    /* input line passive (White on Blue in TV) */
+        unsigned char atrinputsel;  /* input line selected/focused (White on Green) */
+        unsigned char atrlabel;    /* label normal text (Black on LightGray) */
+        unsigned char atrlabelhot;  /* label accelerator (Yellow on LightGray) */
+        unsigned char atrinterior;  /* dialog interior / passive frame (LightGray bg) */
+        unsigned char atrframe;    /* dialog frame active (White on LightGray) */
+        const char *frame;          /* box frame string (CONIOXLIB_BOX_A_*) */
         char name[20];
 };
 void conioxlib_theme(unsigned char id);

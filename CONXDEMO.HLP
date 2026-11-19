@@ -802,14 +802,13 @@ See also: @filemultisel @listbox
 @theme
 Prototype:
 void conioxlib_theme(unsigned char id);
-Applies one of the nine visual themes.
+Applies one of the twelve visual themes.
 Parameters: id is 0 Borland C++ 3.1, 1 Turbo C 2.0, 2
-Turbo C 1.x, 3 Norton Utilities 9, 4 PC Tools, 5 Turbo
-Pascal 7.0, 6 Norton Commander, 7 MS-DOS Edit and 8
-Lotus 1-2-3. Themes 0 and 5 share the real Turbo
-Vision 2.0 palette used by both Borland IDEs. Each
-theme also owns its button colors; see the
-theme_btnattrs topic.
+Turbo C 1.x, 3 Norton Utilities 9, 4 PC Tools,
+5 Norton Commander, 6 MS-DOS Edit, 7 Lotus 1-2-3,
+8 SideKick, 9 Volkov Commander, 10 DOS Navigator
+and 11 XTree Gold. Each theme also owns its button
+colors; see the theme_btnattrs topic.
 Example:
   conioxlib_theme(1);
 See also: @gettheme @theme_btnattrs @Colors

@@ -464,7 +464,7 @@ static void _demo_effects(void)
 static void _demo_buttons(void)
 {
         unsigned int i;
-        box(39, 6, 76, 16, CONIOXLIB_ATTR(BLACK, LIGHTGRAY), A_DOUBLE, "buttons()", SHADOW);
+        box(39, 6, 78, 16, CONIOXLIB_ATTR(BLACK, LIGHTGRAY), A_DOUBLE, "buttons()", SHADOW);
         textattr(CONIOXLIB_ATTR(WHITE, LIGHTGRAY));
         gotoxy(41, 8);
         cputs("Use arrows, TAB, hotkeys or the mouse.");
@@ -493,7 +493,7 @@ static void _demo_shell(void)
 /* ---------------- VGA palette with setpal() and vgaremap() ------------------- */
 static void _demo_palette(void)
 {
-        box(39, 5, 76, 17, CONIOXLIB_ATTR(BLACK, LIGHTGRAY), A_DOUBLE, "setpal() / vgaremap()", SHADOW);
+        box(39, 5, 78, 17, CONIOXLIB_ATTR(BLACK, LIGHTGRAY), A_DOUBLE, "setpal() / vgaremap()", SHADOW);
         textattr(CONIOXLIB_ATTR(WHITE, LIGHTGRAY));
         gotoxy(41, 7);
         cputs("Applying alternate VGA palette...");
@@ -623,7 +623,6 @@ static void _demo_menubar(void)
         int oldbar;
         int cellpos[10];
         int dropx1, dropy1, dropx2, dropy2;
-        unsigned int i;
         struct conioxlib_stheme th;
         baritems = (char (*)[21]) _demo_newtable(baritems_list, 10, 21);
         bardesc = (char (*)[71]) _demo_newtable(bardesc_list, 10, 71);
@@ -646,11 +645,15 @@ static void _demo_menubar(void)
         {
                 gettext(1, 1, 80, 25, oldscr);
         }
-        textattr(CONIOXLIB_ATTR(BLACK, LIGHTGRAY));
-        gotoxy(1, 1);
-        for (i = 0; i < 80; i++)
+        /* Clear the menu bar row: 80 putch calls would be slow on DOS, but this
+           only runs once when _demo_menubar opens. Using clrscr() inside a 1-row
+           window is an alternative but messes with the cursor/window state. */
         {
-                putch(' ');
+                static char _sp80[81];
+                if (_sp80[0] != ' ') { memset(_sp80, ' ', 80); _sp80[80] = 0; }
+                textattr(CONIOXLIB_ATTR(BLACK, LIGHTGRAY));
+                gotoxy(1, 1);
+                cputs(_sp80);
         }
         /* Redraw the bar with the colors of the active theme */
         conioxlib_gettheme(&th);
@@ -676,7 +679,7 @@ static void _demo_menubar(void)
                         dropx2 = 19;
                         dropy2 = 15;
                         olddrop = conioxlib_savescr(dropx1, dropy1, dropx2, dropy2);
-                        box(1, 2, 17, 14, CONIOXLIB_ATTR(BLACK, LIGHTGRAY), A_SINGLE, "", SHADOW);
+                        box(1, 2, 17, 14, CONIOXLIB_ATTR(BLACK, LIGHTGRAY), A_SINGLE, "", CONIOXLIB_BOX_SHADOW);
                         sub = conioxlib_menu(2, 3, th.atr0, th.atr1, th.atrhot, fileitems, filedesc, 11, 1, 0);
                 }
                 else if (bar == 1)
@@ -686,7 +689,7 @@ static void _demo_menubar(void)
                         dropx2 = 25;
                         dropy2 = 9;
                         olddrop = conioxlib_savescr(dropx1, dropy1, dropx2, dropy2);
-                        box(7, 2, 23, 8, CONIOXLIB_ATTR(BLACK, LIGHTGRAY), A_SINGLE, "", SHADOW);
+                        box(7, 2, 23, 8, CONIOXLIB_ATTR(BLACK, LIGHTGRAY), A_SINGLE, "", CONIOXLIB_BOX_SHADOW);
                         sub = conioxlib_menu(8, 3, th.atr0, th.atr1, th.atrhot, edititems, editdesc, 5, 1, 0);
                 }
                 else
@@ -915,8 +918,8 @@ static void _demo_progress(void)
 static void _demo_themes(void)
 {
         static unsigned char _demo_theme = 0;
-        static const char *themenames_list[CONIOXLIB_THEMES] = {"Borland C++ 3.1", "Turbo C 2.0", "Turbo C 1.x", "Norton Utilities 9", "PC Tools", "Turbo Pascal 7.0", "Norton Commander", "MS-DOS Edit", "Lotus 1-2-3"};
-        static const char *themedesc_list[CONIOXLIB_THEMES] = {"Turbo Vision 2.0: blue desktop, gray dialogs    ", "Blue desktop, yellow text and cyan menus        ", "Monochrome with black background                 ", "Blue with cyan frames and yellow hotkeys         ", "White on cyan, PC Tools look                    ", "Same Turbo Vision 2.0 palette as Borland C++ 3.1", "Blue panels, cyan menus and black focus bars     ", "Blue screen with single cyan frames              ", "White on black with inverted selection           "};
+        static const char *themenames_list[CONIOXLIB_THEMES] = {"Borland C++ 3.1", "Turbo C 2.0", "Turbo C 1.x", "Norton Utilities 9", "PC Tools", "Norton Commander", "MS-DOS Edit", "Lotus 1-2-3", "SideKick", "Volkov Commander", "DOS Navigator", "XTree Gold"};
+        static const char *themedesc_list[CONIOXLIB_THEMES] = {"Turbo Vision 2.0: blue desktop, gray dialogs    ", "Blue desktop, yellow text and cyan menus        ", "Monochrome with black background                 ", "Blue with cyan frames and yellow hotkeys         ", "White on cyan, PC Tools look                    ", "Cyan panels, black selection, blue dialogs        ", "Blue screen with single cyan frames              ", "White on black with inverted selection           ", "Blue/cyan TSR PIM with green buttons              ", "Red accent NC clone, amber hotkeys               ", "Blue/cyan with green accents, double frame        ", "Yellow-on-blue file manager, single frame         "};
         char (*themenames)[21];
         char (*themedesc)[71];
         unsigned char sel[CONIOXLIB_THEMES];
@@ -1032,14 +1035,17 @@ static unsigned char _demo_edit (unsigned short x1, unsigned short y1, unsigned 
         int drawfull, drawline, oldtop, oldcur, oldnlines;
         char *s;
         FILE *f;
-        char baritems[3][21] = {"&File", "&Edit", "&Search"};
-        char bardesc[3][71];
-        char fileitems[5][21] = {"&Open...", "&Save", "Save &as...", "-", "E&xit"};
-        char filedesc[5][71];
-        char edititems[7][21] = {"Cu&t", "&Copy", "&Paste", "-", "C&lear line", "&Undo", "&Redo"};
-        char editdesc[7][71];
-        char searchitems[3][21] = {"&Find...", "&Replace...", "&Goto line..."};
-        char searchdesc[3][71];
+        /* Static so the ~1656 bytes of menu tables do not live on the DOS 16-bit
+           near stack; the initializers run once at program load. The desc tables
+           are zeroed and refilled by _demo_fill_desc() below. */
+        static char baritems[3][21] = {"&File", "&Edit", "&Search"};
+        static char bardesc[3][71];
+        static char fileitems[5][21] = {"&Open...", "&Save", "Save &as...", "-", "E&xit"};
+        static char filedesc[5][71];
+        static char edititems[7][21] = {"Cu&t", "&Copy", "&Paste", "-", "C&lear line", "&Undo", "&Redo"};
+        static char editdesc[7][71];
+        static char searchitems[3][21] = {"&Find...", "&Replace...", "&Goto line..."};
+        static char searchdesc[3][71];
         int barpos[3];
         int mbsel;
         int nclip;
@@ -1422,13 +1428,26 @@ static unsigned char _demo_edit (unsigned short x1, unsigned short y1, unsigned 
                 /* Never putch() the bottom-right console cell: with the window
                    covering (80,25) and scrolling disabled the cursor would not
                    advance and this loop would hang the editor */
-                while (wherex() <= (int) x2)
                 {
-                        if ((wherex() >= 80) && ((int) y2 >= 25))
                         {
-                                break;
+                                int wx = wherex();
+                                int remain = (int) x2 - wx + 1;
+                                if (remain > 0)
+                                {
+                                        static char _sp_status[81];
+                                        if (_sp_status[0] != ' ') { memset(_sp_status, ' ', 80); _sp_status[80] = 0; }
+                                        if (((int) x2 >= 80) && ((int) y2 >= 25) && (wx + remain > 80))
+                                        {
+                                                remain = 80 - wx;
+                                        }
+                                        if (remain > 0 && remain <= 80)
+                                        {
+                                                _sp_status[remain] = 0;
+                                                cputs(_sp_status);
+                                                _sp_status[remain] = ' ';
+                                        }
+                                }
                         }
-                        putch(' ');
                 }
                 if (((int) x2 >= 80) && ((int) y2 >= 25))
                 {
@@ -1551,7 +1570,7 @@ static unsigned char _demo_edit (unsigned short x1, unsigned short y1, unsigned 
                                 if (bar == 0)
                                 {
                                         _demo_edit_menuw(fileitems, 5, l);
-                                        box(x1, (unsigned short) (y1 + 1), (unsigned short) (x1 + l + 2), (unsigned short) (y1 + 7), th.atrdialog, th.frame, "", SHADOW);
+                                        box(x1, (unsigned short) (y1 + 1), (unsigned short) (x1 + l + 2), (unsigned short) (y1 + 7), th.atrdialog, th.frame, "", CONIOXLIB_BOX_SHADOW);
                                         sub = conioxlib_menu((unsigned short) (x1 + 1), (unsigned short) (y1 + 2), atr0, atr1, th.atrhot, fileitems, filedesc, 5, 1, 0);
                                         if (sub == 0)
                                         {
@@ -1611,7 +1630,7 @@ static unsigned char _demo_edit (unsigned short x1, unsigned short y1, unsigned 
                                 else if (bar == 1)
                                 {
                                         _demo_edit_menuw(edititems, 7, l);
-                                        box((unsigned short) (x1 + 6), (unsigned short) (y1 + 1), (unsigned short) (x1 + l + 8), (unsigned short) (y1 + 9), th.atrdialog, th.frame, "", SHADOW);
+                                        box((unsigned short) (x1 + 6), (unsigned short) (y1 + 1), (unsigned short) (x1 + l + 8), (unsigned short) (y1 + 9), th.atrdialog, th.frame, "", CONIOXLIB_BOX_SHADOW);
                                         sub = conioxlib_menu((unsigned short) (x1 + 7), (unsigned short) (y1 + 2), atr0, atr1, th.atrhot, edititems, editdesc, 7, 1, 0);
                                         if (sub == 0)
                                         {
@@ -1723,7 +1742,7 @@ static unsigned char _demo_edit (unsigned short x1, unsigned short y1, unsigned 
                                 else if (bar == 2)
                                 {
                                         _demo_edit_menuw(searchitems, 3, l);
-                                        box((unsigned short) (x1 + 12), (unsigned short) (y1 + 1), (unsigned short) (x1 + l + 14), (unsigned short) (y1 + 5), th.atrdialog, th.frame, "", SHADOW);
+                                        box((unsigned short) (x1 + 12), (unsigned short) (y1 + 1), (unsigned short) (x1 + l + 14), (unsigned short) (y1 + 5), th.atrdialog, th.frame, "", CONIOXLIB_BOX_SHADOW);
                                         sub = conioxlib_menu((unsigned short) (x1 + 13), (unsigned short) (y1 + 2), atr0, atr1, th.atrhot, searchitems, searchdesc, 3, 1, 0);
                                         if (sub == 0)
                                         {
@@ -1832,10 +1851,7 @@ static unsigned char _demo_edit (unsigned short x1, unsigned short y1, unsigned 
                         {
                                 cur = 0;
                         }
-                        if (col > (int) strlen(lines[cur]))
-                        {
-                                col = (int) strlen(lines[cur]);
-                        }
+                        { int lc = (int) strlen(lines[cur]); if (col > lc) col = lc; }
                 }
                 else if (key == KBD_PGDW)
                 {
@@ -1844,10 +1860,7 @@ static unsigned char _demo_edit (unsigned short x1, unsigned short y1, unsigned 
                         {
                                 cur = nlines - 1;
                         }
-                        if (col > (int) strlen(lines[cur]))
-                        {
-                                col = (int) strlen(lines[cur]);
-                        }
+                        { int lc = (int) strlen(lines[cur]); if (col > lc) col = lc; }
                 }
                 else if (key == KBD_ORG)
                 {
@@ -1875,10 +1888,7 @@ static unsigned char _demo_edit (unsigned short x1, unsigned short y1, unsigned 
                                         _demo_pushundo(undo, nundo);
                                         _demo_clearundo(redo, nredo);
                                 }
-                                for (j = nlines; j > cur + 1; j--)
-                                {
-                                        strcpy(lines[j], lines[j - 1]);
-                                }
+                                if (nlines > cur + 1) memmove(&lines[cur + 2][0], &lines[cur + 1][0], (size_t)(nlines - cur - 1) * DEMO_EDIT_MAXC);
                                 strcpy(lines[cur + 1], &lines[cur][col]);
                                 lines[cur][col] = 0;
                                 nlines++;
@@ -1896,9 +1906,9 @@ static unsigned char _demo_edit (unsigned short x1, unsigned short y1, unsigned 
                         {
                                 _demo_pushundo(undo, nundo);
                                 _demo_clearundo(redo, nredo);
-                                for (i = col - 1; lines[cur][i] != 0; i++)
                                 {
-                                        lines[cur][i] = lines[cur][i + 1];
+                                        int tail = (int) strlen(&lines[cur][col]);
+                                        memmove(&lines[cur][col - 1], &lines[cur][col], (size_t)(tail + 1));
                                 }
                                 col--;
                                 drawline = 1;
@@ -1919,10 +1929,7 @@ static unsigned char _demo_edit (unsigned short x1, unsigned short y1, unsigned 
                                         _demo_pushundo(undo, nundo);
                                         _demo_clearundo(redo, nredo);
                                 }
-                                for (j = i; j >= col; j--)
-                                {
-                                        lines[cur][j + 1] = lines[cur][j];
-                                }
+                                memmove(&lines[cur][col + 1], &lines[cur][col], (size_t)(i - col + 1));
                                 lines[cur][col] = '\t';
                                 col++;
                                 drawline = 1;
@@ -1943,10 +1950,7 @@ static unsigned char _demo_edit (unsigned short x1, unsigned short y1, unsigned 
                                         _demo_pushundo(undo, nundo);
                                         _demo_clearundo(redo, nredo);
                                 }
-                                for (j = i; j >= col; j--)
-                                {
-                                        lines[cur][j + 1] = lines[cur][j];
-                                }
+                                memmove(&lines[cur][col + 1], &lines[cur][col], (size_t)(i - col + 1));
                                 lines[cur][col] = (char) key;
                                 col++;
                                 drawline = 1;
@@ -2058,7 +2062,9 @@ static void _demo_tetris(void)
         long score;
         int lines, level;
         int cells[4][2], saved[4][2];
-        unsigned char board[20][10];
+        /* Static: 200 bytes that don't need to live on the 16-bit DOS near stack.
+           memset below still clears it on every entry to _demo_tetris(). */
+        static unsigned char board[20][10];
         char str[40];
         char btns[1][11] = {"OK"};
         memset(board, 0, sizeof(board));
@@ -2082,12 +2088,15 @@ static void _demo_tetris(void)
         gotoxy(6, 9);
         cputs("ESC:        exit");
         box(34, 2, 55, 23, CONIOXLIB_ATTR(BLACK, LIGHTGRAY), A_DOUBLE, "Tetris", SHADOW);
-        for (i = 0; i != 10; i++)
+        /* Clear the well with a single pass per column pair instead of 200 drawcell calls.
+           Each cell is 2 chars wide; 10 columns × 2 chars = 20 chars per row.
+           Build one row of spaces and puttext it for each of the 20 rows. */
         {
-                for (j = 0; j != 20; j++)
-                {
-                        _demo_tetris_drawcell(i, j, 0);
-                }
+                unsigned short wellcells[20 * 20];
+                unsigned short wellattr = (unsigned short) (((unsigned int) CONIOXLIB_ATTR(BLACK, LIGHTGRAY) << 8) | ' ');
+                int wi;
+                for (wi = 0; wi < 20 * 20; wi++) wellcells[wi] = wellattr;
+                puttext(35, 3, 54, 22, wellcells);
         }
         box(57, 2, 77, 23, CONIOXLIB_ATTR(BLACK, LIGHTGRAY), A_DOUBLE, "Status", SHADOW);
         conioxlib_status("Left/Right move; Up rotates; Space drops");
@@ -2124,24 +2133,28 @@ static void _demo_tetris(void)
                 cprintf("Lines: %d", lines);
                 gotoxy(59, 13);
                 cputs("Next:");
-                for (j = 0; j != 4; j++)
+                /* Clear Next preview area (4 rows × 8 chars) with 4 puttext calls */
                 {
-                        for (i = 0; i != 4; i++)
+                        unsigned short nc[8];
+                        unsigned short nca = (unsigned short) (((unsigned int) CONIOXLIB_ATTR(BLACK, LIGHTGRAY) << 8) | ' ');
+                        int ni;
+                        for (ni = 0; ni < 8; ni++) nc[ni] = nca;
+                        for (j = 0; j != 4; j++)
                         {
-                                gotoxy(62 + (i << 1), 15 + j);
-                                cputs("  ");
+                                puttext(62, 15 + j, 69, 15 + j, nc);
                         }
                 }
+                textattr(_tetrisattrs[next]);
                 for (i = 0; i != 4; i++)
                 {
-                        textattr(_tetrisattrs[next]);
                         gotoxy(62 + (_tetrisshapes[next][i][0] << 1), 15 + _tetrisshapes[next][i][1]);
                         cputs("\xDB\xDB");
                 }
                 redraw = 0;
         }
         /* Gravity: speed ticks of 20 ms per row, faster every level */
-        speed = (21 - level > 1) ? (21 - level) : 2;
+        speed = 21 - level;
+                if (speed < 2) speed = 2;
         for (i = 0; i != speed; i++)
         {
                 conioxlib_clock();
@@ -2293,14 +2306,34 @@ static void _demo_tetris(void)
         if (n != 0)
         {
                 lines += n;
-                score += (long) ((n == 1) ? 100 : (n == 2) ? 300 : (n == 3) ? 700 : 1500) * level;
+                { static const long _tetris_score[4] = { 100, 300, 700, 1500 };
+                                score += _tetris_score[n - 1] * level; }
                 level = (lines / 10) + 1;
         }
-        for (i = 0; i != 10; i++)
+        /* Redraw the well using puttext per row instead of 200 drawcell calls.
+           Each row is 10 cells × 2 chars = 20 chars. */
         {
-                for (j = 0; j != 20; j++)
+                unsigned short wellcells[20];
+                int wj;
+                for (wj = 0; wj < 20; wj++)
                 {
-                        _demo_tetris_drawcell(i, j, board[j][i]);
+                        int wi;
+                        for (wi = 0; wi < 10; wi++)
+                        {
+                                unsigned char v = board[wj][wi];
+                                unsigned short wa;
+                                if (v != 0)
+                                {
+                                        wa = (unsigned short) (((unsigned int) _tetrisattrs[v - 1] << 8) | 0xDB);
+                                }
+                                else
+                                {
+                                        wa = (unsigned short) (((unsigned int) CONIOXLIB_ATTR(BLACK, LIGHTGRAY) << 8) | ' ');
+                                }
+                                wellcells[wi * 2] = wa;
+                                wellcells[wi * 2 + 1] = wa;
+                        }
+                        puttext(35, 3 + wj, 54, 3 + wj, wellcells);
                 }
         }
         goto tetris_1;
@@ -2369,7 +2402,7 @@ int main(void)
                         helpbuf = (char *) malloc(DEMO_HELPBUF);
                         if (helpbuf != 0)
                         {
-                                conioxlib_helpindex(5, 3, CONIOXLIB_ATTR(WHITE, CYAN), CONIOXLIB_ATTR(BLACK, CYAN), DEMO_HELP, (char (*)[16]) helpbuf);
+                                conioxlib_helpindex(5, 3, CONIOXLIB_ATTR(WHITE, CYAN), CONIOXLIB_ATTR(BLACK, CYAN), DEMO_HELP, (char (*)[32]) helpbuf);
                                 free(helpbuf);
                         }
                         continue;
