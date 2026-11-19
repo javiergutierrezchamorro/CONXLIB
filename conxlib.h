@@ -324,7 +324,11 @@ unsigned char conioxlib_view(unsigned short x1, unsigned short y1, unsigned shor
 unsigned char conioxlib_help(unsigned short x1, unsigned short y1, unsigned short x2, unsigned short y2, unsigned char atr0, unsigned char atr1, const char *name, const char *topic, char buffer[][CONIOXLIB_HELP_W]);
 unsigned char conioxlib_helpindex(unsigned short x1, unsigned short y1, unsigned char atr0, unsigned char atr1, const char *name, char buffer[][32]);
 unsigned char conioxlib_filemultiselector(unsigned char *sdisk, char *sdir, struct conioxlib_sfiles *files);
-/* conioxlib_fileselector(): compact single file picker (drives, directories and names only) for the Open and Save as dialogs; returns 1 when a file is chosen and 0 when cancelled. The list shows long file names when the system has them (Windows, and DOS 7 / Windows 9x with LFN under OpenWatcom) but the name returned is always the short 8.3 one, so it can be opened on any system. filemultiselector() works the same way: its list widens the name column when there are long names and the table keeps the short names */
+/* conioxlib_fileselector(): compact single-file picker for Open/Save dialogs.
+   File rows show name/size/date within CONIOXLIB_LISTITEM_W. Returns 1 when a
+   file is chosen and 0 when cancelled. Long names are shown when available;
+   the returned name is always short 8.3. filemultiselector() widens its name
+   column the same way and keeps short names in the table. */
 unsigned char conioxlib_fileselector(unsigned char *sdisk, char *sdir, char *name);
 
 /* Theme package:
@@ -347,13 +351,13 @@ struct conioxlib_stheme
         /* Extended TV palette fields. Used by inputline, label and dialog interior.
            Defaults match the Borland Turbo Vision 2.0 cpColor entries so a theme
            that only sets the basic 9 fields still renders correctly. */
-        unsigned char atrinput;    /* input line passive (White on Blue in TV) */
-        unsigned char atrinputsel;  /* input line selected/focused (White on Green) */
-        unsigned char atrlabel;    /* label normal text (Black on LightGray) */
-        unsigned char atrlabelhot;  /* label accelerator (Yellow on LightGray) */
-        unsigned char atrinterior;  /* dialog interior / passive frame (LightGray bg) */
-        unsigned char atrframe;    /* dialog frame active (White on LightGray) */
-        const char *frame;          /* box frame string (CONIOXLIB_BOX_A_*) */
+        unsigned char atrinput;     /* input line (White on Blue in TV) */
+        unsigned char atrinputsel;  /* reserved: focused input (White on Green in TV) */
+        unsigned char atrlabel;     /* dialog label text */
+        unsigned char atrlabelhot;  /* reserved: label accelerator */
+        unsigned char atrinterior;  /* reserved: dialog interior fill */
+        unsigned char atrframe;     /* dialog frame (msgbox/about/input/exit) */
+        const char *frame;          /* box frame glyphs (single/double per theme) */
         char name[20];
 };
 void conioxlib_theme(unsigned char id);

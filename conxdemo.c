@@ -332,7 +332,7 @@ static void _demo_fileselector(void)
         if (conioxlib_filemultiselector(&disk, dir, files) == 0)
         {
                 box(20, 7, 60, 16, CONIOXLIB_ATTR(BLACK, LIGHTGRAY), A_DOUBLE, "Selection", SHADOW);
-                sprintf(str, "%c:%s", disk, dir);
+                sprintf(str, "%c:%.*s", disk, 90, dir);
                 textattr(CONIOXLIB_ATTR(WHITE, LIGHTGRAY));
                 cputsc(20, 60, 9, str);
                 i = 0;
@@ -374,7 +374,7 @@ static void _demo_fileselector(void)
                 gotoxy(22, 14);
                 if (i < DEMO_FILES)
                 {
-                        sprintf(str, "%c:%s%s", disk, dir, files[i].name);
+                        sprintf(str, "%c:%.*s%.*s", disk, 70, dir, 12, files[i].name);
                         fsz = conioxlib_filesize(str);
                         if (fsz != 0xFFFFFFFFUL)
                         {
@@ -1578,7 +1578,7 @@ static unsigned char _demo_edit (unsigned short x1, unsigned short y1, unsigned 
                                                 fdir[0] = 0;
                                                 if (conioxlib_fileselector(&fdrive, fdir, fname2) != 0)
                                                 {
-                                                        sprintf(outln, "%c:%s%s", fdrive, fdir, fname2);
+                                                        sprintf(outln, "%c:%.*s%.*s", fdrive, 70, fdir, 40, fname2);
                                                 }
                                                 else
                                                 {

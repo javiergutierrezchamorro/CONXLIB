@@ -190,20 +190,29 @@ static int _conioxlib_zoom_valid = 0;
 
 static int _conioxlib_filemultiselector_sort(const struct conioxlib_sfiles *fa, const char *la, const struct conioxlib_sfiles *fb, const char *lb, unsigned char column, int desc);
 static void _conioxlib_filemultiselector_format(char *res, unsigned long int n);
-static void _conioxlib_filemultiselector_row(unsigned short y, int idx, unsigned char atr, int nw, int cw, const char lnames[][CONIOXLIB_LISTITEM_W], struct conioxlib_sfiles *files);
+static void _conioxlib_filemultiselector_row(unsigned short y, int idx, unsigned char atr, int nw, int cw, const char lnames[][CONIOXLIB_LISTITEM_W], const struct conioxlib_sfiles *files);
 static unsigned char _conioxlib_enum_drives(char names[][13], char comments[][34], unsigned char max);
+/* Prototypes required by Watcom W131 before first use (definitions are later).
+   No conioxlib_inline on prototypes: Watcom E1035 rejects __inline on a
+   forward declaration without a body (same rule as _conioxlib_enum_drives_set_name). */
+static void _conioxlib_fileselector_format_size(char *res, unsigned long int n);
+static void _conioxlib_fmt_u2(char *dst, unsigned int v);
+static void _conioxlib_fmt_date(char *dest, unsigned int day, unsigned int mon, unsigned int yy);
+static void _conioxlib_fmt_time(char *dest, unsigned int hour, unsigned int min);
+static unsigned int _conioxlib_dos_yy(unsigned int year);
+static unsigned char _conioxlib_build_curdir(char *out);
 /* Far scratch for drive letters/comments: defined with enum_drives, declared
    here so filemultiselector/fileselector (earlier in the file) can use them. */
 static char CONIOXLIB_FARDATA _conioxlib_drivenames[26][13];
 static char CONIOXLIB_FARDATA _conioxlib_drivecomments[26][34];
-static void _conioxlib_poll(void);
+static void _conioxlib_pollkey_refresh(void);
 static conioxlib_inline void _conioxlib_fillch(unsigned short x, unsigned short y, int n, unsigned char ch, unsigned char atr);
 /* Forward declaration so _conioxlib_enum_drives sees the helper before its
    definition below. Watcom (W131/W308) requires a prototype for every called
    function when warnings are enabled. Note: no conioxlib_inline here because
    Watcom E1035 fires when __inline appears on a forward declaration without
    the body; the qualifier on the definition below is sufficient. */
-static void _conioxlib_set_drivename(char *out, char letter);
+static void _conioxlib_enum_drives_set_name(char *out, char letter);
 /* Helper for blank-padded button hints: fills CONIOXLIB_HINT_W-1 columns
    with spaces and adds the NUL terminator. Used by msgbox/inputbox/inputmask. */
 static conioxlib_inline void _conioxlib_blank_hint(char *hint);
@@ -314,7 +323,7 @@ static conioxlib_inline unsigned short _conioxlib_scr_h(void)
 
 /* Shared vertical-list navigation: updates sel and top given a key, vis rows and nitems.
    Returns 1 when the key was a navigation key (caller may need repaint). */
-static int _conioxlib_list_nav(unsigned int key, int *sel, int *top, int nitems, int vis)
+static int _conioxlib_listbox_nav(unsigned int key, int *sel, int *top, int nitems, int vis)
 {
         if (key == KBD_UP)
         {
@@ -416,31 +425,38 @@ static int _conioxlib_scroll_nav(unsigned int key, int *top, int nitems, int vis
    vis visible slots starting at row y, spaced by `step` rows (1 for listbox). */
 static void _conioxlib_draw_scrollbar(unsigned short x, unsigned short y, int vis, int top, int nitems, unsigned char atr, int step)
 {
-        int row;
+        int row, thumb;
+        unsigned short *cells;
+        unsigned short ca;
         if (step < 1)
-        {
                 step = 1;
-        }
         if ((nitems <= vis) || (vis < 3))
+                return;
+        if (step == 1)
         {
+                cells = _conioxlib_need_cells((unsigned int) vis);
+                if (cells == 0)
+                        return;
+                ca = (unsigned short) ((unsigned int) atr << 8);
+                cells[0] = (unsigned short) (ca | 0x18);
+                for (row = 1; row < vis - 1; row++)
+                        cells[row] = (unsigned short) (ca | 0xB0);
+                cells[vis - 1] = (unsigned short) (ca | 0x19);
+                thumb = 1 + (top * (vis - 3)) / (nitems - vis);
+                if (thumb > vis - 2) thumb = vis - 2;
+                if (thumb < 1) thumb = 1;
+                cells[thumb] = (unsigned short) (ca | 0xB2);
+                puttext(x, y, x, (unsigned short) (y + vis - 1), cells);
                 return;
         }
         _conioxlib_fillch(x, y, 1, 0x18, atr);
         for (row = 1; row < vis - 1; row++)
-        {
                 _conioxlib_fillch(x, (unsigned short) (y + row * step), 1, 0xB0, atr);
-        }
         _conioxlib_fillch(x, (unsigned short) (y + (vis - 1) * step), 1, 0x19, atr);
-        row = 1 + (top * (vis - 3)) / (nitems - vis);
-        if (row > vis - 2)
-        {
-                row = vis - 2;
-        }
-        if (row < 1)
-        {
-                row = 1;
-        }
-        _conioxlib_fillch(x, (unsigned short) (y + row * step), 1, 0xB2, atr);
+        thumb = 1 + (top * (vis - 3)) / (nitems - vis);
+        if (thumb > vis - 2) thumb = vis - 2;
+        if (thumb < 1) thumb = 1;
+        _conioxlib_fillch(x, (unsigned short) (y + thumb * step), 1, 0xB2, atr);
 }
 
 /* Button colors of the active theme (btnatr0/btnatr1/btnatrhot). Each theme
@@ -465,7 +481,7 @@ void conioxlib_theme_btnattrs(unsigned char *atr0, unsigned char *atr1, unsigned
 
 /* Darkens every attribute byte of a rectangle to 8 (dark gray) via gettext/puttext.
    Used by box() shadows so the two shadow arms share one loop and one temp buffer. */
-static void _conioxlib_darken(unsigned short x1, unsigned short y1, unsigned short x2, unsigned short y2, char *tmp)
+static void _conioxlib_box_darken(unsigned short x1, unsigned short y1, unsigned short x2, unsigned short y2, char *tmp)
 {
         unsigned int n;
         unsigned short *cells;
@@ -538,7 +554,7 @@ static unsigned int _conioxlib_pollkey(void)
 {
         unsigned int key = 0;
 
-        _conioxlib_poll();
+        _conioxlib_pollkey_refresh();
         if (_conioxlib_keyhit())
         {
                 _conioxlib_readkey(&key);
@@ -656,7 +672,7 @@ unsigned int conioxlib_getkey(void)
 /* ------------------- Finds the accelerator key of a text --------------- */
 /* Accelerator: an ampersand before X marks X as the accelerator key and is never
    drawn; with no ampersand, the first letter A-Z/a-z is the accelerator key. */
-static conioxlib_inline char _conioxlib_hotchar(const char *s)
+static conioxlib_inline char _conioxlib_hotmatch_char(const char *s)
 {
         int i;
 
@@ -769,7 +785,7 @@ static conioxlib_inline int _conioxlib_hotmatch(const char *s, unsigned int key)
         unsigned int scan;
         int i;
 
-        h = _conioxlib_hotchar(s);
+        h = _conioxlib_hotmatch_char(s);
         if (h == 0)
         {
                 return(0);
@@ -865,7 +881,7 @@ void conioxlib_cputsc (unsigned short x1, unsigned short x2, unsigned short y, c
 /* Draws just the four frame edges of a rectangle: top, bottom, left and right.
    No interior fill, no title, no close glyph. Used only by the zoom animation
    so each step is a handful of puttext calls instead of a full box redraw. */
-static void _conioxlib_box_outline(unsigned short x1, unsigned short y1, unsigned short x2, unsigned short y2, unsigned int atr, const char *frame)
+static void _conioxlib_box_zoom_outline(unsigned short x1, unsigned short y1, unsigned short x2, unsigned short y2, unsigned int atr, const char *frame)
 {
         unsigned short *cells;
         unsigned short ca;
@@ -990,7 +1006,7 @@ static void _conioxlib_box_zoom(unsigned short x1, unsigned short y1, unsigned s
                 if (ry1 < 1) { ry1 = 1; }
                 if (rx2 > (int) scrw) { rx2 = (int) scrw; }
                 if (ry2 > (int) scrh) { ry2 = (int) scrh; }
-                _conioxlib_box_outline((unsigned short) rx1, (unsigned short) ry1, (unsigned short) rx2, (unsigned short) ry2, atr, frame);
+                _conioxlib_box_zoom_outline((unsigned short) rx1, (unsigned short) ry1, (unsigned short) rx2, (unsigned short) ry2, atr, frame);
                 /* Pace each zoom step so the effect is visible regardless of CPU speed.
                    Without this delay the 10 steps complete in <1 ms on modern CPUs and
                    the effect is imperceptible. ~30 ms per step → ~300 ms total for the
@@ -1099,7 +1115,7 @@ void conioxlib_box (unsigned short x1, unsigned short y1, unsigned short x2, uns
                         }
                         if (sx1 <= sx2)
                         {
-                                _conioxlib_darken(sx1, (unsigned short) (y2 + 1), sx2, (unsigned short) (y2 + 1), tmp);
+                                _conioxlib_box_darken(sx1, (unsigned short) (y2 + 1), sx2, (unsigned short) (y2 + 1), tmp);
                         }
                 }
                 if (x2 < scrw)
@@ -1118,7 +1134,7 @@ void conioxlib_box (unsigned short x1, unsigned short y1, unsigned short x2, uns
                         }
                         if ((sx1 <= sx2) && (sy1 <= sy2))
                         {
-                                _conioxlib_darken(sx1, sy1, sx2, sy2, tmp);
+                                _conioxlib_box_darken(sx1, sy1, sx2, sy2, tmp);
                         }
                 }
         }
@@ -1269,7 +1285,7 @@ static void _conioxlib_status_layout(unsigned short *row, unsigned short *status
         *status_end = (*locks_col > 1) ? (unsigned short) (*locks_col - 1) : 1;
 }
 
-static conioxlib_inline void _conioxlib_paintclock (struct tm *t)
+static conioxlib_inline void _conioxlib_paintclock (const struct tm *t)
 {
         unsigned short *cells;
         unsigned short cellattr;
@@ -1355,7 +1371,7 @@ void conioxlib_clock (void)
    dialog wait loop needs to keep the clock, the lock indicators
    and the mouse status up to date.
    */
-static void _conioxlib_poll (void)
+static void _conioxlib_pollkey_refresh (void)
 {
         conioxlib_clock();
         conioxlib_pollmouse();
@@ -1899,7 +1915,7 @@ void conioxlib_blocks (void)
 /* Decodes the 34 bytes of the DOS COUNTRY INFO block (int 21h AH=38h) field by field:
    struct conioxlib_scountry does not match the DOS layout (unsigned int is 4 bytes and
    unsigned long gets padded in the 32 bit builds), so a raw copy shifted every field */
-static void _conioxlib_countryparse (struct conioxlib_scountry *sc, const unsigned char *raw)
+static void _conioxlib_getcountry_parse (struct conioxlib_scountry *sc, const unsigned char *raw)
 {
         memset(sc, 0, sizeof(struct conioxlib_scountry));
         sc->date = (unsigned int) raw[0] | ((unsigned int) raw[1] << 8);
@@ -2091,7 +2107,7 @@ void conioxlib_getcountry (struct conioxlib_scountry *sc)
                 code = _conioxlib_rbx(r);
         }
         #endif
-        _conioxlib_countryparse(sc, raw);
+        _conioxlib_getcountry_parse(sc, raw);
         sc->code = code;
 #endif
 }
@@ -2666,7 +2682,7 @@ void conioxlib_getpw (unsigned short x, unsigned short y, unsigned char atr, cha
 /* Draws one button of the row: face, top-right corner and shadow strip.
    Function version of the old macro: identical code, but with real type
    checking and arguments evaluated exactly once. */
-static void _conioxlib_drawbtn(int b, unsigned char c, int *pos, int *wide, int *vislen, unsigned short y1, unsigned char atrhot, const char items[][CONIOXLIB_BTN_W])
+static void _conioxlib_buttons_draw(int b, unsigned char c, int *pos, int *wide, int *vislen, unsigned short y1, unsigned char atrhot, const char items[][CONIOXLIB_BTN_W])
 {
         unsigned short *cells;
         unsigned short ca;
@@ -2686,8 +2702,10 @@ static void _conioxlib_drawbtn(int b, unsigned char c, int *pos, int *wide, int 
         /* Face: one puttext of spaces, then the centered hot title */
         _conioxlib_fillch((unsigned short) pos[b], y1, w, ' ', c);
         conioxlib_cputs_hot((unsigned short) (pos[b] + 1 + ((wide[b] - vislen[b] - 2) / 2)), y1, c, atrhot, items[b]);
-        /* Top-right corner: half block with the shadow color */
-        ca = ((unsigned short) _conioxlib_curtheme.atrlabel << 8);
+        /* Top-right corner: half block with the dialog-bg shadow color.
+           atrdialog matches the surface the button sits on; atrlabel is
+           for captions and must not drive the 3-D shadow (PC Tools etc.). */
+        ca = ((unsigned short) _conioxlib_curtheme.atrdialog << 8);
         cells[0] = (unsigned short) (ca | 0xDC);
         puttext((unsigned short) (pos[b] + wide[b] - 1), y1, (unsigned short) (pos[b] + wide[b] - 1), y1, cells);
         /* Bottom row: two spaces and the 0xDF strip with the shadow color */
@@ -2728,7 +2746,7 @@ unsigned char conioxlib_buttons (unsigned short x1, unsigned short y1, unsigned 
         unsigned char c;
 
         /* A zero count used to fall through with pos[]/wide[]/vislen[]
-           uninitialized and let _conioxlib_drawbtn() paint garbage all
+           uninitialized and let _conioxlib_buttons_draw() paint garbage all
            over the screen on the final redraw */
         if ((noptions == 0) || (items == 0) || (desc == 0))
         {
@@ -2770,7 +2788,7 @@ unsigned char conioxlib_buttons (unsigned short x1, unsigned short y1, unsigned 
                 {
                         c = atr0;
                 }
-                _conioxlib_drawbtn(i, c, pos, wide, vislen, y1, atrhot, items);
+                _conioxlib_buttons_draw(i, c, pos, wide, vislen, y1, atrhot, items);
         }
         _conioxlib_hint(desc[0]);
         x = 0;
@@ -2789,9 +2807,9 @@ unsigned char conioxlib_buttons (unsigned short x1, unsigned short y1, unsigned 
                                                 {
                                                         if (y != x)
                                                         {
-                                                                _conioxlib_drawbtn(x, atr0, pos, wide, vislen, y1, atrhot, items);
+                                                                _conioxlib_buttons_draw(x, atr0, pos, wide, vislen, y1, atrhot, items);
                                                                 x = y;
-                                                                _conioxlib_drawbtn(x, atr1, pos, wide, vislen, y1, atrhot, items);
+                                                                _conioxlib_buttons_draw(x, atr1, pos, wide, vislen, y1, atrhot, items);
                                                                 _conioxlib_hint(desc[x]);
                                                         }
                                                         key = KBD_ENTER;
@@ -2809,9 +2827,9 @@ unsigned char conioxlib_buttons (unsigned short x1, unsigned short y1, unsigned 
                                         {
                                                 if (y != x)
                                                 {
-                                                        _conioxlib_drawbtn(x, atr0, pos, wide, vislen, y1, atrhot, items);
+                                                        _conioxlib_buttons_draw(x, atr0, pos, wide, vislen, y1, atrhot, items);
                                                         x = y;
-                                                        _conioxlib_drawbtn(x, atr1, pos, wide, vislen, y1, atrhot, items);
+                                                        _conioxlib_buttons_draw(x, atr1, pos, wide, vislen, y1, atrhot, items);
                                                         _conioxlib_hint(desc[x]);
                                                 }
                                                 key = KBD_ENTER;
@@ -2828,12 +2846,12 @@ unsigned char conioxlib_buttons (unsigned short x1, unsigned short y1, unsigned 
                 while ((key != KBD_LEFT) && (key != KBD_RIGHT) && (key != KBD_ESC) && (key != KBD_ENTER) && (key != KBD_F1));
                 if (key == KBD_LEFT)
                 {
-                        _conioxlib_drawbtn(x, atr0, pos, wide, vislen, y1, atrhot, items);
+                        _conioxlib_buttons_draw(x, atr0, pos, wide, vislen, y1, atrhot, items);
                         x--;
                 }
                 else if (key == KBD_RIGHT)
                 {
-                        _conioxlib_drawbtn(x, atr0, pos, wide, vislen, y1, atrhot, items);
+                        _conioxlib_buttons_draw(x, atr0, pos, wide, vislen, y1, atrhot, items);
                         x++;
                 }
                 if (x > noptions - 1)
@@ -2844,7 +2862,7 @@ unsigned char conioxlib_buttons (unsigned short x1, unsigned short y1, unsigned 
                 {
                         x = noptions - 1;
                 }
-                _conioxlib_drawbtn(x, atr1, pos, wide, vislen, y1, atrhot, items);
+                _conioxlib_buttons_draw(x, atr1, pos, wide, vislen, y1, atrhot, items);
                 _conioxlib_hint(desc[x]);
         }
         while ((key != KBD_ENTER) && (key != KBD_ESC) && (key != KBD_F1));
@@ -2860,9 +2878,9 @@ unsigned char conioxlib_buttons (unsigned short x1, unsigned short y1, unsigned 
         else
         {
                 /* Press feedback: flash the button inverted like the Turbo Vision dialogs */
-                _conioxlib_drawbtn(x, (unsigned char) (((atr1 & 0x0F) << 4) | (atr1 >> 4)), pos, wide, vislen, y1, atrhot, items);
+                _conioxlib_buttons_draw(x, (unsigned char) (((atr1 & 0x0F) << 4) | (atr1 >> 4)), pos, wide, vislen, y1, atrhot, items);
                 delay(120);
-                _conioxlib_drawbtn(x, atr1, pos, wide, vislen, y1, atrhot, items);
+                _conioxlib_buttons_draw(x, atr1, pos, wide, vislen, y1, atrhot, items);
                 return((unsigned char) x);
         }
 }
@@ -2946,7 +2964,7 @@ static void _conioxlib_draw_vscroll(unsigned short x, unsigned short y1, unsigne
 
 
 /* Visible length of a menu item (ampersands are not drawn). */
-static int _conioxlib_item_vislen(const char *item)
+static conioxlib_inline int _conioxlib_item_vislen(const char *item)
 {
         int n = 0;
         int i;
@@ -2965,7 +2983,7 @@ static int _conioxlib_item_vislen(const char *item)
 }
 
 /* True when the row is a non-selectable separator. */
-static int _conioxlib_item_is_sep(const char *item)
+static conioxlib_inline int _conioxlib_item_is_sep(const char *item)
 {
         return (item != 0) && (item[0] == '-');
 }
@@ -4003,7 +4021,7 @@ unsigned char conioxlib_view (unsigned short x1, unsigned short y1, unsigned sho
    terminated malloc block, size receiving its length; returns 0 when it
    cannot be opened or read, is empty or too big for one allocation.
    help() and helpindex() share it. */
-static char *_conioxlib_readblock (const char *name, unsigned long int *size)
+static char *_conioxlib_filemultiselector_readblock (const char *name, unsigned long int *size)
 {
         FILE *f;
         long int len;
@@ -4072,7 +4090,7 @@ static _conioxlib_helptopic *_conioxlib_helpcache = 0;
 static unsigned int _conioxlib_helpcache_cap = 0;
 
 /* File length in bytes, or -1 on error. */
-static long _conioxlib_path_size(const char *name)
+static long _conioxlib_helpcache_path_size(const char *name)
 {
         FILE *f;
         long len;
@@ -4098,7 +4116,7 @@ static long _conioxlib_path_size(const char *name)
 
 /* Last-write stamp when the platform provides it; returns 1 and sets *mt, or 0
    (caller treats mtime as unavailable and relies on size alone). */
-static int _conioxlib_path_mtime(const char *name, long *mt)
+static int _conioxlib_helpcache_path_mtime(const char *name, long *mt)
 {
         if ((name == 0) || (mt == 0))
         {
@@ -4131,7 +4149,7 @@ static int _conioxlib_path_mtime(const char *name, long *mt)
 }
 
 /* Strip trailing CR/LF from a line buffer in place. */
-static void _conioxlib_chomp(char *s)
+static void _conioxlib_helpcache_chomp(char *s)
 {
         size_t n;
 
@@ -4160,7 +4178,7 @@ static int _conioxlib_helpcache_valid(const char *name)
         {
                 return 0;
         }
-        sz = _conioxlib_path_size(name);
+        sz = _conioxlib_helpcache_path_size(name);
         if ((sz < 0L) || (sz != _conioxlib_helpcache_size))
         {
                 return 0;
@@ -4168,7 +4186,7 @@ static int _conioxlib_helpcache_valid(const char *name)
         /* When mtime is available it must match; if the platform has no mtime, size alone decides. */
         if (_conioxlib_helpcache_has_mtime)
         {
-                if (!_conioxlib_path_mtime(name, &mt) || (mt != _conioxlib_helpcache_mtime))
+                if (!_conioxlib_helpcache_path_mtime(name, &mt) || (mt != _conioxlib_helpcache_mtime))
                 {
                         return 0;
                 }
@@ -4205,7 +4223,7 @@ static int _conioxlib_helpcache_build(const char *name)
                 return 0;
         }
         _conioxlib_helpcache_size = ftell(f);
-        _conioxlib_helpcache_has_mtime = _conioxlib_path_mtime(name, &_conioxlib_helpcache_mtime);
+        _conioxlib_helpcache_has_mtime = _conioxlib_helpcache_path_mtime(name, &_conioxlib_helpcache_mtime);
         if ((_conioxlib_helpcache_size < 0L) || (fseek(f, 0L, SEEK_SET) != 0))
         {
                 fclose(f);
@@ -4236,7 +4254,7 @@ static int _conioxlib_helpcache_build(const char *name)
         n = 0;
         while (fgets(line, (int) sizeof(line), f) != 0)
         {
-                _conioxlib_chomp(line);
+                _conioxlib_helpcache_chomp(line);
                 if ((line[0] == '@') && (line[1] != 0))
                 {
                         bodypos = ftell(f);     /* first byte after this header line */
@@ -4334,7 +4352,7 @@ static int _conioxlib_helpcache_load_body(const char *name, int idx, char buffer
         last = 0;
         while (fgets(line, (int) sizeof(line), f) != 0)
         {
-                _conioxlib_chomp(line);
+                _conioxlib_helpcache_chomp(line);
                 if (line[0] == '@')
                 {
                         break;
@@ -4360,25 +4378,25 @@ static int _conioxlib_helpcache_load_body(const char *name, int idx, char buffer
 /* --- Help hyperlink support ---
    Inline "@word" is a hyperlink; "@@" is a literal '@' (e.g. email@@x.com).
    Topic headers (line starting with @name) are handled by the cache builder. */
-static int _conioxlib_linkword_char (char c)
+static conioxlib_inline int _conioxlib_help_linkword_char (char c)
 {
         return (((c >= 'A') && (c <= 'Z')) || ((c >= 'a') && (c <= 'z')) || ((c >= '0') && (c <= '9')) || (c == '_'));
 }
 
-static unsigned int _conioxlib_linklen (const char *s)
+static conioxlib_inline unsigned int _conioxlib_help_linklen (const char *s)
 {
         unsigned int n = 0;
 
-        while (_conioxlib_linkword_char(s[n]))
+        while (_conioxlib_help_linkword_char(s[n]))
         {
                 n++;
         }
         return(n);
 }
 
-static void _conioxlib_linkcpy (char *out, const char *s)
+static void _conioxlib_help_linkcpy (char *out, const char *s)
 {
-        unsigned int n = _conioxlib_linklen(s);
+        unsigned int n = _conioxlib_help_linklen(s);
 
         if (n > 31)
         {
@@ -4389,7 +4407,7 @@ static void _conioxlib_linkcpy (char *out, const char *s)
 }
 
 /* True when line[i] starts a real "@word" link (not part of an "@@" escape). */
-static int _conioxlib_is_helplink (const char *line, unsigned int i)
+static conioxlib_inline int _conioxlib_help_is_link (const char *line, unsigned int i)
 {
         if (line[i] != '@')
         {
@@ -4403,7 +4421,7 @@ static int _conioxlib_is_helplink (const char *line, unsigned int i)
         {
                 return(0);
         }
-        return(_conioxlib_linkword_char(line[i + 1]));
+        return(_conioxlib_help_linkword_char(line[i + 1]));
 }
 
 #define CONIOXLIB_HELP_LINKS_MAX        64
@@ -4531,15 +4549,15 @@ static unsigned char _conioxlib_help_view (unsigned short x1, unsigned short y1,
                                                 i += 2;
                                                 continue;
                                         }
-                                        if (_conioxlib_is_helplink(buffer[f], i))
+                                        if (_conioxlib_help_is_link(buffer[f], i))
                                         {
-                                                wl = _conioxlib_linklen(&buffer[f][i + 1]);
+                                                wl = _conioxlib_help_linklen(&buffer[f][i + 1]);
                                                 if (nlinks < CONIOXLIB_HELP_LINKS_MAX)
                                                 {
                                                         links[nlinks].line = (unsigned short) f;
                                                         links[nlinks].col = (unsigned char) col;
                                                         links[nlinks].len = (unsigned char) (wl + 1);
-                                                        _conioxlib_linkcpy(links[nlinks].topic, &buffer[f][i + 1]);
+                                                        _conioxlib_help_linkcpy(links[nlinks].topic, &buffer[f][i + 1]);
                                                         nlinks++;
                                                 }
                                                 col += wl + 1;
@@ -4585,9 +4603,9 @@ static unsigned char _conioxlib_help_view (unsigned short x1, unsigned short y1,
                                                         i += 2;
                                                         continue;
                                                 }
-                                                if (_conioxlib_is_helplink(buffer[f], i))
+                                                if (_conioxlib_help_is_link(buffer[f], i))
                                                 {
-                                                        wl = _conioxlib_linklen(&buffer[f][i + 1]);
+                                                        wl = _conioxlib_help_linklen(&buffer[f][i + 1]);
                                                         /* O(1) check: the active link's position is known */
                                                         isactive = (active >= 0)
                                                                 && (links[active].line == (unsigned short) f)
@@ -4874,7 +4892,7 @@ help_reload:
                 }
                 last += 2;
         }
-        sprintf(tmp, "Help: %s", curtopic);
+        sprintf(tmp, "Help: %.60s", curtopic);
         /* TAB/RIGHT next link, SHIFT-TAB/LEFT previous, ENTER/click follows. */
         vres = _conioxlib_help_view(x1, y1, x2, y2, atr0, atr1, buffer, (unsigned char) last, tmp, linktarget);
         if (vres == 2)
@@ -4995,7 +5013,7 @@ static unsigned int _conioxlib_lfnlong (const char *path, char *out, unsigned in
 
 /* Sort files[0..last] with matching lnames[] (insertion sort).
    column is CONIOXLIB_SORT_NAME/SIZE/DATE/TIME; desc is nonzero for descending. */
-static void _conioxlib_filemulti_sort_table(struct conioxlib_sfiles *files, char lnames[][CONIOXLIB_LISTITEM_W], unsigned int last, unsigned char column, int desc)
+static void _conioxlib_filemultiselector_sort_table(struct conioxlib_sfiles *files, char lnames[][CONIOXLIB_LISTITEM_W], unsigned int last, unsigned char column, int desc)
 {
         unsigned int i;
         int j;
@@ -5020,18 +5038,23 @@ static void _conioxlib_filemulti_sort_table(struct conioxlib_sfiles *files, char
 
 /* Persistent sort state for filemultiselector: survives directory rescans
    so the user's chosen column/direction is kept when navigating into a
-   subdirectory or switching drives. Declared BEFORE _conioxlib_fms_paint_header
+   subdirectory or switching drives. Declared BEFORE _conioxlib_filemultiselector_paint_header
    because that helper reads these to draw the sort arrow. */
-static unsigned char _conioxlib_fms_sort_column = CONIOXLIB_SORT_NAME;
-static int _conioxlib_fms_sort_desc = 0;
+static unsigned char _conioxlib_filemultiselector_sort_column = CONIOXLIB_SORT_NAME;
+static int _conioxlib_filemultiselector_sort_desc = 0;
 
-static void _conioxlib_filemulti_calc_cols(char lnames[][CONIOXLIB_LISTITEM_W], unsigned int last, int *nw, int *cw)
+static void _conioxlib_filemultiselector_calc_cols(const char lnames[][CONIOXLIB_LISTITEM_W], unsigned int last, int *nw, int *cw)
 {
-        unsigned int i;
+        unsigned int i, j;
         *nw = 12;
         for (i = 0; i <= last; i++)
         {
-                if (strlen(lnames[i]) > 12)
+                for (j = 0; j <= 12; j++)
+                {
+                        if (lnames[i][j] == 0)
+                                break;
+                }
+                if (j > 12)
                 {
                         *nw = 29;
                         break;
@@ -5043,7 +5066,7 @@ static void _conioxlib_filemulti_calc_cols(char lnames[][CONIOXLIB_LISTITEM_W], 
 /* Paint the filemultiselector column header row (row 3) with column
    separators, labels and the sort direction arrow. Extracted from 3
    duplicated blocks that were ~25 lines each. */
-static void _conioxlib_fms_paint_header(int nw, int cw)
+static void _conioxlib_filemultiselector_paint_header(int nw, int cw)
 {
         char header[80];
         memset(header, 32, 78);
@@ -5060,8 +5083,8 @@ static void _conioxlib_fms_paint_header(int nw, int cw)
         memcpy(&header[nw + 26], "Time", 4);
         memcpy(&header[nw + 32 + ((cw - 7) >> 1)], "Comment", 7);
         {
-                char arrow = _conioxlib_fms_sort_desc ? '\x1F' : '\x1E';
-                switch (_conioxlib_fms_sort_column)
+                char arrow = _conioxlib_filemultiselector_sort_desc ? '\x1F' : '\x1E';
+                switch (_conioxlib_filemultiselector_sort_column)
                 {
                         case CONIOXLIB_SORT_NAME:  header[1 + ((nw - 4) >> 1) + 4] = arrow; break;
                         case CONIOXLIB_SORT_SIZE:  header[nw + 7 + 4] = arrow; break;
@@ -5069,25 +5092,35 @@ static void _conioxlib_fms_paint_header(int nw, int cw)
                         case CONIOXLIB_SORT_TIME: header[nw + 26 + 4] = arrow; break;
                 }
         }
-        textattr(_conioxlib_curtheme.atrdialog);
-        gotoxy(1, 3);
-        cputs(header);
+        {
+                unsigned short *cells;
+                unsigned short ca;
+                unsigned int hi;
+                cells = _conioxlib_need_cells(78);
+                if (cells != 0)
+                {
+                        ca = (unsigned short) ((unsigned int) _conioxlib_curtheme.atrdialog << 8);
+                        for (hi = 0; hi < 78; hi++)
+                                cells[hi] = (unsigned short) (ca | (unsigned char) header[hi]);
+                        puttext(1, 3, 78, 3, cells);
+                }
+        }
 }
 
 /* filemultiselector stages (helpers):
    - _conioxlib_enum_drives
    - directory scan (select_1: findfirst/next + DESCRIPT.ION)  [scan_dir]
-   - _conioxlib_filemulti_sort_table / _conioxlib_filemulti_calc_cols
+   - _conioxlib_filemultiselector_sort_table / _conioxlib_filemultiselector_calc_cols
    - interactive UI loop (keys, marks, navigation)             [run_ui]
    - _conioxlib_filemultiselector_row / format / sort compare
    Full platform scan stays in this function (DOS/Win ifdefs); the pure
    post-scan work is factored above for testability. */
-/* Sort state declared above, before _conioxlib_fms_paint_header */
+/* Sort state declared above, before _conioxlib_filemultiselector_paint_header */
 /* Paint all 18 visible rows of the filemultiselector list. Extracted from 4
    duplicated blocks (initial paint, click-sort repaint, Alt+letter repaint,
    PGUP/PGDN repaint). Each block was 12 lines; now each is a single call. */
-static void _conioxlib_fms_paint_rows(int last, int selrow, int nw, int cw,
-        char lnames[][CONIOXLIB_LISTITEM_W], struct conioxlib_sfiles *files)
+static void _conioxlib_filemultiselector_paint_rows(int last, int selrow, int nw, int cw,
+        const char lnames[][CONIOXLIB_LISTITEM_W], const struct conioxlib_sfiles *files)
 {
         int i;
         for (i = 0; i < 18; i++)
@@ -5106,12 +5139,6 @@ static void _conioxlib_fms_paint_rows(int last, int selrow, int nw, int cw,
         }
 }
 
-
-/* Column header positions (screen columns, 1-based) inside the filemultiselector.
-   These are calculated by _conioxlib_filemulti_calc_cols and stored here
-   so the header click handler can map mouse X to a column. */
-static int _conioxlib_fms_nw = 12;
-static int _conioxlib_fms_cw = 33;
 
 unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, struct conioxlib_sfiles *files)
 {
@@ -5226,48 +5253,20 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
         {
                 files[i].selected = 0;
         }
-        disk = _conioxlib_getdisk() + 'A';
-#if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32) || defined(__WATCOMC__)
-        if (_conioxlib_getcwd(tmp2, 79) == 0)
-        {
-                tmp2[0] = disk;
-                tmp2[1] = ':';
-                tmp2[2] = '\\';
-                tmp2[3] = 0;
-        }
-        if (tmp2[3] == 0)
-        {
-                sprintf(dir, "\\");
-        }
-        else
-        {
-                sprintf(dir, "\\%s\\", &tmp2[3]);
-        }
-#else
-        getcurdir(disk - 'A' + 1, dir);
-        if (dir[0] == 0)
-        {
-                sprintf(tmp2, "\\");
-        }
-        else
-        {
-                sprintf(tmp2, "\\%s\\", dir);
-        }
-        strcpy(dir, tmp2);
-#endif
+        disk = _conioxlib_build_curdir(dir);
         /* Ensure we are on the selected drive/dir so relative find and DESCRIPT.ION work on DOS and Windows */
         _conioxlib_setdisk(disk - 'A');
         _conioxlib_chdir(dir);
         /* DESCRIPT.ION is loaded once into memory: the old code reopened and
            rescanned the file for every single enumerated entry (rewind plus
            a full fgets pass per file), which is quadratic on big directories */
-        sprintf(tmp2, "%c:%sDESCRIPT.ION", disk, dir);
-        descbuf = _conioxlib_readblock(tmp2, &descsize);
+        sprintf(tmp2, "%c:%.*sDESCRIPT.ION", disk, 70, dir);
+        descbuf = _conioxlib_filemultiselector_readblock(tmp2, &descsize);
         if (descbuf == 0)
         {
                 /* Also try lowercase name used by some tools */
-                sprintf(tmp2, "%c:%sdescript.ion", disk, dir);
-                descbuf = _conioxlib_readblock(tmp2, &descsize);
+                sprintf(tmp2, "%c:%.*sdescript.ion", disk, 70, dir);
+                descbuf = _conioxlib_filemultiselector_readblock(tmp2, &descsize);
         }
         if (descbuf != 0)
         {
@@ -5339,7 +5338,7 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 #if defined(__WATCOMC__)
                 if (lfn && (strcmp(files[i].name, ".") != 0) && (strcmp(files[i].name, "..") != 0))
                 {
-                        sprintf(tmp1, "%c:%s%s", disk, dir, files[i].name);
+                        sprintf(tmp1, "%c:%.*s%.*s", disk, 70, dir, 12, files[i].name);
                         lfnr = _conioxlib_lfnlong(tmp1, lnames[i], 41);
                         if (lfnr == 0x7100)
                         {
@@ -5357,24 +5356,13 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
 #if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32)
                 FileTimeToLocalFileTime(&ffd.ftLastWriteTime, &ft);
                 FileTimeToSystemTime(&ft, &st);
-                sprintf(files[i].date, "%02u-%02u-%02u", st.wDay, st.wMonth, st.wYear % 100);
-                sprintf(files[i].time, "%02u:%02u", st.wHour, st.wMinute);
+                _conioxlib_fmt_date(files[i].date, st.wDay, st.wMonth, st.wYear % 100);
+                _conioxlib_fmt_time(files[i].time, st.wHour, st.wMinute);
 #else
                 memcpy(&ff_fdate, &_conioxlib_ffdate(ffblk), 2);
-                if (ff_fdate.year < 20)
-                {
-                        sprintf(files[i].date, "%02u-%02u-%02u", ff_fdate.day, ff_fdate.mon, ff_fdate.year + 80);
-                }
-                else if (ff_fdate.year < 120)
-                {
-                        sprintf(files[i].date, "%02u-%02u-%02u", ff_fdate.day, ff_fdate.mon, ff_fdate.year - 20);
-                }
-                else
-                {
-                        sprintf(files[i].date, "%02u-%02u-XX", ff_fdate.day, ff_fdate.mon);
-                }
+                _conioxlib_fmt_date(files[i].date, ff_fdate.day, ff_fdate.mon, _conioxlib_dos_yy(ff_fdate.year));
                 memcpy(&ff_ftime, &_conioxlib_fftime(ffblk), 2);
-                sprintf(files[i].time, "%02u:%02u", ff_ftime.hour, ff_ftime.min);
+                _conioxlib_fmt_time(files[i].time, ff_ftime.hour, ff_ftime.min);
 #endif
                 if (descbuf != 0)
                 {
@@ -5481,11 +5469,8 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
         }
         /* Sort + column widths (helpers keep the UI loop readable).
            Use the persistent sort state so column/direction survives rescans. */
-        _conioxlib_filemulti_sort_table(files, lnames, last, _conioxlib_fms_sort_column, _conioxlib_fms_sort_desc);
-        _conioxlib_filemulti_calc_cols(lnames, last, &nw, &cw);
-        /* Save column positions for the header click handler */
-        _conioxlib_fms_nw = nw;
-        _conioxlib_fms_cw = cw;
+        _conioxlib_filemultiselector_sort_table(files, lnames, last, _conioxlib_filemultiselector_sort_column, _conioxlib_filemultiselector_sort_desc);
+        _conioxlib_filemultiselector_calc_cols(lnames, last, &nw, &cw);
         box(2, 2, 78, 23, 0, A_NONE, "", 5);
         textattr(_conioxlib_curtheme.atrdialog);
         memset(tmp1, 0xCD, 77);
@@ -5495,11 +5480,11 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
         gotoxy (1, 2);
         cputs(tmp1);
         textattr(_conioxlib_curtheme.atrdialog);
-        sprintf(tmp1, "[%c:%s]", disk, dir);
+        sprintf(tmp1, "[%c:%.*s]", disk, 90, dir);
         cputsc(1, 78, 2, tmp1);
         gotoxy(3, 2);
         cputs("[\xFE]");
-        _conioxlib_fms_paint_header(nw, cw);
+        _conioxlib_filemultiselector_paint_header(nw, cw);
         memset(tmp1, 0xCD, 78);
         tmp1[0] = '\xB6';
         tmp1[77] = '\xB5';
@@ -5536,7 +5521,7 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
         tmp1[78] = 0;
         gotoxy (1, 23);
         cputs(tmp1);
-        _conioxlib_fms_paint_rows((int) last, 0, nw, cw, lnames, files);
+        _conioxlib_filemultiselector_paint_rows((int) last, 0, nw, cw, lnames, files);
         i = 0;
         j = 0;
         do
@@ -5578,22 +5563,22 @@ unsigned char conioxlib_filemultiselector (unsigned char *sdisk, char *sdir, str
                                                 new_col = CONIOXLIB_SORT_TIME;
                                         else
                                                 new_col = CONIOXLIB_SORT_NAME; /* Comment column: ignore */
-                                        if (new_col == _conioxlib_fms_sort_column)
+                                        if (new_col == _conioxlib_filemultiselector_sort_column)
                                         {
                                                 /* Same column: toggle direction */
-                                                _conioxlib_fms_sort_desc = !_conioxlib_fms_sort_desc;
+                                                _conioxlib_filemultiselector_sort_desc = !_conioxlib_filemultiselector_sort_desc;
                                         }
                                         else
                                         {
                                                 /* New column: switch and default to ascending */
-                                                _conioxlib_fms_sort_column = new_col;
-                                                _conioxlib_fms_sort_desc = 0;
+                                                _conioxlib_filemultiselector_sort_column = new_col;
+                                                _conioxlib_filemultiselector_sort_desc = 0;
                                         }
                                         /* Re-sort immediately without rescanning the directory */
-                                        _conioxlib_filemulti_sort_table(files, lnames, last, _conioxlib_fms_sort_column, _conioxlib_fms_sort_desc);
+                                        _conioxlib_filemultiselector_sort_table(files, lnames, last, _conioxlib_filemultiselector_sort_column, _conioxlib_filemultiselector_sort_desc);
                                         /* Repaint all rows */
-_conioxlib_fms_paint_rows((int) last, -1, nw, cw, lnames, files);
-                                        _conioxlib_fms_paint_header(nw, cw);
+_conioxlib_filemultiselector_paint_rows((int) last, -1, nw, cw, lnames, files);
+                                        _conioxlib_filemultiselector_paint_header(nw, cw);
                                         /* Reset cursor to top of the list */
                                         i = 0;
                                         j = 0;
@@ -5643,7 +5628,7 @@ _conioxlib_fms_paint_rows((int) last, -1, nw, cw, lnames, files);
                 }
                 else if (key == KBD_F2)
                 {
-                        box (23, 12, 56, 14, _conioxlib_curtheme.atrframe, A_DOUBLE, "Mask", 1);
+                        box (23, 12, 56, 14, _conioxlib_curtheme.atrframe, _conioxlib_curtheme.frame, "Mask", 1);
                         textattr(_conioxlib_curtheme.atrdialog);
                         gotoxy(24, 13);
                         cputs("Enter file mask:");
@@ -5729,17 +5714,17 @@ else if ((key & 0xFF) == 0)
                         }
                         if (new_col != 0xFF)
                         {
-                                if (new_col == _conioxlib_fms_sort_column)
+                                if (new_col == _conioxlib_filemultiselector_sort_column)
                                 {
-                                        _conioxlib_fms_sort_desc = !_conioxlib_fms_sort_desc;
+                                        _conioxlib_filemultiselector_sort_desc = !_conioxlib_filemultiselector_sort_desc;
                                 }
                                 else
                                 {
-                                        _conioxlib_fms_sort_column = new_col;
-                                        _conioxlib_fms_sort_desc = 0;
+                                        _conioxlib_filemultiselector_sort_column = new_col;
+                                        _conioxlib_filemultiselector_sort_desc = 0;
                                 }
-                                _conioxlib_filemulti_sort_table(files, lnames, last, _conioxlib_fms_sort_column, _conioxlib_fms_sort_desc);
-                                _conioxlib_fms_paint_header(nw, cw);
+                                _conioxlib_filemultiselector_sort_table(files, lnames, last, _conioxlib_filemultiselector_sort_column, _conioxlib_filemultiselector_sort_desc);
+                                _conioxlib_filemultiselector_paint_header(nw, cw);
                                 for (i = 0; i < 18; i++)
                                 {
                                         if (i <= (int) last)
@@ -5893,7 +5878,7 @@ else if ((key & 0xFF) == 0)
 /* CMOS read: no motor, no int 13h. Index port 0x70, data port 0x71.
    Reg 0x10 holds floppy types (hi nibble = A:, lo = B:):
      1=360K 5.25, 2=1.2M 5.25, 3=720K 3.5, 4=1.44M 3.5, 5=2.88M 3.5. */
-static unsigned char _conioxlib_cmos(unsigned char reg)
+static unsigned char _conioxlib_enum_drives_cmos(unsigned char reg)
 {
 #if defined(__DJGPP__)
         outportb(0x70, reg);
@@ -5908,7 +5893,7 @@ static unsigned char _conioxlib_cmos(unsigned char reg)
 #endif
 }
 
-static void _conioxlib_floppy_comment(char *out, unsigned char cmos_nibble)
+static void _conioxlib_enum_drives_floppy_comment(char *out, unsigned char cmos_nibble)
 {
         if ((cmos_nibble == 1) || (cmos_nibble == 2))
         {
@@ -5932,7 +5917,7 @@ static void _conioxlib_floppy_comment(char *out, unsigned char cmos_nibble)
    Watcom emit E1035 ("static function has not been defined") on Windows
    builds because the forward declaration at the top of the file referred
    to a function the Windows build never sees. */
-static conioxlib_inline void _conioxlib_set_drivename(char *out, char letter)
+static conioxlib_inline void _conioxlib_enum_drives_set_name(char *out, char letter)
 {
         out[0] = '\x10';
         out[1] = letter;
@@ -5993,7 +5978,7 @@ static unsigned char _conioxlib_enum_drives(char names[][13], char comments[][34
                 {
                         continue;
                 }
-                _conioxlib_set_drivename(names[i], (char) ('A' + dr));
+                _conioxlib_enum_drives_set_name(names[i], (char) ('A' + dr));
                 if (comments != 0)
                 {
                         switch (_cached_types[dr])
@@ -6022,22 +6007,22 @@ static unsigned char _conioxlib_enum_drives(char names[][13], char comments[][34
            floppy spins the motor and can wait forever for drive ready, freezing
            the picker before the list is drawn. 5¼/3½ flavour comes from CMOS 0x10
            instead (port I/O only, no disk activity). */
-        cmos_fl = _conioxlib_cmos(0x10);
+        cmos_fl = _conioxlib_enum_drives_cmos(0x10);
         key = ((peekb(0x40, 0x10) & 192) >> 6) + 1;
         for (j = 0; (j < key) && (i < max); j++)
         {
-                _conioxlib_set_drivename(names[i], (char) (i + 'A'));
+                _conioxlib_enum_drives_set_name(names[i], (char) (i + 'A'));
                 if (comments != 0)
                 {
                         /* Drive 0 = high nibble, drive 1 = low nibble of CMOS 0x10 */
-                        _conioxlib_floppy_comment(comments[i],
+                        _conioxlib_enum_drives_floppy_comment(comments[i],
                                 (unsigned char) ((j == 0) ? ((cmos_fl >> 4) & 0x0F) : (cmos_fl & 0x0F)));
                 }
                 i++;
         }
         if ((key == 1) && (i < max))
         {
-                _conioxlib_set_drivename(names[i], (char) (i + 'A'));
+                _conioxlib_enum_drives_set_name(names[i], (char) (i + 'A'));
                 if (comments != 0)
                 {
                         strcpy(comments[i], "Virtual Floppy Disk");
@@ -6052,7 +6037,7 @@ static unsigned char _conioxlib_enum_drives(char names[][13], char comments[][34
         }
         for (j = 0; (j < key) && (i < max); j++)
         {
-                _conioxlib_set_drivename(names[i], (char) (i + 'A'));
+                _conioxlib_enum_drives_set_name(names[i], (char) (i + 'A'));
                 if (comments != 0)
                 {
                         strcpy(comments[i], "Hard Disk");
@@ -6067,7 +6052,7 @@ static unsigned char _conioxlib_enum_drives(char names[][13], char comments[][34
 /* -------------------- Sorts the select ---------------------------------- */
 /* Rank helper: drives (0), "." (1), ".." (2), directories (3) and files (4).
    Inline char-by-char compare avoids strcmp for the short "." and ".." cases. */
-static int _conioxlib_fms_rank(const struct conioxlib_sfiles *f)
+static int _conioxlib_filemultiselector_rank(const struct conioxlib_sfiles *f)
 {
         const char *n = f->name;
         if (n[0] == '\x10') return 0;
@@ -6082,7 +6067,7 @@ static int _conioxlib_fms_rank(const struct conioxlib_sfiles *f)
 /* Parse a size string like "1,234" into unsigned long for numeric comparison.
    The size field in conioxlib_sfiles is a char[15] formatted by
    _conioxlib_filemultiselector_format(); drives/dirs carry the \xF0 marker. */
-static unsigned long _conioxlib_fms_parsesize(const char *s)
+static unsigned long _conioxlib_filemultiselector_parsesize(const char *s)
 {
         unsigned long n = 0;
         /* Skip the \xF0 marker entries (drives/dirs) - they sort by rank anyway */
@@ -6099,7 +6084,7 @@ static unsigned long _conioxlib_fms_parsesize(const char *s)
 }
 
 /* Parse a date string "DD-MM-YY" into a comparable value YYMMDD */
-static unsigned long _conioxlib_fms_parsedate(const char *s)
+static unsigned long _conioxlib_filemultiselector_parsedate(const char *s)
 {
         unsigned long d, m, y;
         if (s[0] == 0 || s[0] == ' ') return 0;
@@ -6114,7 +6099,7 @@ static unsigned long _conioxlib_fms_parsedate(const char *s)
 }
 
 /* Parse a time string "HH:MM" into a comparable value HHMM */
-static unsigned long _conioxlib_fms_parsetime(const char *s)
+static unsigned long _conioxlib_filemultiselector_parsetime(const char *s)
 {
         unsigned long h, m;
         if (s[0] == 0 || s[0] == ' ') return 0;
@@ -6131,8 +6116,8 @@ static int _conioxlib_filemultiselector_sort (const struct conioxlib_sfiles *fa,
         int ra, rb;
         int cmp;
 
-        ra = _conioxlib_fms_rank(fa);
-        rb = _conioxlib_fms_rank(fb);
+        ra = _conioxlib_filemultiselector_rank(fa);
+        rb = _conioxlib_filemultiselector_rank(fb);
         if (ra != rb)
         {
                 return(ra - rb);
@@ -6148,22 +6133,22 @@ static int _conioxlib_filemultiselector_sort (const struct conioxlib_sfiles *fa,
         {
                 case CONIOXLIB_SORT_SIZE:
                 {
-                        unsigned long sa = _conioxlib_fms_parsesize(fa->size);
-                        unsigned long sb = _conioxlib_fms_parsesize(fb->size);
+                        unsigned long sa = _conioxlib_filemultiselector_parsesize(fa->size);
+                        unsigned long sb = _conioxlib_filemultiselector_parsesize(fb->size);
                         cmp = (sa < sb) ? -1 : (sa > sb) ? 1 : 0;
                         break;
                 }
                 case CONIOXLIB_SORT_DATE:
                 {
-                        unsigned long da = _conioxlib_fms_parsedate(fa->date);
-                        unsigned long db = _conioxlib_fms_parsedate(fb->date);
+                        unsigned long da = _conioxlib_filemultiselector_parsedate(fa->date);
+                        unsigned long db = _conioxlib_filemultiselector_parsedate(fb->date);
                         cmp = (da < db) ? -1 : (da > db) ? 1 : 0;
                         break;
                 }
                 case CONIOXLIB_SORT_TIME:
                 {
-                        unsigned long ta = _conioxlib_fms_parsetime(fa->time);
-                        unsigned long tb = _conioxlib_fms_parsetime(fb->time);
+                        unsigned long ta = _conioxlib_filemultiselector_parsetime(fa->time);
+                        unsigned long tb = _conioxlib_filemultiselector_parsetime(fb->time);
                         cmp = (ta < tb) ? -1 : (ta > tb) ? 1 : 0;
                         break;
                 }
@@ -6181,35 +6166,43 @@ static void _conioxlib_filemultiselector_format (char *res, unsigned long int n)
 {
         unsigned int i, j, k, len;
         char tmp[16];
-        int written;
-
-        /* sprintf returns the number of chars written; use it instead of strlen.
-           Eliminates the redundant memset(res, 0, 15) that was needed because
-           the loop below didn't terminate the buffer; we now do it explicitly */
-        written = sprintf(tmp, "%lu", n);
-        if (written < 0)
+        unsigned long v;
+        v = n;
+        if (v == 0)
         {
-                res[0] = 0;
-                return;
+                tmp[0] = '0';
+                len = 1;
+        }
+        else
+        {
+                len = 0;
+                while (v != 0 && len < 15)
+                {
+                        tmp[len++] = (char) ('0' + (v % 10UL));
+                        v /= 10UL;
+                }
+                for (i = 0, j = len - 1; i < j; i++, j--)
+                {
+                        char c = tmp[i];
+                        tmp[i] = tmp[j];
+                        tmp[j] = c;
+                }
         }
         if (n < 1000)
         {
-                strcpy(res, tmp);
+                for (i = 0; i < len; i++) res[i] = tmp[i];
+                res[len] = 0;
                 return;
         }
-        /* Insert the thousands commas on one forward pass */
-        len = (unsigned int) written;
         j = ((len - 1) % 3) + 1;
         k = 0;
         for (i = 0; i < len; i++)
         {
-                res[k] = tmp[i];
-                k++;
+                res[k++] = tmp[i];
                 j--;
                 if ((j == 0) && ((i + 1) < len))
                 {
-                        res[k] = ',';
-                        k++;
+                        res[k++] = ',';
                         j = 3;
                 }
         }
@@ -6217,49 +6210,186 @@ static void _conioxlib_filemultiselector_format (char *res, unsigned long int n)
 }
 
 
+/* Compact size for fileselector rows (fits an 8-char field). */
+static void _conioxlib_fileselector_format_size(char *res, unsigned long int n)
+{
+        unsigned long v;
+        char tmp[12];
+        int i, j;
+        if (n < 10000000UL)
+                v = n;
+        else if (n < 1000000000UL)
+                v = n / 1024UL;
+        else
+                v = n / 1048576UL;
+        if (v == 0)
+        {
+                tmp[0] = '0';
+                i = 1;
+        }
+        else
+        {
+                i = 0;
+                while (v != 0 && i < 10)
+                {
+                        tmp[i++] = (char) ('0' + (v % 10UL));
+                        v /= 10UL;
+                }
+        }
+        j = 0;
+        while (i > 0)
+                res[j++] = tmp[--i];
+        if (n >= 1000000000UL)
+                res[j++] = 'M';
+        else if (n >= 10000000UL)
+                res[j++] = 'K';
+        res[j] = 0;
+}
+
+static conioxlib_inline void _conioxlib_fmt_u2(char *dst, unsigned int v)
+{
+        dst[0] = (char) ('0' + ((v / 10) % 10));
+        dst[1] = (char) ('0' + (v % 10));
+}
+
+static conioxlib_inline void _conioxlib_fmt_date(char *dest, unsigned int day, unsigned int mon, unsigned int yy)
+{
+        _conioxlib_fmt_u2(dest, day);
+        dest[2] = '-';
+        _conioxlib_fmt_u2(dest + 3, mon);
+        dest[5] = '-';
+        if (yy == 0xFFu)
+        {
+                dest[6] = 'X';
+                dest[7] = 'X';
+        }
+        else
+                _conioxlib_fmt_u2(dest + 6, yy);
+        dest[8] = 0;
+}
+
+static conioxlib_inline void _conioxlib_fmt_time(char *dest, unsigned int hour, unsigned int min)
+{
+        _conioxlib_fmt_u2(dest, hour);
+        dest[2] = ':';
+        _conioxlib_fmt_u2(dest + 3, min);
+        dest[5] = 0;
+}
+
+static conioxlib_inline unsigned int _conioxlib_dos_yy(unsigned int year)
+{
+        if (year < 20) return year + 80;
+        if (year < 120) return year - 20;
+        return 0xFFu;
+}
+
+static unsigned char _conioxlib_build_curdir(char *out)
+{
+        unsigned char disk;
+        char tmp[80];
+        unsigned int i;
+        disk = (unsigned char) (_conioxlib_getdisk() + 'A');
+#if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32) || defined(__WATCOMC__)
+        if (_conioxlib_getcwd(tmp, 79) == 0)
+        {
+                tmp[0] = (char) disk;
+                tmp[1] = ':';
+                tmp[2] = '\\';
+                tmp[3] = 0;
+        }
+        if (tmp[3] == 0)
+        {
+                out[0] = '\\';
+                out[1] = 0;
+        }
+        else
+        {
+                out[0] = '\\';
+                i = 0;
+                while (tmp[3 + i] != 0 && i < 76)
+                {
+                        out[1 + i] = tmp[3 + i];
+                        i++;
+                }
+                out[1 + i] = '\\';
+                out[2 + i] = 0;
+        }
+#else
+        getcurdir(disk - 'A' + 1, tmp);
+        if (tmp[0] == 0)
+        {
+                out[0] = '\\';
+                out[1] = 0;
+        }
+        else
+        {
+                out[0] = '\\';
+                i = 0;
+                while (tmp[i] != 0 && i < 76)
+                {
+                        out[1 + i] = tmp[i];
+                        i++;
+                }
+                out[1 + i] = '\\';
+                out[2 + i] = 0;
+        }
+#endif
+        return disk;
+}
+
 /* Paints one filemultiselector row at screen column 2..77 with puttext.
    idx < 0 or an empty name paints a blank row (used for short directories). */
-static void _conioxlib_filemultiselector_row(unsigned short y, int idx, unsigned char atr, int nw, int cw, const char lnames[][CONIOXLIB_LISTITEM_W], struct conioxlib_sfiles *files)
+static void _conioxlib_filemultiselector_row(unsigned short y, int idx, unsigned char atr, int nw, int cw, const char lnames[][CONIOXLIB_LISTITEM_W], const struct conioxlib_sfiles *files)
 {
-        char line[80];
         unsigned short *cells;
-        unsigned short ca;
-        unsigned int i, len;
+        unsigned short ca, sep;
+        unsigned int pos, j, n;
+        const char *p;
 
         cells = _conioxlib_need_cells(76);
         if (cells == 0)
         {
                 return;
         }
-
         ca = (unsigned short) ((unsigned int) atr << 8);
-        /* Blank-fill the whole row first with one memsetw; the text overlay
-           only writes the cells it needs. Eliminates the trailing per-char
-           blank-fill loop. */
+        sep = (unsigned short) (ca | 0xBA);
         _conioxlib_memsetw(cells, (unsigned short)(ca | ' '), 76);
         if ((idx < 0) || (files[idx].name[0] == 0))
         {
                 puttext(2, y, 77, y, cells);
                 return;
         }
-        /* nw + cw = 45 always (from _conioxlib_filemulti_calc_cols), so the line
-           is at most nw + 1 + 14 + 1 + 8 + 1 + 5 + 1 + cw = nw + cw + 30 = 75.
-           line[80] is safe; use sprintf's return value instead of strlen. */
+        /* name[nw] | size[14] | date[8] | time[5] | comment[cw] */
+        p = lnames[idx];
+        n = (unsigned int) nw;
+        for (j = 0; j < n && p[j] != 0; j++)
+                cells[j] = (unsigned short) (ca | (unsigned char) p[j]);
+        pos = (unsigned int) nw;
+        cells[pos++] = sep;
+        p = files[idx].size;
         {
-                int written = sprintf(line, "%-*.*s\xBA%14s\xBA%-8s\xBA%-5s\xBA%-*.*s",
-                        nw, nw, lnames[idx], files[idx].size, files[idx].date, files[idx].time, cw, cw, files[idx].comment);
-                len = (unsigned int) ((written > 0) ? written : 0);
+                unsigned int sl = 0;
+                while (p[sl] != 0) sl++;
+                if (sl > 14) sl = 14;
+                for (j = 0; j < sl; j++)
+                        cells[pos + (14 - sl) + j] = (unsigned short) (ca | (unsigned char) p[j]);
         }
-        if (len > 76)
-        {
-                len = 76;
-        }
-        /* Per-char overlay of the formatted text; the trailing cells stay as
-           the blank fill set above. */
-        for (i = 0; i < len; i++)
-        {
-                cells[i] = (unsigned short) (ca | (unsigned char) line[i]);
-        }
+        pos += 14;
+        cells[pos++] = sep;
+        p = files[idx].date;
+        for (j = 0; j < 8 && p[j] != 0; j++)
+                cells[pos + j] = (unsigned short) (ca | (unsigned char) p[j]);
+        pos += 8;
+        cells[pos++] = sep;
+        p = files[idx].time;
+        for (j = 0; j < 5 && p[j] != 0; j++)
+                cells[pos + j] = (unsigned short) (ca | (unsigned char) p[j]);
+        pos += 5;
+        cells[pos++] = sep;
+        p = files[idx].comment;
+        n = (unsigned int) cw;
+        for (j = 0; j < n && p[j] != 0; j++)
+                cells[pos + j] = (unsigned short) (ca | (unsigned char) p[j]);
         puttext(2, y, 77, y, cells);
 }
 
@@ -6268,12 +6398,9 @@ static void _conioxlib_filemultiselector_row(unsigned short y, int idx, unsigned
 /* fileselector:
    Prototype:
    unsigned char conioxlib_fileselector(unsigned char *sdisk, char *sdir, char *name);
-   Runs a compact picker for a single file: drives, directories and names
-   only, without sizes, dates or descriptions, so it fits the Open and
-   Save as dialogs of an editor. Parameters: sdisk receives the chosen
-   drive letter, sdir the chosen directory and name the chosen file name.
-   ENTER on a drive or a directory changes the path and ENTER on a plain
-   file accepts it. Returns 1 when a file was chosen and 0 when cancelled.
+   Compact single-file picker for Open/Save. File rows show name/size/date
+   fitting CONIOXLIB_LISTITEM_W. Returns 1 when a file was chosen and 0 when
+   cancelled. The short 8.3 name is returned for portability.
    */
 unsigned char conioxlib_fileselector (unsigned char *sdisk, char *sdir, char *name)
 {
@@ -6323,30 +6450,7 @@ unsigned char conioxlib_fileselector (unsigned char *sdisk, char *sdir, char *na
         sprintf(olddir, "\\%s", tmp);
 #endif
         fileselector_1:
-        disk = _conioxlib_getdisk() + 'A';
-        /* Build the current directory in the "\sub\dir\" form used by the rest of the library */
-#if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32) || defined(__WATCOMC__)
-        _conioxlib_getcwd(tmp, 79);
-        if (tmp[3] == 0)
-        {
-                sprintf(dir, "\\");
-        }
-        else
-        {
-                sprintf(dir, "\\%s\\", &tmp[3]);
-        }
-#else
-        getcurdir(disk - 'A' + 1, dir);
-        if (dir[0] == 0)
-        {
-                sprintf(tmp, "\\");
-        }
-        else
-        {
-                sprintf(tmp, "\\%s\\", dir);
-        }
-        strcpy(dir, tmp);
-#endif
+        disk = _conioxlib_build_curdir(dir);
         /* Ensure we are on the selected drive and directory so the relative scan works everywhere */
         _conioxlib_setdisk(disk - 'A');
         _conioxlib_chdir(dir);
@@ -6384,7 +6488,7 @@ unsigned char conioxlib_fileselector (unsigned char *sdisk, char *sdir, char *na
 #if defined(__WATCOMC__)
                 if (lfn && (strcmp(tmp, ".") != 0) && (strcmp(tmp, "..") != 0))
                 {
-                        sprintf(path, "%c:%s%s", disk, dir, tmp);
+                        sprintf(path, "%c:%.*s%.*s", disk, 80, dir, 40, tmp);
                         lfnr = _conioxlib_lfnlong(path, lname, sizeof(lname));
                         if (lfnr == 0x7100)
                         {
@@ -6417,12 +6521,12 @@ unsigned char conioxlib_fileselector (unsigned char *sdisk, char *sdir, char *na
                                 {
                                         strcpy(lname, tmp);
                                 }
-                                /* Multi-column item: "name padded to 18 | size right-aligned in 10 | date time".
-                                   Matches the filemultiselector layout. CONIOXLIB_LISTITEM_W = 40 leaves
-                                   room for the 18+1+10+1+8+1+5 = 44, truncated to 40 (date/time short). */
+                                /* Multi-column item fitting CONIOXLIB_LISTITEM_W (41 incl. NUL):
+                                   name 14 + space + size 8 + space + "DD-MM-YY HH:MM" 14 = 38 chars.
+                                   Previous 18+10+16 wrote 46 bytes and overflowed into the next row. */
                                 {
-                                        char szbuf[16];
-                                        char dtbuf[24];
+                                        char szbuf[12];
+                                        char dtbuf[16];
                                         unsigned long fsize;
                                         unsigned int fday, fmon, fyear, fhour, fmin;
 #if ((__WIN32__) || (__WINDOWS__) || (__NT__)) || (_WIN32)
@@ -6463,34 +6567,31 @@ unsigned char conioxlib_fileselector (unsigned char *sdisk, char *sdir, char *na
                                                 memcpy(&ftimebits, &raw_time, 2);
                                                 fday = (unsigned int) fdatebits.day;
                                                 fmon = (unsigned int) fdatebits.mon;
-                                                fyear = (unsigned int) fdatebits.year;
+                                                fyear = _conioxlib_dos_yy((unsigned int) fdatebits.year);
                                                 fhour = (unsigned int) ftimebits.hour;
                                                 fmin = (unsigned int) ftimebits.min;
-                                                if (fyear < 20)
-                                                {
-                                                        fyear += 80;
-                                                }
-                                                else if (fyear < 120)
-                                                {
-                                                        fyear -= 20;
-                                                }
                                         }
 #endif
-                                        /* Compact size: 9999999999 max (~9 GB), or use K/M for bigger */
-                                        if (fsize < 10000000UL)
+                                        _conioxlib_fileselector_format_size(szbuf, fsize);
+                                        _conioxlib_fmt_date(dtbuf, fday, fmon, fyear);
+                                        dtbuf[8] = ' ';
+                                        _conioxlib_fmt_time(dtbuf + 9, fhour, fmin);
+                                        /* Pad name / size into fixed fields without sprintf. */
                                         {
-                                                sprintf(szbuf, "%lu", fsize);
+                                                unsigned int j, n;
+                                                char *d = items[i];
+                                                for (j = 0; j < 14; j++) d[j] = ' ';
+                                                for (j = 0; j < 14 && lname[j]; j++) d[j] = lname[j];
+                                                d[14] = ' ';
+                                                n = 0;
+                                                while (szbuf[n]) n++;
+                                                if (n > 8) n = 8;
+                                                for (j = 0; j < 8; j++) d[15 + j] = ' ';
+                                                for (j = 0; j < n; j++) d[15 + (8 - n) + j] = szbuf[j];
+                                                d[23] = ' ';
+                                                for (j = 0; j < 14 && dtbuf[j]; j++) d[24 + j] = dtbuf[j];
+                                                d[24 + j] = 0;
                                         }
-                                        else if (fsize < 1000000000UL)
-                                        {
-                                                sprintf(szbuf, "%luK", fsize / 1024UL);
-                                        }
-                                        else
-                                        {
-                                                sprintf(szbuf, "%luM", fsize / 1048576UL);
-                                        }
-                                        sprintf(dtbuf, "%02u-%02u-%02u %02u:%02u", fday, fmon, fyear, fhour, fmin);
-                                        sprintf(items[i], "%-18.18s %10.10s %-16.16s", lname, szbuf, dtbuf);
                                 }
                         }
                         sprintf(shorts[i], "%.40s", tmp);
@@ -6511,7 +6612,7 @@ unsigned char conioxlib_fileselector (unsigned char *sdisk, char *sdir, char *na
         /* sprintf returns the number of chars written; reuse it instead of
            calling strlen twice on the same buffer */
         {
-                int plen = sprintf(tmp, "%c:%s", disk, dir);
+                int plen = sprintf(tmp, "%c:%.*s", disk, 70, dir);
                 if (plen > 56)
                 {
                         /* Use a separate buffer: sprintf src/dst overlap is undefined behavior
@@ -6688,7 +6789,7 @@ void conioxlib_hello (const char *name, unsigned char commercial)
    Both the malloc-failed and fopen-failed paths used to duplicate this
    sequence (vgaremap + setpal(0) + window + textattr + clrscr + cursor +
    helpcache_free + exit). Optional oldb free at the end. */
-static void _conioxlib_reset_video_exit(unsigned char e, char *oldb)
+static void _conioxlib_bye_reset_video(unsigned char e, char *oldb)
 {
 #if ((__DOS__) || (__MSDOS__))
         if (_conioxlib_mouseptr != 0)
@@ -6733,7 +6834,7 @@ void conioxlib_bye (const char *name, unsigned char e, unsigned char commercial)
                 /* Restore the video state hello() changed even when the save buffer
                    cannot be allocated, so the process never exits with the cursor
                    hidden (which would look like a hang). */
-                _conioxlib_reset_video_exit(e, 0);
+                _conioxlib_bye_reset_video(e, 0);
         }
         f = fopen(name, "rb");
         if (f == 0)
@@ -6742,7 +6843,7 @@ void conioxlib_bye (const char *name, unsigned char e, unsigned char commercial)
                    have been left elsewhere after fileselector): still reset the video
                    state so the program does not exit with the cursor hidden and the
                    demo frame frozen on screen. */
-                _conioxlib_reset_video_exit(e, oldb);
+                _conioxlib_bye_reset_video(e, oldb);
         }
         memset(oldb, 0, 4000);
         fread(oldb, 1, 4000, f);
@@ -6910,7 +7011,7 @@ void conioxlib_about (unsigned char commercial)
         window(1, 1, _conioxlib_scr_w(), _conioxlib_scr_h());
         _wscroll = 0;
         _conioxlib_hint("ENTER / ESC close about");
-        box (x1, y1, x2, y2, _conioxlib_curtheme.atrframe, A_DOUBLE, "About", 3);
+        box (x1, y1, x2, y2, _conioxlib_curtheme.atrframe, _conioxlib_curtheme.frame, "About", 3);
         textattr(_conioxlib_curtheme.atrdialog);
         cputsc(x1, x2, y1 + 1, "CONXLIB for DOS and Windows");
         sprintf(ver, "Version  %u.%02u", (unsigned int) (conioxlib_version / 100), (unsigned int) (conioxlib_version % 100));
@@ -7232,7 +7333,7 @@ unsigned char conioxlib_exittodos (const char *name)
         {
                 return(0);
         }
-        box(20, 10, 60, 14, _conioxlib_curtheme.atrframe, A_DOUBLE, "Exit", SHADOW);
+        box(20, 10, 60, 14, _conioxlib_curtheme.atrframe, _conioxlib_curtheme.frame, "Exit", SHADOW);
         textattr(_conioxlib_curtheme.atrdialog);
         cputsc(20, 60, 11, "Do you want to exit to DOS?");
         do
@@ -7440,7 +7541,7 @@ void __interrupt __far conioxlib_shell_patch (union INTPACK r)
    or the close button.
    */
 /* Leap year test: was duplicated 3 times in conioxlib_calendar before */
-static conioxlib_inline int _conioxlib_is_leap(unsigned int y)
+static conioxlib_inline int _conioxlib_calendar_is_leap(unsigned int y)
 {
         return (((y % 4) == 0) && ((y % 100) != 0)) || ((y % 400) == 0);
 }
@@ -7514,7 +7615,7 @@ unsigned char conioxlib_calendar (unsigned short x, unsigned short y, unsigned c
                 /* start walks the cells while drawing: first keeps the column of day 1 for the mouse */
                 first = start;
                 days = monthdays[cmon - 1];
-                if ((cmon == 2) && _conioxlib_is_leap(cyear))
+                if ((cmon == 2) && _conioxlib_calendar_is_leap(cyear))
                 {
                         days = 29;
                 }
@@ -7524,7 +7625,7 @@ unsigned char conioxlib_calendar (unsigned short x, unsigned short y, unsigned c
                 }
                 /* Days of the previous month, used when the day wraps over a month edge */
                 prevdays = monthdays[(cmon == 1) ? 11 : (cmon - 2)];
-                if ((cmon == 3) && _conioxlib_is_leap(cyear))
+                if ((cmon == 3) && _conioxlib_calendar_is_leap(cyear))
                 {
                         prevdays = 29;
                 }
@@ -7722,7 +7823,7 @@ unsigned char conioxlib_calendar (unsigned short x, unsigned short y, unsigned c
                 if (cday > monthdays[cmon - 1])
                 {
                         cday = monthdays[cmon - 1];
-                        if ((cmon == 2) && _conioxlib_is_leap(cyear))
+                        if ((cmon == 2) && _conioxlib_calendar_is_leap(cyear))
                         {
                                 cday = 29;
                         }
@@ -7984,12 +8085,14 @@ unsigned char conioxlib_helpindex (unsigned short x1, unsigned short y1, unsigne
 /* theme:
    Prototype:
    void conioxlib_theme(unsigned char id);
-   Applies one of the nine visual themes.
-   Parameters: id is 0 Borland C++ 3.1, 1 Turbo C 2.0, 2 Turbo
-   C 1.x, 3 Norton Utilities 9, 4 PC Tools, 5 Turbo Pascal
-   7.0, 6 Norton Commander, 7 MS-DOS Edit and 8 Lotus 1-2-3.
-   Themes 0 and 5 share the real Turbo Vision 2.0 palette
-   used by both Borland IDEs.
+   Applies one of the CONIOXLIB_THEMES (12) visual themes.
+   Parameters: id is
+     0 Borland C++ 3.1 (Turbo Vision 2.0 cpColor),
+     1 Turbo C 2.0, 2 Turbo C 1.x, 3 Norton Utilities 9,
+     4 PC Tools, 5 Norton Commander, 6 MS-DOS Edit,
+     7 Lotus 1-2-3, 8 SideKick, 9 Volkov Commander,
+     10 DOS Navigator, 11 XTree Gold.
+   Out-of-range ids fall back to theme 0.
    */
 void conioxlib_theme (unsigned char id)
 {
@@ -8018,10 +8121,9 @@ void conioxlib_theme (unsigned char id)
              button hotkey   = 0x2E (Yellow on Green)
              input passive   = 0x1F (White on Blue)
              input selected  = 0x2F (White on Green)
-           The BC++ 3.1 / TP 7.0 IDEs override the menu bar background to blue
-           (instead of TV's lightgray) and the menu selected to black-on-cyan
-           (instead of TV's black-on-green); that override is reproduced here
-           because the demo themes are named after the IDEs, not after raw TV. */
+           Theme 0 keeps the raw Turbo Vision 2.0 cpColor values (lightgray
+           menus, green selection). Theme 1 (Turbo C 2.0) is the yellow-on-blue
+           IDE look. Themes 3-11 follow screenshots of each original program. */
         static const struct conioxlib_stheme themes[CONIOXLIB_THEMES] = {
                 /* 0 - Borland C++ 3.1 / Turbo Vision 2.0 IDE palette (verified against TV cpColor) */
                 {CONIOXLIB_ATTR(BLACK, LIGHTGRAY), CONIOXLIB_ATTR(BLACK, GREEN), CONIOXLIB_ATTR(RED, LIGHTGRAY),
@@ -8161,13 +8263,13 @@ char *conioxlib_savescr (unsigned short x1, unsigned short y1, unsigned short x2
 
         /* The library works on the 80x25 screen: a rectangle sticking out of it (the shadow of a box
            at the right edge, say) is clamped, because gettext() refuses it altogether */
-        if (x2 > 80)
+        if (x2 > CONIOXLIB_SCR_W)
         {
-                x2 = 80;
+                x2 = CONIOXLIB_SCR_W;
         }
-        if (y2 > 25)
+        if (y2 > CONIOXLIB_SCR_H)
         {
-                y2 = 25;
+                y2 = CONIOXLIB_SCR_H;
         }
         if ((x1 < 1) || (y1 < 1) || (x1 > x2) || (y1 > y2))
         {
@@ -8199,13 +8301,13 @@ void conioxlib_restorescr (unsigned short x1, unsigned short y1, unsigned short 
         if (buf != 0)
         {
                 /* Same clamp as savescr(): the buffer holds the clamped rectangle */
-                if (x2 > 80)
+                if (x2 > CONIOXLIB_SCR_W)
                 {
-                        x2 = 80;
+                        x2 = CONIOXLIB_SCR_W;
                 }
-                if (y2 > 25)
+                if (y2 > CONIOXLIB_SCR_H)
                 {
-                        y2 = 25;
+                        y2 = CONIOXLIB_SCR_H;
                 }
                 if ((x1 >= 1) && (y1 >= 1) && (x1 <= x2) && (y1 <= y2))
                 {
@@ -8563,7 +8665,7 @@ unsigned char conioxlib_msgbox (const char *title, const char *msg, char buttons
         {
                 return(255);
         }
-        box(x1, y1, x2, y2, _conioxlib_curtheme.atrdialog, A_DOUBLE, (char *) ((title != 0) ? title : "Message"), SHADOW);
+        box(x1, y1, x2, y2, _conioxlib_curtheme.atrframe, _conioxlib_curtheme.frame, (char *) ((title != 0) ? title : "Message"), SHADOW);
         textattr(_conioxlib_curtheme.atrdialog);
         if (msg != 0)
         {
@@ -8618,8 +8720,8 @@ unsigned char conioxlib_inputbox (const char *title, const char *label, char *bu
         {
                 return(255);
         }
-        box(x1, y1, x2, y2, _conioxlib_curtheme.atrdialog, A_DOUBLE, (char *) ((title != 0) ? title : "Input"), SHADOW);
-        textattr(_conioxlib_curtheme.atrdialog);
+        box(x1, y1, x2, y2, _conioxlib_curtheme.atrframe, _conioxlib_curtheme.frame, (char *) ((title != 0) ? title : "Input"), SHADOW);
+        textattr(_conioxlib_curtheme.atrlabel);
         gotoxy(x1 + 2, y1 + 1);
         cputs((label != 0) ? (char *) label : "Value:");
         /* The field edits a copy: the caller's string changes only when OK is pressed */
@@ -8690,8 +8792,8 @@ unsigned char conioxlib_inputmask (const char *title, const char *label, char *b
         digits = 0;
         do
         {
-                box(x1, y1, x2, y2, _conioxlib_curtheme.atrdialog, A_DOUBLE, (char *) ((title != 0) ? title : "Numeric"), SHADOW);
-                textattr(_conioxlib_curtheme.atrdialog);
+                box(x1, y1, x2, y2, _conioxlib_curtheme.atrframe, _conioxlib_curtheme.frame, (char *) ((title != 0) ? title : "Numeric"), SHADOW);
+                textattr(_conioxlib_curtheme.atrlabel);
                 gotoxy(x1 + 2, y1 + 1);
                 cputs((label != 0) ? (char *) label : "Number:");
                 _conioxlib_hint("Only digits; BACK deletes, ENTER accepts");
@@ -8946,7 +9048,7 @@ unsigned char conioxlib_listbox (unsigned short x1, unsigned short y1, unsigned 
 
                 }
                 while ((key != 1) && (key != KBD_UP) && (key != KBD_DOWN) && (key != KBD_PGUP) && (key != KBD_PGDW) && (key != KBD_ORG) && (key != KBD_END) && (key != KBD_ESC) && (key != KBD_ENTER));
-                if (_conioxlib_list_nav(key, &sel, &top, (int) nitems, vis) == 0)
+                if (_conioxlib_listbox_nav(key, &sel, &top, (int) nitems, vis) == 0)
                 {
                         /* non-nav key handled above (ENTER/ESC/click) */
                 }
