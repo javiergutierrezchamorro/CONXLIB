@@ -229,6 +229,15 @@ static HANDLE _conioxlib_hStdIn_cache = 0;
 static unsigned short *_conioxlib_cellpool = 0;
 static unsigned int _conioxlib_cellpool_cap = 0;
 
+/* Console geometry cache: gettextinfo() on every _conioxlib_scr_w/h call
+   burned ~400 syscalls/s from the status/clock/poll path. Refreshed every
+   CONIOXLIB_GEOM_TICK accesses (or on first use). Shared by scr_w/scr_h/
+   scr_size and status_layout. */
+#define CONIOXLIB_GEOM_TICK     64
+static unsigned short _conioxlib_geom_w = 0;
+static unsigned short _conioxlib_geom_h = 0;
+static unsigned int _conioxlib_geom_tick = 0;
+
 static unsigned short *_conioxlib_need_cells(unsigned int n)
 {
         unsigned short *p;
@@ -286,39 +295,42 @@ static void _conioxlib_memsetw(unsigned short *dst, unsigned short val, unsigned
         }
 }
 
-/* Combined screen size: one gettextinfo call instead of two. */
-static void _conioxlib_scr_size(unsigned short *w, unsigned short *h)
+/* Refresh the geometry cache (one gettextinfo) when empty or every
+   CONIOXLIB_GEOM_TICK accesses. Called from the three public helpers. */
+static void _conioxlib_geom_refresh(void)
 {
-        struct text_info ti;
-        gettextinfo(&ti);
-        *w = (ti.screenwidth >= 40 && ti.screenwidth <= 255) ? (unsigned short) ti.screenwidth : (unsigned short) CONIOXLIB_SCR_W;
-        *h = (ti.screenheight >= 14 && ti.screenheight <= 255) ? (unsigned short) ti.screenheight : (unsigned short) CONIOXLIB_SCR_H;
+        if ((_conioxlib_geom_w == 0) || ((++_conioxlib_geom_tick & (CONIOXLIB_GEOM_TICK - 1)) == 0))
+        {
+                struct text_info ti;
+                gettextinfo(&ti);
+                _conioxlib_geom_w = (ti.screenwidth >= 40 && ti.screenwidth <= 255)
+                        ? (unsigned short) ti.screenwidth : (unsigned short) CONIOXLIB_SCR_W;
+                _conioxlib_geom_h = (ti.screenheight >= 14 && ti.screenheight <= 255)
+                        ? (unsigned short) ti.screenheight : (unsigned short) CONIOXLIB_SCR_H;
+        }
 }
 
-
+/* Combined screen size: shares the geometry cache (one gettextinfo amortized). */
+static void _conioxlib_scr_size(unsigned short *w, unsigned short *h)
+{
+        _conioxlib_geom_refresh();
+        *w = _conioxlib_geom_w;
+        *h = _conioxlib_geom_h;
+}
 
 /* Live console geometry: prefer gettextinfo() when available so Windows buffers
-   wider/taller than 80x25 still clamp correctly. Falls back to SCR_W/H. */
+   wider/taller than 80x25 still clamp correctly. Falls back to SCR_W/H.
+   Uses the shared geom cache so status/clock/poll paths stay cheap. */
 static conioxlib_inline unsigned short _conioxlib_scr_w(void)
 {
-        struct text_info ti;
-        gettextinfo(&ti);
-        if (ti.screenwidth >= 40 && ti.screenwidth <= 255)
-        {
-                return ti.screenwidth;
-        }
-        return (unsigned short) CONIOXLIB_SCR_W;
+        _conioxlib_geom_refresh();
+        return _conioxlib_geom_w;
 }
 
 static conioxlib_inline unsigned short _conioxlib_scr_h(void)
 {
-        struct text_info ti;
-        gettextinfo(&ti);
-        if (ti.screenheight >= 14 && ti.screenheight <= 255)
-        {
-                return ti.screenheight;
-        }
-        return (unsigned short) CONIOXLIB_SCR_H;
+        _conioxlib_geom_refresh();
+        return _conioxlib_geom_h;
 }
 
 /* Shared vertical-list navigation: updates sel and top given a key, vis rows and nitems.
@@ -1238,29 +1250,18 @@ void conioxlib_box (unsigned short x1, unsigned short y1, unsigned short x2, uns
 /* Status strip layout: on classic 80-col screens uses fixed columns;
    when scr_w > 80 the locks+clock pack against the right edge and status
    fills the remaining left area. Row is the last console row.
-   The geometry is cached for CONIOXLIB_GEOM_TICK poll cycles: the
-   console size rarely changes mid-session, and querying it via
-   gettextinfo() on every poll burns ~400 syscalls/second. */
-#define CONIOXLIB_GEOM_TICK     64
-static unsigned short _conioxlib_geom_w = 0;
-static unsigned short _conioxlib_geom_h = 0;
-static unsigned int _conioxlib_geom_tick = 0;
-
+   Geometry comes from the shared _conioxlib_geom_* cache (see
+   _conioxlib_geom_refresh) so the ~100 Hz status/clock path pays almost
+   nothing for gettextinfo(). */
 static void _conioxlib_status_layout(unsigned short *row, unsigned short *status_end,
         unsigned short *locks_col, unsigned short *clock_col, unsigned short *clock_end)
 {
         unsigned short w;
         unsigned short h;
 
-        /* Refresh the cached geometry every CONIOXLIB_GEOM_TICK calls; the steady
-           state falls through with zero cost. */
-        if ((_conioxlib_geom_w == 0) || ((++_conioxlib_geom_tick & (CONIOXLIB_GEOM_TICK - 1)) == 0))
-        {
-                _conioxlib_geom_w = _conioxlib_scr_w();
-                _conioxlib_geom_h = _conioxlib_scr_h();
-        }
-        w = _conioxlib_geom_w;
-        h = _conioxlib_geom_h;
+        /* Amortized gettextinfo via the shared geometry cache. */
+        w = _conioxlib_scr_w();
+        h = _conioxlib_scr_h();
 
         if (w < 40)
         {

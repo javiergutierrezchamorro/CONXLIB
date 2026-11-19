@@ -4,7 +4,7 @@
 
 #include "coniox.h"
 
-#define conioxlib_version (215)
+#define conioxlib_version (216)
 #define conioxlib_build (__DATE__)
 #define conioxlib_buildtime (__TIME__)
 
